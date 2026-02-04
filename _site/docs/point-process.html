@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.29">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Matías Castillo-Aguilar">
+
+<title>Simulating Point Processes in R – 2026-XX SDE R-R</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-0815c480559380816a4d1ea211a47e91.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-c1fac2584b48ed01fb6e278e36375074.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">2026-XX SDE R-R</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#simulating-point-processes-via-conditional-intensity" id="toc-simulating-point-processes-via-conditional-intensity" class="nav-link active" data-scroll-target="#simulating-point-processes-via-conditional-intensity">Simulating Point Processes via Conditional Intensity</a>
+  <ul class="collapse">
+  <li><a href="#mathematical-foundations" id="toc-mathematical-foundations" class="nav-link" data-scroll-target="#mathematical-foundations">Mathematical Foundations</a></li>
+  <li><a href="#the-homogeneous-poisson-process" id="toc-the-homogeneous-poisson-process" class="nav-link" data-scroll-target="#the-homogeneous-poisson-process">1. The Homogeneous Poisson Process</a>
+  <ul class="collapse">
+  <li><a href="#r-implementation" id="toc-r-implementation" class="nav-link" data-scroll-target="#r-implementation">R Implementation</a></li>
+  </ul></li>
+  <li><a href="#the-inhomogeneous-poisson-process" id="toc-the-inhomogeneous-poisson-process" class="nav-link" data-scroll-target="#the-inhomogeneous-poisson-process">2. The Inhomogeneous Poisson Process</a>
+  <ul class="collapse">
+  <li><a href="#algorithm-ogatas-thinning-rejection-sampling" id="toc-algorithm-ogatas-thinning-rejection-sampling" class="nav-link" data-scroll-target="#algorithm-ogatas-thinning-rejection-sampling">Algorithm: Ogata’s Thinning (Rejection Sampling)</a></li>
+  <li><a href="#r-implementation-1" id="toc-r-implementation-1" class="nav-link" data-scroll-target="#r-implementation-1">R Implementation</a></li>
+  </ul></li>
+  <li><a href="#history-dependence-the-refractory-period" id="toc-history-dependence-the-refractory-period" class="nav-link" data-scroll-target="#history-dependence-the-refractory-period">3. History Dependence: The Refractory Period</a>
+  <ul class="collapse">
+  <li><a href="#algorithm-modified-thinning" id="toc-algorithm-modified-thinning" class="nav-link" data-scroll-target="#algorithm-modified-thinning">Algorithm: Modified Thinning</a></li>
+  <li><a href="#r-implementation-2" id="toc-r-implementation-2" class="nav-link" data-scroll-target="#r-implementation-2">R Implementation</a></li>
+  </ul></li>
+  <li><a href="#self-exciting-processes-hawkes-process" id="toc-self-exciting-processes-hawkes-process" class="nav-link" data-scroll-target="#self-exciting-processes-hawkes-process">4. Self-Exciting Processes (Hawkes Process)</a>
+  <ul class="collapse">
+  <li><a href="#algorithm-ogatas-modified-thinning-with-variable-bound" id="toc-algorithm-ogatas-modified-thinning-with-variable-bound" class="nav-link" data-scroll-target="#algorithm-ogatas-modified-thinning-with-variable-bound">Algorithm: Ogata’s Modified Thinning with Variable Bound<br>
+  </a></li>
+  <li><a href="#r-implementation-3" id="toc-r-implementation-3" class="nav-link" data-scroll-target="#r-implementation-3">R Implementation</a></li>
+  </ul></li>
+  <li><a href="#the-general-inversion-method-time-rescaling" id="toc-the-general-inversion-method-time-rescaling" class="nav-link" data-scroll-target="#the-general-inversion-method-time-rescaling">5. The General Inversion Method (Time-Rescaling)</a>
+  <ul class="collapse">
+  <li><a href="#r-implementation-4" id="toc-r-implementation-4" class="nav-link" data-scroll-target="#r-implementation-4">R Implementation</a></li>
+  </ul></li>
+  <li><a href="#summary-of-methods" id="toc-summary-of-methods" class="nav-link" data-scroll-target="#summary-of-methods">Summary of Methods</a></li>
+  <li><a href="#code-structure-for-researchers" id="toc-code-structure-for-researchers" class="nav-link" data-scroll-target="#code-structure-for-researchers">Code Structure for Researchers</a></li>
+  </ul></li>
+  <li><a href="#simulating-heart-rate-variability-r-r-intervals" id="toc-simulating-heart-rate-variability-r-r-intervals" class="nav-link" data-scroll-target="#simulating-heart-rate-variability-r-r-intervals">Simulating Heart Rate Variability (R-R Intervals)</a>
+  <ul class="collapse">
+  <li><a href="#level-1-the-renewal-model-the-noisy-metronome" id="toc-level-1-the-renewal-model-the-noisy-metronome" class="nav-link" data-scroll-target="#level-1-the-renewal-model-the-noisy-metronome">Level 1: The Renewal Model (The Noisy Metronome)</a></li>
+  <li><a href="#level-2-respiratory-sinus-arrhythmia-rsa" id="toc-level-2-respiratory-sinus-arrhythmia-rsa" class="nav-link" data-scroll-target="#level-2-respiratory-sinus-arrhythmia-rsa">Level 2: Respiratory Sinus Arrhythmia (RSA)</a></li>
+  <li><a href="#level-3-the-barbieri-brown-model-history-dependent" id="toc-level-3-the-barbieri-brown-model-history-dependent" class="nav-link" data-scroll-target="#level-3-the-barbieri-brown-model-history-dependent">Level 3: The Barbieri-Brown Model (History Dependent)</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Simulating Point Processes in R</h1>
+<p class="subtitle lead">A Rigorous Guide for Physiology</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Matías Castillo-Aguilar </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="simulating-point-processes-via-conditional-intensity" class="level1">
+<h1>Simulating Point Processes via Conditional Intensity</h1>
+<p>A point process is a stochastic collection of events occurring in continuous time. In physiology, the most common realization of a point process is a neural spike train—a sequence of action potentials generated by a neuron. Other examples include heartbeats (R-peaks in ECG), vesicle release events at a synapse, or spontaneous muscle twitches.</p>
+<p>Researchers often model these events using the <strong>conditional intensity function</strong> (CIF), denoted as <span class="math inline">\(\lambda(t | H_t)\)</span>. This function represents the instantaneous probability rate of an event occurring at time <span class="math inline">\(t\)</span>, given the entire history of events <span class="math inline">\(H_t\)</span> up to that moment.</p>
+<p>For a physiologist, <span class="math inline">\(\lambda(t | H_t)\)</span> answers the question: <em>Given the stimulus applied right now, and given how recently the neuron fired previously, how likely is it to fire in the next millisecond?</em></p>
+<p>This guide details the algorithms required to simulate these processes in R. It progresses from memoryless constant-rate processes to complex, history-dependent systems that mimic bursting and refractory periods.</p>
+<section id="mathematical-foundations" class="level2">
+<h2 class="anchored" data-anchor-id="mathematical-foundations">Mathematical Foundations</h2>
+<p>The conditional intensity function is defined as:</p>
+<p><span class="math display">\[
+\lambda(t | H_t) = \lim_{\Delta t \to 0} \frac{P(\text{event in } (t, t+\Delta t] | H_t)}{\Delta t}
+\]</span></p>
+<p>If <span class="math inline">\(\lambda(t | H_t)\)</span> is constant, the process is a Homogeneous Poisson Process. If <span class="math inline">\(\lambda(t | H_t)\)</span> depends on time <span class="math inline">\(t\)</span> but not history <span class="math inline">\(H_t\)</span>, it is an Inhomogeneous Poisson Process. If it depends on <span class="math inline">\(H_t\)</span>, it is a general point process (e.g., a renewal process or Hawkes process).</p>
+</section>
+<section id="the-homogeneous-poisson-process" class="level2">
+<h2 class="anchored" data-anchor-id="the-homogeneous-poisson-process">1. The Homogeneous Poisson Process</h2>
+<p><strong>Scenario:</strong> A neuron firing due to random thermal noise with no external stimulus and no refractory period.</p>
+<p>This is the simplest baseline. The rate <span class="math inline">\(\lambda\)</span> is constant. A defining property of the homogeneous Poisson process is that the time intervals between events (Inter-Spike Intervals, or ISIs) follow an Exponential distribution.</p>
+<p>To simulate this, we do not need complex loops. We generate the intervals directly and take their cumulative sum to find the event times.</p>
+<section id="r-implementation" class="level3">
+<h3 class="anchored" data-anchor-id="r-implementation">R Implementation</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Simulate Homogeneous Poisson Process</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">#' </span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param rate The constant firing rate (Hz)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param duration Total time to simulate (seconds)</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @return Vector of event times</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>sim_homogeneous <span class="ot">&lt;-</span> <span class="cf">function</span>(rate, duration) {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 1. Estimate expected number of events to allocate memory</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># We add a margin (e.g., 20%) to ensure we cover the duration</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  n_guess <span class="ot">&lt;-</span> <span class="fu">ceiling</span>(rate <span class="sc">*</span> duration <span class="sc">*</span> <span class="fl">1.2</span>)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 2. Generate Inter-Spike Intervals (ISIs) from Exponential distribution</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The rate parameter for rexp is lambda</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  isis <span class="ot">&lt;-</span> <span class="fu">rexp</span>(n_guess, <span class="at">rate =</span> rate)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 3. Convert intervals to absolute times</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  event_times <span class="ot">&lt;-</span> <span class="fu">cumsum</span>(isis)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 4. Filter events that exceed the duration</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  event_times <span class="ot">&lt;-</span> event_times[event_times <span class="sc">&lt;=</span> duration]</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(event_times)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Example Usage</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>lambda_constant <span class="ot">&lt;-</span> <span class="dv">10</span> <span class="co"># 10 Hz</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>T_max <span class="ot">&lt;-</span> <span class="dv">10</span>           <span class="co"># 10 seconds</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>spikes_homo <span class="ot">&lt;-</span> <span class="fu">sim_homogeneous</span>(lambda_constant, T_max)</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualization</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co"># Raster plot (first 1 second)</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="fu">stripchart</span>(spikes_homo[spikes_homo <span class="sc">&lt;</span> <span class="dv">1</span>], <span class="at">method =</span> <span class="st">"jitter"</span>, <span class="at">pch =</span> <span class="st">"|"</span>, </span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>           <span class="at">main =</span> <span class="st">"Raster Plot (First 1s)"</span>, <span class="at">xlab =</span> <span class="st">"Time (s)"</span>)</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co"># Histogram of ISIs</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(<span class="fu">diff</span>(spikes_homo), <span class="at">breaks =</span> <span class="dv">30</span>, <span class="at">main =</span> <span class="st">"ISI Histogram"</span>, </span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Inter-Spike Interval (s)"</span>, <span class="at">freq =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="fu">curve</span>(<span class="fu">dexp</span>(x, <span class="at">rate =</span> lambda_constant), <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">col =</span> <span class="st">"red"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="point-process_files/figure-html/unnamed-chunk-1-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The histogram of ISIs aligns with the theoretical exponential density curve (red line), confirming the memoryless nature of the process.</p>
+</section>
+</section>
+<section id="the-inhomogeneous-poisson-process" class="level2">
+<h2 class="anchored" data-anchor-id="the-inhomogeneous-poisson-process">2. The Inhomogeneous Poisson Process</h2>
+<p><strong>Scenario:</strong> A retinal neuron responding to a visual stimulus that changes brightness over time. The firing rate changes, but the neuron still has no “memory” (no refractory period).</p>
+<p>Here, <span class="math inline">\(\lambda(t)\)</span> varies with time. We can no longer simply draw from an exponential distribution because the rate parameter changes continuously.</p>
+<section id="algorithm-ogatas-thinning-rejection-sampling" class="level3">
+<h3 class="anchored" data-anchor-id="algorithm-ogatas-thinning-rejection-sampling">Algorithm: Ogata’s Thinning (Rejection Sampling)</h3>
+<p>The standard method for simulating this is <strong>Ogata’s Thinning Algorithm</strong> (a variation of Lewis and Shedler’s method). The logic follows a “generate and reject” principle:</p>
+<ol type="1">
+<li>Determine an upper bound <span class="math inline">\(\lambda_{max}\)</span> such that <span class="math inline">\(\lambda(t) \le \lambda_{max}\)</span> for all <span class="math inline">\(t\)</span>.</li>
+<li>Generate a candidate event time using the constant rate <span class="math inline">\(\lambda_{max}\)</span> (a homogeneous process).</li>
+<li>Accept the candidate at time <span class="math inline">\(t_i\)</span> with probability <span class="math inline">\(P = \lambda(t_i) / \lambda_{max}\)</span>.</li>
+<li>If rejected, discard the event and generate the next candidate from the current time.</li>
+</ol>
+<p>This essentially generates a dense cloud of points (at the high rate) and thins them out where the actual intensity <span class="math inline">\(\lambda(t)\)</span> is low.</p>
+</section>
+<section id="r-implementation-1" class="level3">
+<h3 class="anchored" data-anchor-id="r-implementation-1">R Implementation</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Simulate Inhomogeneous Poisson Process via Thinning</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param intensity_fn A function that takes time 't' and returns lambda(t)</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param max_rate A constant upper bound for intensity_fn over the duration</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param duration Total simulation time</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co">#' @return Vector of event times</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>sim_inhomogeneous_thinning <span class="ot">&lt;-</span> <span class="cf">function</span>(intensity_fn, max_rate, duration) {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  event_times <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="dv">0</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  current_time <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">while</span>(current_time <span class="sc">&lt;</span> duration) {</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 1. Generate time to next candidate event (Homogeneous step)</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Using rate = max_rate</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    dt <span class="ot">&lt;-</span> <span class="fu">rexp</span>(<span class="dv">1</span>, <span class="at">rate =</span> max_rate)</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    current_time <span class="ot">&lt;-</span> current_time <span class="sc">+</span> dt</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (current_time <span class="sc">&gt;</span> duration) <span class="cf">break</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 2. Rejection Step</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Calculate actual intensity at this candidate time</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    lambda_actual <span class="ot">&lt;-</span> <span class="fu">intensity_fn</span>(current_time)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Calculate acceptance probability</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    prob_accept <span class="ot">&lt;-</span> lambda_actual <span class="sc">/</span> max_rate</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Check bounds (rigor check)</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (prob_accept <span class="sc">&gt;</span> <span class="dv">1</span>) {</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>      <span class="fu">stop</span>(<span class="st">"Error: max_rate provided is lower than actual intensity."</span>)</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 3. Accept or Reject</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    <span class="co"># runif(1) generates a random number between 0 and 1</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">runif</span>(<span class="dv">1</span>) <span class="sc">&lt;</span> prob_accept) {</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>      event_times <span class="ot">&lt;-</span> <span class="fu">c</span>(event_times, current_time)</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(event_times)</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a><span class="co"># Define a time-varying intensity function (e.g., Sine wave stimulus)</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a><span class="co"># Baseline 10Hz, Modulation +/- 5Hz, Frequency 1Hz</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>sine_intensity <span class="ot">&lt;-</span> <span class="cf">function</span>(t) {</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>  <span class="dv">10</span> <span class="sc">+</span> <span class="dv">5</span> <span class="sc">*</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> t)</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a><span class="co"># The maximum rate is 10 + 5 = 15 Hz</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>lambda_max <span class="ot">&lt;-</span> <span class="dv">15</span></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>T_max <span class="ot">&lt;-</span> <span class="dv">5</span></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>spikes_inhomo <span class="ot">&lt;-</span> <span class="fu">sim_inhomogeneous_thinning</span>(sine_intensity, lambda_max, T_max)</span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualization</span></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">2</span>))</span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot Intensity Function</span></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a><span class="fu">curve</span>(<span class="fu">sine_intensity</span>(x), <span class="at">from =</span> <span class="dv">0</span>, <span class="at">to =</span> T_max, <span class="at">ylab =</span> <span class="st">"Intensity (Hz)"</span>, </span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Inhomogeneous Intensity and Spikes"</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">16</span>))</span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a><span class="co"># Overlay spikes</span></span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(spikes_inhomo, <span class="fu">rep</span>(<span class="fl">0.5</span>, <span class="fu">length</span>(spikes_inhomo)), <span class="at">pch =</span> <span class="st">"|"</span>, <span class="at">col =</span> <span class="st">"blue"</span>)</span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a><span class="co"># Check spike density vs time</span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(spikes_inhomo, <span class="at">breaks =</span> <span class="dv">20</span>, <span class="at">main =</span> <span class="st">"Spike Count Histogram"</span>, </span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">border =</span> <span class="st">"white"</span>, <span class="at">col =</span> <span class="st">"grey"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="point-process_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The spike density in the histogram tracks the sine wave of the intensity function.</p>
+</section>
+</section>
+<section id="history-dependence-the-refractory-period" class="level2">
+<h2 class="anchored" data-anchor-id="history-dependence-the-refractory-period">3. History Dependence: The Refractory Period</h2>
+<p><strong>Scenario</strong>: A real neuron cannot fire twice in immediate succession.</p>
+<p>After a spike, sodium channels are inactivated (absolute refractory period), followed by a recovery period (relative refractory period).</p>
+<p>The intensity is now conditional on history: <span class="math inline">\(\lambda(t | H_t)\)</span>. specifically, it depends on the time elapsed since the last spike, denoted as <span class="math inline">\(t - t_{last}\)</span>.</p>
+<p><span class="math display">\[
+\lambda(t | H_t) = \lambda_0 \cdot R(t - t_{last})
+\]</span></p>
+<p>Where <span class="math inline">\(\lambda_0\)</span> is a baseline rate and <span class="math inline">\(R(\tau)\)</span> is a recovery function that goes from 0 to 1.</p>
+<section id="algorithm-modified-thinning" class="level3">
+<h3 class="anchored" data-anchor-id="algorithm-modified-thinning">Algorithm: Modified Thinning</h3>
+<p>We can still use Ogata’s thinning, but we must update the intensity calculation at every step to look at the most recent accepted spike. Since the recovery function usually lowers the rate, the baseline <span class="math inline">\(\lambda_0\)</span> serves as a valid global upper bound <span class="math inline">\(\lambda_{max}\)</span>.</p>
+</section>
+<section id="r-implementation-2" class="level3">
+<h3 class="anchored" data-anchor-id="r-implementation-2">R Implementation</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Simulate Process with Refractory Period</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param baseline_rate The firing rate when fully recovered</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param abs_refractory Absolute refractory period duration (seconds)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param tau_recovery Time constant for relative refractory recovery</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param duration Total simulation time</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>sim_refractory <span class="ot">&lt;-</span> <span class="cf">function</span>(baseline_rate, abs_refractory, tau_recovery, duration) {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  event_times <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="dv">0</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  current_time <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  last_spike_time <span class="ot">&lt;-</span> <span class="sc">-</span><span class="cn">Inf</span> <span class="co"># Assume long time since last spike at start</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Upper bound is the baseline rate (recovery function &lt;= 1)</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  max_rate <span class="ot">&lt;-</span> baseline_rate</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  <span class="cf">while</span>(current_time <span class="sc">&lt;</span> duration) {</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Generate candidate</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    dt <span class="ot">&lt;-</span> <span class="fu">rexp</span>(<span class="dv">1</span>, <span class="at">rate =</span> max_rate)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    current_time <span class="ot">&lt;-</span> current_time <span class="sc">+</span> dt</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (current_time <span class="sc">&gt;</span> duration) <span class="cf">break</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Calculate recovery factor R(t - t_last)</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    time_since_last <span class="ot">&lt;-</span> current_time <span class="sc">-</span> last_spike_time</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (time_since_last <span class="sc">&lt;=</span> abs_refractory) {</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>      recovery_factor <span class="ot">&lt;-</span> <span class="dv">0</span> <span class="co"># Absolute refractory</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>      <span class="co"># Exponential recovery 1 - exp(-(t - t_abs)/tau)</span></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>      rel_time <span class="ot">&lt;-</span> time_since_last <span class="sc">-</span> abs_refractory</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>      recovery_factor <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fu">exp</span>(<span class="sc">-</span>rel_time <span class="sc">/</span> tau_recovery)</span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>    lambda_actual <span class="ot">&lt;-</span> baseline_rate <span class="sc">*</span> recovery_factor</span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Accept/Reject</span></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">runif</span>(<span class="dv">1</span>) <span class="sc">&lt;</span> (lambda_actual <span class="sc">/</span> max_rate)) {</span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>      event_times <span class="ot">&lt;-</span> <span class="fu">c</span>(event_times, current_time)</span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>      last_spike_time <span class="ot">&lt;-</span> current_time <span class="co"># Update history</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(event_times)</span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a><span class="co"># Parameters</span></span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>base_rate <span class="ot">&lt;-</span> <span class="dv">20</span> <span class="co"># Hz</span></span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>t_abs <span class="ot">&lt;-</span> <span class="fl">0.010</span>  <span class="co"># 10ms absolute refractory</span></span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a>tau <span class="ot">&lt;-</span> <span class="fl">0.020</span>    <span class="co"># 20ms recovery time constant</span></span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a>T_sim <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">999</span>)</span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>spikes_ref <span class="ot">&lt;-</span> <span class="fu">sim_refractory</span>(base_rate, t_abs, tau, T_sim)</span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualization</span></span>
+<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a><span class="co"># ISI Histogram is key here. It should show 0 counts near 0.</span></span>
+<span id="cb3-55"><a href="#cb3-55" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(<span class="fu">diff</span>(spikes_ref), <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="fl">0.5</span>, <span class="at">by=</span><span class="fl">0.01</span>), </span>
+<span id="cb3-56"><a href="#cb3-56" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"ISI Histogram (Refractory)"</span>, </span>
+<span id="cb3-57"><a href="#cb3-57" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"ISI (s)"</span>, <span class="at">col =</span> <span class="st">"lightblue"</span>, <span class="at">border =</span> <span class="st">"white"</span>)</span>
+<span id="cb3-58"><a href="#cb3-58" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> t_abs, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(t_abs, <span class="dv">5</span>, <span class="st">"Abs. Refractory"</span>, <span class="at">pos =</span> <span class="dv">4</span>, <span class="at">col =</span> <span class="st">"red"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="point-process_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The histogram shows a “hole” at small intervals (0 to 10ms), characterizing the refractory period. A standard Poisson process would have its highest density at zero.</p>
+</section>
+</section>
+<section id="self-exciting-processes-hawkes-process" class="level2">
+<h2 class="anchored" data-anchor-id="self-exciting-processes-hawkes-process">4. Self-Exciting Processes (Hawkes Process)</h2>
+<p><strong>Scenario</strong>: “Bursting” behavior.</p>
+<p>When a neuron fires (or a vesicle is released), it temporarily increases the probability of another event occurring immediately after. This mimics network excitation or calcium influx.</p>
+<p>The intensity is defined as a baseline plus a summation of kernels over all past events:</p>
+<p><span class="math display">\[
+\lambda(t | H_t) = \mu + \sum_{t_i &lt; t} \alpha e^{-\beta (t - t_i)}
+\]</span></p>
+<ul>
+<li><span class="math inline">\(\mu\)</span>: Baseline background rate.</li>
+<li><span class="math inline">\(\alpha\)</span>: Magnitude of excitation (jump size).</li>
+<li><span class="math inline">\(\beta\)</span>: Decay rate of the excitation.</li>
+</ul>
+<section id="algorithm-ogatas-modified-thinning-with-variable-bound" class="level3">
+<h3 class="anchored" data-anchor-id="algorithm-ogatas-modified-thinning-with-variable-bound">Algorithm: Ogata’s Modified Thinning with Variable Bound<br>
+</h3>
+<p>This is more complex because every time an event occurs, the intensity jumps up. The constant upper bound strategy becomes inefficient or impossible if the self-excitation is strong.</p>
+<p>We use a dynamic upper bound. Between events, the intensity is strictly decaying (since the exponential kernels decay). Therefore, immediately after an event at <span class="math inline">\(t_i\)</span>, the intensity is at a local maximum. We can use the current intensity value as the bound for the next interval, or update the bound adaptively.</p>
+<p>Here, we define a function <code>get_hawkes_intensity</code> that sums the contributions of all previous spikes.</p>
+</section>
+<section id="r-implementation-3" class="level3">
+<h3 class="anchored" data-anchor-id="r-implementation-3">R Implementation</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Simulate Hawkes Process (Self-Exciting)</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param mu Baseline rate</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param alpha Excitation magnitude</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param beta Decay rate</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param duration Simulation time</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>sim_hawkes <span class="ot">&lt;-</span> <span class="cf">function</span>(mu, alpha, beta, duration) {</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  event_times <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="dv">0</span>)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  current_time <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># We need a dynamic upper bound.</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># At t=0, max lambda is just mu.</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  current_max_lambda <span class="ot">&lt;-</span> mu </span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  <span class="cf">while</span>(current_time <span class="sc">&lt;</span> duration) {</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 1. Generate candidate based on current conservative upper bound</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Note: If the process is very bursty, lambda can get high.</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="co"># We construct the upper bound at the CURRENT time.</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Since the Hawkes kernel decays, the intensity at current_time</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    <span class="co"># is the highest it will be until the next event.</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Calculate intensity at exactly current_time</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">length</span>(event_times) <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>      lambda_now <span class="ot">&lt;-</span> mu</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>      <span class="co"># Sum of alpha * exp(-beta * (t - t_i))</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>      decay_factors <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span>beta <span class="sc">*</span> (current_time <span class="sc">-</span> event_times))</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>      lambda_now <span class="ot">&lt;-</span> mu <span class="sc">+</span> <span class="fu">sum</span>(alpha <span class="sc">*</span> decay_factors)</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Use lambda_now as the bounding lambda for the next step</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    <span class="co"># because the function is monotonically decreasing between spikes.</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    lambda_bound <span class="ot">&lt;-</span> lambda_now</span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Generate candidate step</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>    dt <span class="ot">&lt;-</span> <span class="fu">rexp</span>(<span class="dv">1</span>, <span class="at">rate =</span> lambda_bound)</span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>    candidate_time <span class="ot">&lt;-</span> current_time <span class="sc">+</span> dt</span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (candidate_time <span class="sc">&gt;</span> duration) <span class="cf">break</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 2. Rejection Test</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Calculate actual intensity at candidate_time</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">length</span>(event_times) <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>      lambda_candidate <span class="ot">&lt;-</span> mu</span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a>      decay_factors <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span>beta <span class="sc">*</span> (candidate_time <span class="sc">-</span> event_times))</span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>      lambda_candidate <span class="ot">&lt;-</span> mu <span class="sc">+</span> <span class="fu">sum</span>(alpha <span class="sc">*</span> decay_factors)</span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a>    prob_accept <span class="ot">&lt;-</span> lambda_candidate <span class="sc">/</span> lambda_bound</span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">runif</span>(<span class="dv">1</span>) <span class="sc">&lt;</span> prob_accept) {</span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a>      event_times <span class="ot">&lt;-</span> <span class="fu">c</span>(event_times, candidate_time)</span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a>      <span class="co"># Do not update current_time here; the loop continues from candidate_time</span></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Advance time regardless of acceptance</span></span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>    current_time <span class="ot">&lt;-</span> candidate_time</span>
+<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(event_times)</span>
+<span id="cb4-63"><a href="#cb4-63" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-65"><a href="#cb4-65" aria-hidden="true" tabindex="-1"></a><span class="co"># Parameters: rare background events, but strong bursting</span></span>
+<span id="cb4-66"><a href="#cb4-66" aria-hidden="true" tabindex="-1"></a>mu_bg <span class="ot">&lt;-</span> <span class="dv">2</span>      <span class="co"># 2 Hz spontaneous</span></span>
+<span id="cb4-67"><a href="#cb4-67" aria-hidden="true" tabindex="-1"></a>alpha_ex <span class="ot">&lt;-</span> <span class="dv">10</span>  <span class="co"># Jump by 10 Hz after a spike</span></span>
+<span id="cb4-68"><a href="#cb4-68" aria-hidden="true" tabindex="-1"></a>beta_dec <span class="ot">&lt;-</span> <span class="dv">20</span>  <span class="co"># Decay back quickly (within ~100ms)</span></span>
+<span id="cb4-69"><a href="#cb4-69" aria-hidden="true" tabindex="-1"></a>T_sim <span class="ot">&lt;-</span> <span class="dv">5</span></span>
+<span id="cb4-70"><a href="#cb4-70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-71"><a href="#cb4-71" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2026</span>)</span>
+<span id="cb4-72"><a href="#cb4-72" aria-hidden="true" tabindex="-1"></a>spikes_hawkes <span class="ot">&lt;-</span> <span class="fu">sim_hawkes</span>(mu_bg, alpha_ex, beta_dec, T_sim)</span>
+<span id="cb4-73"><a href="#cb4-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-74"><a href="#cb4-74" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualization</span></span>
+<span id="cb4-75"><a href="#cb4-75" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span>
+<span id="cb4-76"><a href="#cb4-76" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(spikes_hawkes, <span class="fu">rep</span>(<span class="dv">1</span>, <span class="fu">length</span>(spikes_hawkes)), <span class="at">type =</span> <span class="st">"n"</span>, </span>
+<span id="cb4-77"><a href="#cb4-77" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">2</span>), <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, T_sim), <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">yaxt =</span> <span class="st">"n"</span>, <span class="at">ylab =</span> <span class="st">""</span>)</span>
+<span id="cb4-78"><a href="#cb4-78" aria-hidden="true" tabindex="-1"></a><span class="fu">segments</span>(spikes_hawkes, <span class="fl">0.8</span>, spikes_hawkes, <span class="fl">1.2</span>, <span class="at">lwd =</span> <span class="dv">1</span>)</span>
+<span id="cb4-79"><a href="#cb4-79" aria-hidden="true" tabindex="-1"></a><span class="fu">title</span>(<span class="st">"Hawkes Process (Bursting)"</span>)</span>
+<span id="cb4-80"><a href="#cb4-80" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(<span class="dv">0</span>, <span class="fl">1.5</span>, <span class="fu">paste</span>(<span class="st">"Total Spikes:"</span>, <span class="fu">length</span>(spikes_hawkes)), <span class="at">pos=</span><span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="point-process_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>In the resulting plot, you will observe distinct clusters of events. A spontaneous background event occurs, triggering a rapid succession of subsequent events that eventually die out as the decay (<span class="math inline">\(\beta\)</span>) overcomes the excitation (<span class="math inline">\(\alpha\)</span>).</p>
+</section>
+</section>
+<section id="the-general-inversion-method-time-rescaling" class="level2">
+<h2 class="anchored" data-anchor-id="the-general-inversion-method-time-rescaling">5. The General Inversion Method (Time-Rescaling)</h2>
+<p>Rejection sampling (thinning) is intuitive but can be computationally slow if <span class="math inline">\(\lambda_{max}\)</span> is much larger than the average <span class="math inline">\(\lambda(t)\)</span> (high rejection rate). The Time-Rescaling Theorem offers a direct generation method.</p>
+<p>Theory: For any point process with conditional intensity <span class="math inline">\(\lambda(t | H_t)\)</span>, if we transform the time axis using the integrated intensity:</p>
+<p><span class="math display">\[
+\Lambda(t) = \int_0^t \lambda(u | H_u) du
+\]</span></p>
+<p>The transformed event times <span class="math inline">\(\tau_i = \Lambda(t_i)\)</span> form a Homogeneous Poisson Process with rate 1.</p>
+<p><strong>Simulation Algorithm:</strong></p>
+<ol type="1">
+<li>Generate unit-rate exponential intervals <span class="math inline">\(E_1, E_2, \dots\)</span> (which sum to <span class="math inline">\(\tau_1, \tau_2, \dots\)</span>).</li>
+<li>Find the actual time <span class="math inline">\(t_i\)</span> such that <span class="math inline">\(\int_{t_{i-1}}^{t_i} \lambda(u) du = E_i\)</span>.</li>
+</ol>
+<p>This requires inverting the integral of the intensity function. For simple functions, this is analytical. For complex functions, we solve it numerically.</p>
+<p>Below is an implementation for a time-dependent sine wave (same as Section 2) using numerical root finding instead of thinning.</p>
+<section id="r-implementation-4" class="level3">
+<h3 class="anchored" data-anchor-id="r-implementation-4">R Implementation</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Simulate via Time-Rescaling (Inversion) - Corrected</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param integrated_intensity_fn Function Lambda(t) (The definite integral of lambda from 0 to t)</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param duration Total time to simulate (seconds)</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @return Vector of event times</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>sim_inversion <span class="ot">&lt;-</span> <span class="cf">function</span>(integrated_intensity_fn, duration) {</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  t_last <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  event_times <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="dv">0</span>)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">while</span>(<span class="cn">TRUE</span>) {</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 1. Generate the "target area" (integral step) required to trigger next event</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># For a Poisson process, these steps are Exponential(1)</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    target_integral <span class="ot">&lt;-</span> <span class="fu">rexp</span>(<span class="dv">1</span>, <span class="at">rate =</span> <span class="dv">1</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 2. Calculate current accumulated intensity</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    Lambda_current <span class="ot">&lt;-</span> <span class="fu">integrated_intensity_fn</span>(t_last)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 3. Determine target accumulated intensity</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    Lambda_target <span class="ot">&lt;-</span> Lambda_current <span class="sc">+</span> target_integral</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 4. Safety check: Is the target reachable within the simulation duration?</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>    <span class="co"># If the total area under the curve up to 'duration' is less than target, stop.</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">integrated_intensity_fn</span>(duration) <span class="sc">&lt;</span> Lambda_target) {</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>      <span class="cf">break</span> </span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 5. Solve for t such that Lambda(t) = Lambda_target</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>    f_root <span class="ot">&lt;-</span> <span class="cf">function</span>(t) { <span class="fu">integrated_intensity_fn</span>(t) <span class="sc">-</span> Lambda_target }</span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Use uniroot to find the time. extendInt="upX" allows searching </span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>    <span class="co"># beyond the initial guess if the rate is unexpectedly low.</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>    solution <span class="ot">&lt;-</span> <span class="fu">uniroot</span>(f_root, <span class="at">lower =</span> t_last, <span class="at">upper =</span> duration <span class="sc">*</span> <span class="dv">2</span>, <span class="at">extendInt =</span> <span class="st">"upX"</span>)</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>    t_next <span class="ot">&lt;-</span> solution<span class="sc">$</span>root</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (t_next <span class="sc">&gt;</span> duration) <span class="cf">break</span></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>    event_times <span class="ot">&lt;-</span> <span class="fu">c</span>(event_times, t_next)</span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>    t_last <span class="ot">&lt;-</span> t_next</span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(event_times)</span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Example Usage ---</span></span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a><span class="co"># Define Integral of Sine Intensity: 10 + 5sin(2*pi*t)</span></span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a><span class="co"># Integral = 10t - (5/2pi)cos(2*pi*t) + C</span></span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a><span class="co"># We define C such that Lambda(0) = 0.</span></span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>Lambda_sine <span class="ot">&lt;-</span> <span class="cf">function</span>(t) {</span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a>  <span class="dv">10</span> <span class="sc">*</span> t <span class="sc">-</span> (<span class="dv">5</span> <span class="sc">/</span> (<span class="dv">2</span> <span class="sc">*</span> pi)) <span class="sc">*</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> t) <span class="sc">+</span> (<span class="dv">5</span> <span class="sc">/</span> (<span class="dv">2</span> <span class="sc">*</span> pi))</span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a>spikes_inv <span class="ot">&lt;-</span> <span class="fu">sim_inversion</span>(Lambda_sine, <span class="at">duration =</span> <span class="dv">5</span>)</span>
+<span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a><span class="co"># Verification</span></span>
+<span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Number of events simulated:"</span>, <span class="fu">length</span>(spikes_inv), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Number of events simulated: 45 </code></pre>
+</div>
+</div>
+<p>The inversion method is precise and generates no rejected points, making it highly efficient for smooth, integrable intensity functions.</p>
+</section>
+</section>
+<section id="summary-of-methods" class="level2">
+<h2 class="anchored" data-anchor-id="summary-of-methods">Summary of Methods</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Complexity</th>
+<th>Best For</th>
+<th>Physiology Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Homogeneous</strong></td>
+<td>O(N)</td>
+<td>Constant rates</td>
+<td>Background noise, spontaneous firing</td>
+</tr>
+<tr class="even">
+<td><strong>Thinning</strong></td>
+<td>O(N / acceptance_ratio)</td>
+<td>Complex/Non-integrable functions</td>
+<td>Arbitrary stimulus waveforms</td>
+</tr>
+<tr class="odd">
+<td><strong>Modified Thinning</strong></td>
+<td>High</td>
+<td>History dependence</td>
+<td>Refractory periods, bursting, network models</td>
+</tr>
+<tr class="even">
+<td><strong>Time-Rescaling</strong></td>
+<td>O(N * root_finding)</td>
+<td>Integrable functions</td>
+<td>Smoothly varying stimuli, oscillating inputs</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="code-structure-for-researchers" class="level2">
+<h2 class="anchored" data-anchor-id="code-structure-for-researchers">Code Structure for Researchers</h2>
+<p>When building simulations for publication or analysis:</p>
+<ol type="1">
+<li><strong>Vectorize where possible:</strong> The homogeneous simulation contains no loops. It is orders of magnitude faster than iterative approaches.</li>
+<li><strong>Modularize Intensity:</strong> Define your physiological model (refractory, bursting, stimulus) as a separate S3 object or function, then pass it to a generic simulation engine (like the thinning algorithm).</li>
+<li><strong>Validate:</strong> Always plot the ISI histogram and the autocorrelogram of your simulated data. If you simulate a refractory period, the autocorrelogram must be zero at lag zero.</li>
+</ol>
+<p>This guide provides the algorithmic primitives. You can combine them—for example, a Hawkes process with a time-varying baseline <span class="math inline">\(\mu(t)\)</span>—simply by updating the intensity function <span class="math inline">\(\lambda(t)\)</span> inside the thinning loop.</p>
+</section>
+</section>
+<section id="simulating-heart-rate-variability-r-r-intervals" class="level1">
+<h1>Simulating Heart Rate Variability (R-R Intervals)</h1>
+<p>Physiologists often find standard Poisson processes inadequate for modeling heartbeats. A healthy heart is not a random Geiger counter; it is a rhythmic oscillator modulated by the autonomic nervous system.</p>
+<p>If we model a heart as a Poisson process, the intervals between beats (Inter-Beat Intervals or IBIs) would follow an exponential distribution, implying that the most likely time for the next beat is <em>immediately</em> after the previous one. This is physiologically impossible due to the refractory period and the rhythmic nature of the SA node.</p>
+<p>Below is a progression of models for R-R intervals, moving from a simple metronome to a history-dependent process suitable for Heart Rate Variability (HRV) analysis.</p>
+<section id="level-1-the-renewal-model-the-noisy-metronome" class="level2">
+<h2 class="anchored" data-anchor-id="level-1-the-renewal-model-the-noisy-metronome">Level 1: The Renewal Model (The Noisy Metronome)</h2>
+<p><strong>Concept:</strong> The heart fires at a regular interval (e.g., every 0.8s) with some random jitter. The intervals are independent of each other. <strong>Math:</strong> Instead of an Exponential distribution, we draw intervals from a <strong>Gamma</strong> or <strong>Inverse Gaussian</strong> distribution, which are “bell-shaped” but defined only for positive numbers.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Simulate Heartbeats as a Renewal Process</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co">#' </span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param n_beats Number of beats to simulate</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param mean_rr Mean R-R interval (seconds)</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param shape Shape parameter (higher = more rhythmic/less variable)</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>sim_heart_renewal <span class="ot">&lt;-</span> <span class="cf">function</span>(n_beats, mean_rr, shape) {</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># We use Gamma distribution: Mean = shape / rate</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Therefore: rate = shape / Mean</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  rate_param <span class="ot">&lt;-</span> shape <span class="sc">/</span> mean_rr</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Generate R-R intervals</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>  rr_intervals <span class="ot">&lt;-</span> <span class="fu">rgamma</span>(n_beats, <span class="at">shape =</span> shape, <span class="at">rate =</span> rate_param)</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Convert to absolute event times</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>  beat_times <span class="ot">&lt;-</span> <span class="fu">cumsum</span>(rr_intervals)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">list</span>(<span class="at">times =</span> beat_times, <span class="at">rr =</span> rr_intervals))</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Simulate 60 beats, Mean RR = 0.8s (75 BPM), Shape = 50 (Very regular)</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>heart_data <span class="ot">&lt;-</span> <span class="fu">sim_heart_renewal</span>(<span class="at">n_beats =</span> <span class="dv">60</span>, <span class="at">mean_rr =</span> <span class="fl">0.8</span>, <span class="at">shape =</span> <span class="dv">50</span>)</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualization</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Tachogram: The standard way to view HRV</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(heart_data<span class="sc">$</span>rr, <span class="at">type =</span> <span class="st">"o"</span>, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"darkred"</span>,</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Tachogram (Noisy Metronome)"</span>, <span class="at">ylab =</span> <span class="st">"R-R Interval (s)"</span>, <span class="at">xlab =</span> <span class="st">"Beat Number"</span>)</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Histogram</span></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(heart_data<span class="sc">$</span>rr, <span class="at">breaks =</span> <span class="dv">15</span>, <span class="at">col =</span> <span class="st">"pink"</span>, <span class="at">main =</span> <span class="st">"R-R Distribution"</span>, <span class="at">xlab =</span> <span class="st">"Time (s)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="point-process_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Physiological Note:</strong> While the distribution looks correct (Gaussian-like), the Tachogram reveals the flaw: the variation is “white noise.” Real heart rates drift slowly up and down; they don’t jump randomly beat-to-beat.</p>
+</section>
+<section id="level-2-respiratory-sinus-arrhythmia-rsa" class="level2">
+<h2 class="anchored" data-anchor-id="level-2-respiratory-sinus-arrhythmia-rsa">Level 2: Respiratory Sinus Arrhythmia (RSA)</h2>
+<p><strong>Concept:</strong> Breathing modulates the heart rate. During inhalation, the vagus nerve is inhibited, and heart rate speeds up (R-R shortens). During exhalation, it slows down. <strong>Math:</strong> This is a <strong>Modulated Renewal Process</strong>. We cannot just add a sine wave to the times. We must modulate the <em>rate</em> at which the “internal clock” of the heart ticks.</p>
+<p>We use the <strong>Time-Rescaling</strong> approach again, but reversed. We generate “internal” regular ticks (Gamma distributed), and then map them to real time using the integral of the breathing signal.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Simulate RSA via Modulated Renewal Process</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param duration Total time (seconds)</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param mean_rr Baseline R-R interval</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param breath_freq Breathing frequency (Hz)</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param rsa_strength Strength of modulation (0 to 1)</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>sim_heart_rsa <span class="ot">&lt;-</span> <span class="cf">function</span>(duration, mean_rr, breath_freq, rsa_strength) {</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 1. Define the Rate Modulation Function lambda(t)</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Baseline rate is 1/mean_rr. Modulation oscillates around it.</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  baseline_rate <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">/</span> mean_rr</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  lambda_fn <span class="ot">&lt;-</span> <span class="cf">function</span>(t) {</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>    baseline_rate <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">+</span> rsa_strength <span class="sc">*</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> breath_freq <span class="sc">*</span> t))</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 2. Define the Integral Lambda(t)</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Integral of (1 + A*sin(w*t)) is t - (A/w)cos(w*t)</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>  Lambda_fn <span class="ot">&lt;-</span> <span class="cf">function</span>(t) {</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>    omega <span class="ot">&lt;-</span> <span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> breath_freq</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    term1 <span class="ot">&lt;-</span> baseline_rate <span class="sc">*</span> t</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>    term2 <span class="ot">&lt;-</span> (baseline_rate <span class="sc">*</span> rsa_strength <span class="sc">/</span> omega) <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> <span class="fu">cos</span>(omega <span class="sc">*</span> t))</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(term1 <span class="sc">+</span> term2)</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 3. Generate "Internal" Ticks (The underlying rhythm)</span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>  <span class="co"># We estimate how many beats fit in the duration (+ buffer)</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>  n_guess <span class="ot">&lt;-</span> <span class="fu">ceiling</span>(duration <span class="sc">/</span> mean_rr <span class="sc">*</span> <span class="fl">1.5</span>)</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Using Gamma to represent the regularity of the SA node</span></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Shape 100 implies a very tight rhythm, which is then stretched/squashed by RSA</span></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>  internal_intervals <span class="ot">&lt;-</span> <span class="fu">rgamma</span>(n_guess, <span class="at">shape =</span> <span class="dv">100</span>, <span class="at">rate =</span> <span class="dv">100</span>) </span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>  internal_times <span class="ot">&lt;-</span> <span class="fu">cumsum</span>(internal_intervals)</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 4. Invert Lambda(t) to find Real Times</span></span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>  <span class="co"># We find t such that Lambda(t) = internal_time</span></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>  real_times <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">length</span>(internal_times))</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="fu">seq_along</span>(internal_times)) {</span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>    target <span class="ot">&lt;-</span> internal_times[i]</span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Check if target exceeds max capacity of duration</span></span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="fu">Lambda_fn</span>(duration) <span class="sc">&lt;</span> target) {</span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>      real_times <span class="ot">&lt;-</span> real_times[<span class="dv">1</span><span class="sc">:</span>(i<span class="dv">-1</span>)]</span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>      <span class="cf">break</span></span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Root finding</span></span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a>    f_root <span class="ot">&lt;-</span> <span class="cf">function</span>(t) { <span class="fu">Lambda_fn</span>(t) <span class="sc">-</span> target }</span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>    sol <span class="ot">&lt;-</span> <span class="fu">uniroot</span>(f_root, <span class="at">lower =</span> <span class="dv">0</span>, <span class="at">upper =</span> duration <span class="sc">*</span> <span class="dv">2</span>, <span class="at">extendInt =</span> <span class="st">"upX"</span>)</span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>    real_times[i] <span class="ot">&lt;-</span> sol<span class="sc">$</span>root</span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(real_times)</span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-56"><a href="#cb8-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-57"><a href="#cb8-57" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">101</span>)</span>
+<span id="cb8-58"><a href="#cb8-58" aria-hidden="true" tabindex="-1"></a>beats_rsa <span class="ot">&lt;-</span> <span class="fu">sim_heart_rsa</span>(<span class="at">duration =</span> <span class="dv">20</span>, <span class="at">mean_rr =</span> <span class="fl">0.8</span>, <span class="at">breath_freq =</span> <span class="fl">0.25</span>, <span class="at">rsa_strength =</span> <span class="fl">0.3</span>)</span>
+<span id="cb8-59"><a href="#cb8-59" aria-hidden="true" tabindex="-1"></a>rr_rsa <span class="ot">&lt;-</span> <span class="fu">diff</span>(beats_rsa)</span>
+<span id="cb8-60"><a href="#cb8-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-61"><a href="#cb8-61" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualization</span></span>
+<span id="cb8-62"><a href="#cb8-62" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">2</span>,<span class="dv">2</span>))</span>
+<span id="cb8-63"><a href="#cb8-63" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(beats_rsa[<span class="sc">-</span><span class="dv">1</span>], rr_rsa, <span class="at">type =</span> <span class="st">"o"</span>, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"blue"</span>,</span>
+<span id="cb8-64"><a href="#cb8-64" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"RSA Simulation (Tachogram)"</span>, <span class="at">ylab =</span> <span class="st">"R-R Interval (s)"</span>, <span class="at">xlab =</span> <span class="st">"Time (s)"</span>)</span>
+<span id="cb8-65"><a href="#cb8-65" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="fl">0.8</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb8-66"><a href="#cb8-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-67"><a href="#cb8-67" aria-hidden="true" tabindex="-1"></a><span class="co"># Verify the spectrum (Physiologists love PSD plots)</span></span>
+<span id="cb8-68"><a href="#cb8-68" aria-hidden="true" tabindex="-1"></a>spec <span class="ot">&lt;-</span> <span class="fu">spectrum</span>(rr_rsa, <span class="at">plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb8-69"><a href="#cb8-69" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(spec<span class="sc">$</span>freq, spec<span class="sc">$</span>spec, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">main =</span> <span class="st">"Power Spectrum Density"</span>, </span>
+<span id="cb8-70"><a href="#cb8-70" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Frequency (Cycles/Beat)"</span>, <span class="at">ylab =</span> <span class="st">"Power"</span>, <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.5</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="point-process_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># We should see a peak around 0.25 Hz (normalized to beat frequency)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The Tachogram now shows a clear oscillation. This mimics the “Vagal Tone” effect.</p>
+</section>
+<section id="level-3-the-barbieri-brown-model-history-dependent" class="level2">
+<h2 class="anchored" data-anchor-id="level-3-the-barbieri-brown-model-history-dependent">Level 3: The Barbieri-Brown Model (History Dependent)</h2>
+<p><strong>Concept:</strong> The gold standard in statistical physiology. The probability of the next heartbeat depends explicitly on the <em>previous</em> interval. This creates an autoregressive structure, mimicking the baroreflex feedback loop (blood pressure changes <span class="math inline">\(\rightarrow\)</span> heart rate correction).</p>
+<p><strong>Math:</strong> We model the -th R-R interval (<span class="math inline">\(rr_k\)</span>) directly using a regression equation:</p>
+<p><span class="math display">\[
+rr_k = \mu + \alpha (rr_{k-1} - \mu) + \beta_{Resp} \cdot Resp(t) + \epsilon
+\]</span></p>
+<p>where <span class="math inline">\(\epsilon\)</span> follows an Inverse Gaussian distribution.</p>
+<p>This is technically a <strong>discrete point process</strong> simulation, which is computationally efficient and widely used for generating synthetic ECGs.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Simulate Autoregressive Heart Rate (Barbieri-Brown style)</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param n_beats Total beats</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param mu Mean R-R interval</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param alpha Autoregressive coefficient (0 to 1). High = strong memory.</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param sigma Noise level</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>sim_heart_ar <span class="ot">&lt;-</span> <span class="cf">function</span>(n_beats, mu, alpha, sigma) {</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  rr <span class="ot">&lt;-</span> <span class="fu">numeric</span>(n_beats)</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Initialize with the mean</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  rr[<span class="dv">1</span>] <span class="ot">&lt;-</span> mu </span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(k <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>n_beats) {</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 1. Calculate the conditional mean based on history</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># This is the "deterministic" part of the physiology</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>    past_diff <span class="ot">&lt;-</span> rr[k<span class="dv">-1</span>] <span class="sc">-</span> mu</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>    conditional_mean <span class="ot">&lt;-</span> mu <span class="sc">+</span> alpha <span class="sc">*</span> past_diff</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 2. Add stochasticity (Inverse Gaussian noise)</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>    <span class="co"># We use a Normal approximation here for simplicity and standard R availability,</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># but strictly it should be InvGauss for positive skewness.</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>    <span class="co"># To prevent negative intervals in Normal approx, we add a max() check.</span></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>    noise <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">1</span>, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sigma)</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>    next_rr <span class="ot">&lt;-</span> conditional_mean <span class="sc">+</span> noise</span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>    rr[k] <span class="ot">&lt;-</span> <span class="fu">max</span>(<span class="fl">0.3</span>, next_rr) <span class="co"># Physiologic lower bound (300ms)</span></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>  beat_times <span class="ot">&lt;-</span> <span class="fu">cumsum</span>(rr)</span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">list</span>(<span class="at">times =</span> beat_times, <span class="at">rr =</span> rr))</span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2025</span>)</span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a><span class="co"># Alpha = 0.8 implies strong correlation with the previous beat (Low Frequency drift)</span></span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a>data_ar <span class="ot">&lt;-</span> <span class="fu">sim_heart_ar</span>(<span class="at">n_beats =</span> <span class="dv">200</span>, <span class="at">mu =</span> <span class="fl">0.8</span>, <span class="at">alpha =</span> <span class="fl">0.85</span>, <span class="at">sigma =</span> <span class="fl">0.04</span>)</span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualization</span></span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb10-38"><a href="#cb10-38" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(data_ar<span class="sc">$</span>rr, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"darkgreen"</span>, <span class="at">lwd =</span> <span class="fl">1.5</span>,</span>
+<span id="cb10-39"><a href="#cb10-39" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Autoregressive HRV"</span>, <span class="at">ylab =</span> <span class="st">"R-R Interval (s)"</span>, <span class="at">xlab =</span> <span class="st">"Beat Number"</span>)</span>
+<span id="cb10-40"><a href="#cb10-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-41"><a href="#cb10-41" aria-hidden="true" tabindex="-1"></a><span class="co"># Poincaré Plot: The signature visualization for HRV</span></span>
+<span id="cb10-42"><a href="#cb10-42" aria-hidden="true" tabindex="-1"></a><span class="co"># Plots RR_n vs RR_n+1. A cigar shape indicates healthy autoregression.</span></span>
+<span id="cb10-43"><a href="#cb10-43" aria-hidden="true" tabindex="-1"></a>rr_n <span class="ot">&lt;-</span> data_ar<span class="sc">$</span>rr[<span class="dv">1</span><span class="sc">:</span>(<span class="fu">length</span>(data_ar<span class="sc">$</span>rr)<span class="sc">-</span><span class="dv">1</span>)]</span>
+<span id="cb10-44"><a href="#cb10-44" aria-hidden="true" tabindex="-1"></a>rr_n1 <span class="ot">&lt;-</span> data_ar<span class="sc">$</span>rr[<span class="dv">2</span><span class="sc">:</span><span class="fu">length</span>(data_ar<span class="sc">$</span>rr)]</span>
+<span id="cb10-45"><a href="#cb10-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-46"><a href="#cb10-46" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rr_n, rr_n1, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.5</span>),</span>
+<span id="cb10-47"><a href="#cb10-47" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Poincaré Plot"</span>, <span class="at">xlab =</span> <span class="st">"RR[n]"</span>, <span class="at">ylab =</span> <span class="st">"RR[n+1]"</span>)</span>
+<span id="cb10-48"><a href="#cb10-48" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="point-process_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation:</strong></p>
+<ul>
+<li><strong>Tachogram:</strong> Shows “wandering” baselines and low-frequency trends, unlike the white noise of Level 1.</li>
+<li><strong>Poincaré Plot:</strong> The points form an elongated cloud along the diagonal. A globular/round cloud indicates randomness (fibrillation/noise); a “cigar” shape indicates healthy autonomic control.</li>
+</ul>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

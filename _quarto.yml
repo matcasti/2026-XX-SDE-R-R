@@ -1,0 +1,21 @@
+project:
+  type: website
+
+website:
+  title: "2026-XX SDE R-R"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - about.qmd
+
+format:
+  html:
+    theme:
+      - cosmo
+      - brand
+    css: styles.css
+    toc: true
+
+editor: visual
+

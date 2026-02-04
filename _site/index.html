@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.29">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Matías Castillo-Aguilar">
+
+<title>Just check the PULSE – 2026-XX SDE R-R</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-0815c480559380816a4d1ea211a47e91.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-c1fac2584b48ed01fb6e278e36375074.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">2026-XX SDE R-R</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a>
+  <ul class="collapse">
+  <li><a href="#formal-description-of-the-complete-data-generation-process" id="toc-formal-description-of-the-complete-data-generation-process" class="nav-link" data-scroll-target="#formal-description-of-the-complete-data-generation-process">Formal description of the complete data generation process</a></li>
+  <li><a href="#main-mechanisms-of-the-model-and-inner-components" id="toc-main-mechanisms-of-the-model-and-inner-components" class="nav-link" data-scroll-target="#main-mechanisms-of-the-model-and-inner-components">Main mechanisms of the model and inner components</a></li>
+  <li><a href="#model-parameterization-and-physiological-interpretation-of-each-parameter" id="toc-model-parameterization-and-physiological-interpretation-of-each-parameter" class="nav-link" data-scroll-target="#model-parameterization-and-physiological-interpretation-of-each-parameter">Model parameterization and physiological interpretation of each parameter</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Just check the PULSE</h1>
+<p class="subtitle lead">A point-process framework for estimating latent sympathovagal dynamics from R–R intervals</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Matías Castillo-Aguilar </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="methods" class="level1">
+<h1>Methods</h1>
+<p>This methods section provides a detailed and formal description of the complete data generation process, the principal mechanistic components of the modeling framework, and the parameterization with explicit physiological interpretation for each parameter. The mathematical description emphasizes a continuous-time representation suitable for event-driven cardiac data (R–R intervals), and describes how latent autonomic processes and observation mechanisms combine to produce observable heartbeat sequences. The presentation is structured into three substantive parts that correspond to the requested focus: first, the formal generative model for data; second, an exposition of the model’s internal mechanisms and their interactions; and third, a comprehensive parameter-by-parameter description linking model quantities to physiological constructs and their operational meaning for inference and biomarker construction.</p>
+<section id="formal-description-of-the-complete-data-generation-process" class="level2">
+<h2 class="anchored" data-anchor-id="formal-description-of-the-complete-data-generation-process">Formal description of the complete data generation process</h2>
+<p>Let <span class="math inline">\(\{t_i\}_{i=1}^{N}\)</span> denote the observed heartbeat event times recorded over an observation window <span class="math inline">\([0,T]\)</span>. The generative model treats heartbeat occurrences as a conditionally inhomogeneous point process whose conditional intensity <span class="math inline">\(\lambda(t\mid\mathcal{H}_t)\)</span> depends on latent autonomic state processes, exogenous inputs, a slowly varying tonic component, and a short-term history dependence term. The generative model is hierarchical: latent continuous-time stochastic processes generate time-varying modulatory signals that determine the conditional hazard; the hazard governs the random occurrence of events; observed R–R intervals are the inter-event times <span class="math inline">\(\Delta t_i = t_i - t_{i-1}\)</span> produced by the point process; a separate censoring and artifact process may remove or distort certain events to reflect measurement realities.</p>
+<p>The conditional intensity is specified on the log scale to ensure positivity and to enable additive decomposition of effects. Formally,</p>
+<p><span class="math display">\[
+\log\lambda(t\mid\mathcal{H}_t) = \mu + \alpha_{p}\,p(t) - \alpha_{s}\,s(t) + \gamma\,T_{\mathrm{circ}}(t) + \beta\,u(t) + H(\mathcal{H}_t),
+\]</span></p>
+<p>where <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> are latent processes representing parasympathetic and sympathetic activity respectively, <span class="math inline">\(T_{\mathrm{circ}}(t)\)</span> is a slow tonic or circadian component, <span class="math inline">\(u(t)\)</span> is a known deterministic exogenous input (for example an indicator of exercise), and <span class="math inline">\(H(\mathcal{H}_t)\)</span> denotes a causal history-dependent term. The signs in the expression are chosen to reflect the canonical physiological directions: elevations in <span class="math inline">\(p(t)\)</span> lengthen interbeat intervals (reduce instantaneous heart rate) so that <span class="math inline">\(\alpha_{p}\)</span> acts positively on log intensity in conjunction with a negative sign on the time axis mapping; elevations in <span class="math inline">\(s(t)\)</span> shorten interbeat intervals (increase instantaneous heart rate), captured through the negative sign before <span class="math inline">\(\alpha_{s}\)</span>. The baseline level <span class="math inline">\(\mu\)</span> provides the log-hazard in the absence of modulatory inputs and history effects.</p>
+<p>The latent autonomic processes evolve under linear stochastic differential equations (SDEs) with coupling terms that permit directed influences between the branches. The SDE formulation preserves the continuous-time nature of underlying physiology and provides a natural way to represent differences in intrinsic time scales and stochastic fluctuation magnitudes. The SDE system is given by</p>
+<p><span class="math display">\[
+\begin{aligned}
+dp(t) &amp;= -a_{p}\,p(t)\,dt + b_{ps}\,s(t)\,dt + c_{p}\,u(t)\,dt + \sigma_{p}\,dW_{p}(t), \\
+ds(t) &amp;= -a_{s}\,s(t)\,dt + b_{sp}\,p(t)\,dt + c_{s}\,u(t)\,dt + \sigma_{s}\,dW_{s}(t),
+\end{aligned}
+\]</span></p>
+<p>with <span class="math inline">\(a_{p}&gt;0\)</span> and <span class="math inline">\(a_{s}&gt;0\)</span> being decay rates, <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> quantifying cross-branch coupling, <span class="math inline">\(c_{p}\)</span> and <span class="math inline">\(c_{s}\)</span> representing exogenous input gains, and <span class="math inline">\(\sigma_{p}\,dW_{p}\)</span>, <span class="math inline">\(\sigma_{s}\,dW_{s}\)</span> representing independent (or, optionally, correlated) Wiener-driven diffusion terms. Initial conditions <span class="math inline">\(p(0)\)</span> and <span class="math inline">\(s(0)\)</span> are drawn from a prescribed prior distribution, typically Gaussian with mean reflecting baseline autonomic tone and variance reflecting prior uncertainty. The tonic component <span class="math inline">\(T_{\mathrm{circ}}(t)\)</span> can be represented either deterministically, for example by a sinusoid <span class="math inline">\(A_{\mathrm{circ}}\sin(2\pi t/24 + \phi)\)</span> when diurnal modulation is relevant, or as a low-frequency stochastic drift term when long recordings are considered without explicit periodic structure.</p>
+<p>The observation process is linked to the point process likelihood. Given the conditional intensity <span class="math inline">\(\lambda(t)\)</span>, the joint density (or likelihood) for event times under the realization of the intensity over <span class="math inline">\([0,T]\)</span> is</p>
+<p><span class="math display">\[
+\mathcal{L}(\{t_i\}\mid \theta, p(\cdot), s(\cdot)) = \left[\prod_{i=1}^{N}\lambda(t_i\mid\mathcal{H}_{t_i})\right]\exp\left(-\int_{0}^{T}\lambda(u\mid\mathcal{H}_u)\,du\right),
+\]</span></p>
+<p>where <span class="math inline">\(\theta\)</span> denotes the collection of static parameters. In practice, the history term <span class="math inline">\(H(\mathcal{H}_t)\)</span> depends on recent inter-event times and can be implemented as a short memory kernel, such as an exponential kernel applied to previous events or as an autoregressive function of the most recent interbeat interval; this term captures refractoriness, immediate beat-to-beat dependence (including residual respiratory sinus arrhythmia when explicit respiration measurements are absent), and detector-specific short-term structure.</p>
+<p>Real recordings also contain artifacts and missingness. The model accommodates these realities by treating each observed event as potentially censored or corrupted through an auxiliary Bernoulli process that flags events removed due to ectopy, sensor dropout, or erroneous detections. When an event is identified as missing, the likelihood contribution for that interval is replaced by the corresponding survival term under the conditional intensity. The measurement process may also introduce timestamp jitter; small timestamp perturbation can be modeled as additive measurement noise on event times, though for high-quality electrocardiogram-based beat detection this term may be negligible. Where beat annotation uncertainty is substantial, explicit modeling of timestamp noise or probabilistic beat assignment should be included in the generative description.</p>
+<p>Numerical implementation of the continuous-time generative model requires discretization for simulation and likelihood evaluation. The SDEs are discretized with an Euler–Maruyama or higher order scheme on a grid <span class="math inline">\(\{t_k\}\)</span> with step <span class="math inline">\(\Delta t\)</span> chosen to resolve the fastest physiological time constant. For each grid interval the latent state is propagated and the integral of the intensity is approximated by numerical quadrature, typically by summing the intensity evaluated at grid points multiplied by <span class="math inline">\(\Delta t\)</span> or by Simpson-type rules when greater accuracy is desired. Event generation under simulation is performed by thinning algorithms that sample candidate event times from an upper bound on the intensity and accept them with probability <span class="math inline">\(\lambda(t)/\lambda_{\text{max}}\)</span> to produce event sequences consistent with the instantaneous hazard. The complete data generation process therefore maps static parameters and stochastic latent trajectories to realizations of heartbeat times, subject to censoring and artifact processes that reflect the measurement environment.</p>
+</section>
+<section id="main-mechanisms-of-the-model-and-inner-components" class="level2">
+<h2 class="anchored" data-anchor-id="main-mechanisms-of-the-model-and-inner-components">Main mechanisms of the model and inner components</h2>
+<p>The modeling framework comprises several interlocking mechanisms, each corresponding to a distinct physiological or statistical function. These mechanisms include the latent autonomic dynamics, the mapping from latent states to instantaneous hazard, the short-term history module, the tonic/circadian modulation, the exogenous input pathway, the stochastic fluctuation processes, and the observation/censoring process. The model is constructed so that each mechanism can be interpreted in physiological terms while remaining amenable to statistically consistent inference.</p>
+<p>The latent autonomic dynamics mechanism is central to the model. Parasympathetic and sympathetic influences are represented as continuous-valued state variables <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span>. The linear drift structure <span class="math inline">\(-a_{p}p(t)\)</span> and <span class="math inline">\(-a_{s}s(t)\)</span> imposes a restoring or decay tendency, such that absent input the state relaxes exponentially toward zero with characteristic time constants <span class="math inline">\(\tau_{p}=1/a_{p}\)</span> and <span class="math inline">\(\tau_{s}=1/a_{s}\)</span>. Coupling terms <span class="math inline">\(b_{ps}\,s(t)\)</span> and <span class="math inline">\(b_{sp}\,p(t)\)</span> introduce directed interactions in which the state of one branch influences the rate of change of the other. These coupling coefficients can represent physiologically plausible mechanisms such as reciprocal modulation where sympathetic activation produces vagal withdrawal with a certain delay and magnitude, or more complex facilitative or gating interactions. The exogenous input gains <span class="math inline">\(c_{p}\)</span> and <span class="math inline">\(c_{s}\)</span> route experimentally controlled perturbations (for example, onset of exercise) into changes in autonomic drive, with magnitudes representing the sensitivity of each branch to the perturbation. The diffusion terms, with scale parameters <span class="math inline">\(\sigma_{p}\)</span> and <span class="math inline">\(\sigma_{s}\)</span>, provide a mechanism for endogenous fluctuation and unmodeled inputs, ensuring that latent trajectories are not strictly deterministic given initial conditions and inputs.</p>
+<p>The mapping from latent autonomic state to instantaneous hazard is another core mechanism and is implemented through the log-linear observation link. The coefficients <span class="math inline">\(\alpha_{p}\)</span> and <span class="math inline">\(\alpha_{s}\)</span> provide the conversion from modulator units to log-intensity units; they determine how a given change in the latent variable affects the instantaneous propensity for the next heartbeat. This mapping embodies the physiological notion that vagal tone has a rapid and strong influence on beat timing while sympathetic tone modulates more slowly and affects baseline heart rate. Because the intensity is in exponential form, shifts in latent state result in multiplicative changes in instantaneous hazard and hence nonlinear effects on the distribution of interbeat intervals, an aspect that captures the non-Gaussian nature of beat-time variability.</p>
+<p>The short-term history mechanism captures immediate past-dependent effects such as refractory behavior and high-frequency modulation due to respiration. Implementationally, this is realized by including a causal kernel applied to recent events or by including a parametric function of the last interbeat interval. The history kernel produces transient reductions or increases in hazard following an event; for example, an exponential kernel with negative amplitude enforces a short refractory period, reducing the probability of an immediate subsequent beat. The history term thus prevents the latent autonomic variables from attempting to explain phenomena that have inherently short memory and are better modeled as event-driven refractoriness, while also subsuming residual respiratory sinus arrhythmia when respiration is not separately measured.</p>
+<p>The tonic or circadian mechanism provides low-frequency modulation of baseline susceptibility to beating and is particularly important for prolonged recordings. When present, a sinusoidal or low-frequency stochastic component modulates the baseline <span class="math inline">\(\mu\)</span> so that diurnal patterns in heart rate are represented. Parameterizing this slow component with amplitude and phase allows the model to separate day–night baseline shifts from short-term autonomic reactivity, thereby improving identification of the dynamic parameters of interest.</p>
+<p>The observation and censoring mechanism accounts for how latent processes and the instantaneous hazard produce observed event times, and how measurement imperfections intervene. The point process law provides the probabilistic mapping, and the integral term in the likelihood captures the cumulative hazard over recording windows including periods with missing events. When artifacts are detected, the model treats intervals as censored and the corresponding likelihood terms are handled accordingly, preserving statistical coherence. The inclusion of a censoring mechanism is essential for real-world data where ectopic beats, sensor dropout, or annotation uncertainty are unavoidable.</p>
+<p>These inner components are not independent; they interact in ways that shape identifiability and the dynamics of inferred trajectories. For instance, the history mechanism and the parasympathetic latent process operate on overlapping fast time scales. If the history term is omitted, the parasympathetic latent variable will attempt to explain refractory and respiratory effects, biasing the estimated vagal dynamics. Conversely, an overly aggressive history kernel can absorb genuine vagal reactivity. The coupling terms influence both the transient response to perturbations and the recovery dynamics; positive feedback can amplify transient responses while negative feedback can produce faster return to baseline. The diffusion terms introduce stochasticity that propagates through the mapping to intensity and affects interbeat time dispersion; larger diffusion impairs the precision with which deterministic parameter values can be recovered. The deterministic tonic term interacts with slow sympathetic fluctuations and can confound estimates of tonic sympathetic tone if not properly specified or allowed to vary flexibly.</p>
+<p>Extensibility of the inner components permits the model to accommodate richer physiological hypotheses. Nonlinear drift functions may be used to capture saturating or rectified autonomic responses, state-dependent diffusion can represent heteroscedastic variability that increases with activity, and switching regimes may represent distinct autonomic operating modes such as sleep versus wake or rest versus heavy exercise. Each extension alters inference characteristics and should be justified by prior physiological knowledge and data richness.</p>
+</section>
+<section id="model-parameterization-and-physiological-interpretation-of-each-parameter" class="level2">
+<h2 class="anchored" data-anchor-id="model-parameterization-and-physiological-interpretation-of-each-parameter">Model parameterization and physiological interpretation of each parameter</h2>
+<p>The model is parameterized by the collection <span class="math inline">\(\theta\)</span> comprising decay rates, coupling coefficients, input gains, observation gains, diffusion scales, baseline intensity parameters, history kernel parameters, tonic component parameters, and initial condition parameters. Each parameter is described here in terms of its mathematical role, physiological meaning, typical units or scales, typical plausible ranges, identifiability considerations, and practical reparameterizations used to aid inference.</p>
+<p>The parasympathetic decay rate <span class="math inline">\(a_{p}&gt;0\)</span> appears in the SDE drift <span class="math inline">\(-a_{p}p(t)\)</span>. Mathematically it governs the exponential relaxation of <span class="math inline">\(p(t)\)</span> in the absence of inputs. Physiologically it represents the inverse of the characteristic vagal time constant, with <span class="math inline">\(\tau_{p}=1/a_{p}\)</span> corresponding to the typical duration over which vagally mediated adjustments to heart period decay. Typical values for <span class="math inline">\(\tau_{p}\)</span> are on the order of one to a few seconds in healthy adult humans under resting conditions; consequently <span class="math inline">\(a_{p}\)</span> is typically in the range of <span class="math inline">\(0.2\)</span> to <span class="math inline">\(1.0\)</span> s<span class="math inline">\(^{-1}\)</span>, though exact values depend on scaling conventions for <span class="math inline">\(p\)</span>. For identifiability it is often advantageous to adopt a prior that concentrates mass on short time constants while allowing variability across subjects. Reparameterization in terms of <span class="math inline">\(\tau_{p}\)</span> simplifies prior elicitation and interpretation.</p>
+<p>The sympathetic decay rate <span class="math inline">\(a_{s}&gt;0\)</span> plays an analogous mathematical role for <span class="math inline">\(s(t)\)</span> and physiologically corresponds to the inverse of the sympathetic time constant <span class="math inline">\(\tau_{s}=1/a_{s}\)</span>. Sympathetic-mediated changes in heart period evolve more slowly than vagal effects; typical <span class="math inline">\(\tau_{s}\)</span> values are on the order of tens of seconds to several minutes, implying <span class="math inline">\(a_{s}\)</span> values in the approximate range <span class="math inline">\(0.005\)</span> to <span class="math inline">\(0.05\)</span> s<span class="math inline">\(^{-1}\)</span>. Because sympathetic time scales can substantially exceed recording segment lengths, identifiability of <span class="math inline">\(a_{s}\)</span> improves with longer recordings or the presence of perturbations that elicit large sympathetic responses.</p>
+<p>The coupling coefficients <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> determine directed influences between branches. The parameter <span class="math inline">\(b_{ps}\)</span> multiplies <span class="math inline">\(s(t)\)</span> in the equation for <span class="math inline">\(dp(t)\)</span> and thus quantifies how sympathetic activity drives change in parasympathetic activity; a negative sign would indicate sympathetic-driven vagal withdrawal if the modeled conventions produce such an effect. The parameter <span class="math inline">\(b_{sp}\)</span> quantifies parasympathetic influence on sympathetic dynamics. Physiologically, these coefficients capture interactions mediated by central autonomic networks and reflex arcs, and they provide a way to infer directionality and relative dominance between branches. The natural units are inverse time (s<span class="math inline">\(^{-1}\)</span>); magnitudes are typically small relative to self-decay rates, and their sign and scale require careful prior specification. Identifiability of coupling terms benefits from experimental perturbations and from asymmetries in time constants; in the absence of informative inputs or prolonged recordings, coupling estimates can be poorly constrained and highly correlated with other parameters.</p>
+<p>The exogenous input gains <span class="math inline">\(c_{p}\)</span> and <span class="math inline">\(c_{s}\)</span> convert a known input signal <span class="math inline">\(u(t)\)</span> into instantaneous influence on the latent processes. For an exercise indicator <span class="math inline">\(u(t)\)</span> that takes values 0 (rest) or 1 (exercise), <span class="math inline">\(c_{s}\)</span> represents the increase in sympathetic drive induced by exercise per unit of <span class="math inline">\(u\)</span>, while <span class="math inline">\(c_{p}\)</span> represents the corresponding change to parasympathetic drive. Physiologically, exercise typically produces <span class="math inline">\(c_{s}&gt;0\)</span> and <span class="math inline">\(c_{p}&lt;0\)</span> when <span class="math inline">\(p\)</span> is defined in units such that increases reflect vagal activity. These gains determine the amplitude of the autonomic response to controlled provocations and are directly interpretable as reactivity indices in biomarker construction. Units follow the state scaling; typical magnitudes should be set relative to the scaling of <span class="math inline">\(p\)</span> and <span class="math inline">\(s\)</span>, and priors should permit both excitatory and inhibitory effects.</p>
+<p>The diffusion coefficients <span class="math inline">\(\sigma_{p}\ge 0\)</span> and <span class="math inline">\(\sigma_{s}\ge 0\)</span> scale the Wiener-driven noise terms and therefore determine the magnitude of stochastic fluctuations in autonomic drive. Mathematically these parameters control variance accumulation over time and thus the ensemble dispersion of latent trajectories. Physiologically larger diffusion reflects greater variability due to unmodeled physiological inputs, central noise, or other modulatory systems. Identifiability of diffusion requires sufficient temporal information to separate process noise from observation-driven variability; over short recordings diffusion and observation link gain parameters can be confounded. Where diffusion is inferred, informative priors or structural constraints can improve robustness.</p>
+<p>The observation gains <span class="math inline">\(\alpha_{p}&gt;0\)</span> and <span class="math inline">\(\alpha_{s}&gt;0\)</span> convert latent autonomic states into contributions to the log-intensity of the point process. The product <span class="math inline">\(\alpha_{p}p(t)\)</span> specifies how vagal variation translates to instantaneous changes in propensity for a heartbeat; equivalently, the mapping determines the sensitivity of interbeat intervals to autonomic fluctuations. Physiologically vagal influences tend to have larger per-unit effects on beat timing compared with sympathetic influences on short time scales; this asymmetry may be encoded via prior expectations on <span class="math inline">\(\alpha_{p}\)</span> and <span class="math inline">\(\alpha_{s}\)</span>. Estimation of these gains is crucial for mapping latent-unit fluctuations into interpretable heart-rate changes, and rescaling latent state variables to make <span class="math inline">\(\alpha\)</span>’s near unity can simplify interpretation and prior elicitation.</p>
+<p>The baseline log-intensity <span class="math inline">\(\mu\)</span> sets the nominal heart-beat propensity in the absence of modulatory effects and history. It is closely related to the mean heart rate, with the mean interbeat interval approximately given by the inverse of the expected hazard under stationarity. The prior for <span class="math inline">\(\mu\)</span> can be centered on the empirical log-rate estimated from observed data, and adjustments to <span class="math inline">\(\mu\)</span> interact with observation gains in determining overall heart-rate level; hence scaling identifiability issues between <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\alpha\)</span> parameters must be monitored.</p>
+<p>The history kernel parameters control the shape and amplitude of the short-term memory term <span class="math inline">\(H(\mathcal{H}_t)\)</span>. A canonical parametrization is <span class="math inline">\(H(\mathcal{H}_t) = \int_{0}^{\infty} h(\tau) dN(t-\tau)\)</span> with <span class="math inline">\(h(\tau)=A_{\mathrm{hist}}\exp(-\tau/\kappa_{\mathrm{hist}})\)</span>, where <span class="math inline">\(A_{\mathrm{hist}}\)</span> is the kernel amplitude and <span class="math inline">\(\kappa_{\mathrm{hist}}\)</span> the decay time. The amplitude <span class="math inline">\(A_{\mathrm{hist}}\)</span> typically assumes negative values to represent refractory suppression immediately following an event, and the decay parameter <span class="math inline">\(\kappa_{\mathrm{hist}}\)</span> is on the order of a few hundred milliseconds to a few seconds. These parameters are directly interpretable in terms of immediate electrophysiological recovery and short-term modulation such as RSA when respiration is not otherwise modeled. Identifiability of history parameters is generally good when many beats are observed and the event-generating process is active across short time scales.</p>
+<p>The tonic/circadian parameters include amplitude <span class="math inline">\(A_{\mathrm{circ}}\)</span>, period (often fixed at 24 hours), and phase <span class="math inline">\(\phi\)</span>. The amplitude quantifies the range of diurnal modulation in log-intensity and is useful for separating slowly varying baseline shifts from dynamic autonomic responses. When long-duration recordings are available, accurate estimation of tonic parameters improves separation of slow sympathetic dynamics from diurnal effects.</p>
+<p>Initial state parameters specify the prior mean and covariance for <span class="math inline">\(p(0)\)</span> and <span class="math inline">\(s(0)\)</span>. The prior mean may be set to reflect expected baseline autonomic tone; prior covariance encodes uncertainty and aids numerical stability during inference. Informative priors on initial states can aid identifiability in short segments where latent dynamics have insufficient time to fully express.</p>
+<p>Finally, parameters governing the censoring or artifact process (for example the rate of ectopy or probability of misdetection) describe the measurement environment. These parameters influence the likelihood by dictating which intervals are modeled as observed versus censored and should be chosen based on annotation protocols or estimated jointly when annotation uncertainty is present.</p>
+<p>Parameter transformations and constraints facilitate numerical inference. Positivity constraints for decay rates and diffusion scales are implemented via log or softplus transforms; time-constant parametrization $ = 1/a $ provides intuitive priors; rescaling of latent states to place observation gains near unity reduces posterior correlation between gains and baseline <span class="math inline">\(\mu\)</span>. Hierarchical parameterizations that share hyperpriors across subjects allow pooling when multiple recordings are analyzed, improving estimation of parameters that are weakly identified within individual short recordings.</p>
+<p>In summary, the model parameters each have a clear mathematical role within the SDE-based latent dynamics and point-process observation framework and a direct or interpretable physiological counterpart. The decay rates correspond to characteristic autonomic time constants, coupling coefficients express directed inter-branch interaction, input gains quantify responsiveness to perturbations, observation gains convert latent fluctuations to heart-rate effects, diffusion parameters characterize endogenous variability, history parameters capture event-driven short-term structure, tonic parameters represent slow baseline modulation, and censoring parameters model measurement realities. Careful prior elicitation, thoughtful reparameterization, and judicious use of experimental perturbations are essential to render these parameters identifiable and to translate them into reliable biomarkers of resilience and adaptation.</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
