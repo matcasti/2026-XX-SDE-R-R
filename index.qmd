@@ -1,92 +1,365 @@
 ---
-title: "Just check the PULSE"
-subtitle: "A point-process framework for estimating latent sympathovagal dynamics from R–R intervals"
+title: "A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability"
+subtitle: "The SDE-Inverse Gaussian Model"
 author: "Matías Castillo-Aguilar"
+date: today
+format: 
+  html:
+    code-fold: show
+    toc: true
+    number-sections: true
+    theme: cosmo
 ---
 
-# Methods
+For a deep dive into point processes models applied for modeling R-R intervals, please check this [Zero-to-Hero guide](docs/point-process.html)!
 
-This methods section provides a detailed and formal description of the complete data generation process, the principal mechanistic components of the modeling framework, and the parameterization with explicit physiological interpretation for each parameter. The mathematical description emphasizes a continuous-time representation suitable for event-driven cardiac data (R–R intervals), and describes how latent autonomic processes and observation mechanisms combine to produce observable heartbeat sequences. The presentation is structured into three substantive parts that correspond to the requested focus: first, the formal generative model for data; second, an exposition of the model's internal mechanisms and their interactions; and third, a comprehensive parameter-by-parameter description linking model quantities to physiological constructs and their operational meaning for inference and biomarker construction.
+# Abstract
 
-## Formal description of the complete data generation process
+We propose a hybrid generative model for heart rate variability that integrates the biophysical rigor of the Inverse Gaussian first-passage time distribution with the continuous dynamical flexibility of stochastic differential equations. Existing approaches often rely on discrete autoregressive structures that discretize physiological time or Poisson-based intensity functions that lack the specific integrate-and-fire mechanics of the sinoatrial node. The framework presented herein models the latent sympathetic and parasympathetic autonomic drives as coupled Ornstein-Uhlenbeck processes. These continuous states dynamically modulate the drift parameter of an Inverse Gaussian probability density which governs the precise timing of the next heartbeat. This formulation preserves the continuous nature of autonomic control while accurately reproducing the stochastic properties of membrane depolarization thresholds.
 
-Let $\{t_i\}_{i=1}^{N}$ denote the observed heartbeat event times recorded over an observation window $[0,T]$. The generative model treats heartbeat occurrences as a conditionally inhomogeneous point process whose conditional intensity $\lambda(t\mid\mathcal{H}_t)$ depends on latent autonomic state processes, exogenous inputs, a slowly varying tonic component, and a short-term history dependence term. The generative model is hierarchical: latent continuous-time stochastic processes generate time-varying modulatory signals that determine the conditional hazard; the hazard governs the random occurrence of events; observed R–R intervals are the inter-event times $\Delta t_i = t_i - t_{i-1}$ produced by the point process; a separate censoring and artifact process may remove or distort certain events to reflect measurement realities.
+# 1. Introduction and Theoretical Motivation
 
-The conditional intensity is specified on the log scale to ensure positivity and to enable additive decomposition of effects. Formally,
+The statistical modeling of heart rate variability requires a unified framework that accounts for the discrete nature of the heartbeat event and the continuous nature of the underlying physiological drivers. The sinoatrial node functions as a biological oscillator where membrane potential rises via ionic currents until a threshold is reached, triggering an action potential. This biophysical process of accumulation to a threshold is mathematically described by a random walk with drift, the first-passage times of which follow an Inverse Gaussian distribution.
 
-$$
-\log\lambda(t\mid\mathcal{H}_t) = \mu + \alpha_{p}\,p(t) - \alpha_{s}\,s(t) + \gamma\,T_{\mathrm{circ}}(t) + \beta\,u(t) + H(\mathcal{H}_t),
-$$
+While stationary Inverse Gaussian models successfully describe resting heart rate distributions, they typically fail to capture the complex, time-varying dynamics of the autonomic nervous system during non-stationary conditions such as exercise or postural changes. Conversely, standard point process models that employ log-linear intensity functions often treat the heart as a Poisson-like generator, neglecting the intrinsic refractory and integrative properties of the cardiac tissue.
 
-where $p(t)$ and $s(t)$ are latent processes representing parasympathetic and sympathetic activity respectively, $T_{\mathrm{circ}}(t)$ is a slow tonic or circadian component, $u(t)$ is a known deterministic exogenous input (for example an indicator of exercise), and $H(\mathcal{H}_t)$ denotes a causal history-dependent term. The signs in the expression are chosen to reflect the canonical physiological directions: elevations in $p(t)$ lengthen interbeat intervals (reduce instantaneous heart rate) so that $\alpha_{p}$ acts positively on log intensity in conjunction with a negative sign on the time axis mapping; elevations in $s(t)$ shorten interbeat intervals (increase instantaneous heart rate), captured through the negative sign before $\alpha_{s}$. The baseline level $\mu$ provides the log-hazard in the absence of modulatory inputs and history effects.
+To resolve these limitations, we introduce a state-space formulation where the parameters of the Inverse Gaussian observation model are not static or discretely updated, but are driven by continuous stochastic differential equations (SDEs). This approach allows for the explicit representation of the distinct time scales of the sympathetic and parasympathetic branches  while maintaining the rigorous probabilistic structure of the Inverse Gaussian renewal process.
 
-The latent autonomic processes evolve under linear stochastic differential equations (SDEs) with coupling terms that permit directed influences between the branches. The SDE formulation preserves the continuous-time nature of underlying physiology and provides a natural way to represent differences in intrinsic time scales and stochastic fluctuation magnitudes. The SDE system is given by
+# 2. Latent Autonomic Dynamics
+
+The unobserved physiological state of the system is defined by a vector $\mathbf{x}(t) = [p(t), s(t)]^T$, representing the instantaneous activity of the parasympathetic and sympathetic branches, respectively. Unlike discrete-time models that update state variables only upon the occurrence of a heartbeat, we model these states as continuous stochastic processes governing the system evolution between events.
+
+## 2.1 The Coupled Stochastic Differential Equations
+
+The evolution of the autonomic states is governed by a system of linear stochastic differential equations. This formulation allows for the directed coupling of the two branches, capturing phenomena such as sympathovagal balance and accentuated antagonism. The system is defined as follows:
 
 $$
 \begin{aligned}
-dp(t) &= -a_{p}\,p(t)\,dt + b_{ps}\,s(t)\,dt + c_{p}\,u(t)\,dt + \sigma_{p}\,dW_{p}(t), \\
-ds(t) &= -a_{s}\,s(t)\,dt + b_{sp}\,p(t)\,dt + c_{s}\,u(t)\,dt + \sigma_{s}\,dW_{s}(t),
+dp(t) &= \left( -a_{p}p(t) + b_{ps}s(t) + c_{p}u(t) \right) dt + \sigma_{p}dW_{p}(t) \\
+ds(t) &= \left( -a_{s}s(t) + b_{sp}p(t) + c_{s}u(t) \right) dt + \sigma_{s}dW_{s}(t)
 \end{aligned}
 $$
 
-with $a_{p}>0$ and $a_{s}>0$ being decay rates, $b_{ps}$ and $b_{sp}$ quantifying cross-branch coupling, $c_{p}$ and $c_{s}$ representing exogenous input gains, and $\sigma_{p}\,dW_{p}$, $\sigma_{s}\,dW_{s}$ representing independent (or, optionally, correlated) Wiener-driven diffusion terms. Initial conditions $p(0)$ and $s(0)$ are drawn from a prescribed prior distribution, typically Gaussian with mean reflecting baseline autonomic tone and variance reflecting prior uncertainty. The tonic component $T_{\mathrm{circ}}(t)$ can be represented either deterministically, for example by a sinusoid $A_{\mathrm{circ}}\sin(2\pi t/24 + \phi)$ when diurnal modulation is relevant, or as a low-frequency stochastic drift term when long recordings are considered without explicit periodic structure.
+The parameters $a_p$ and $a_s$ represent the decay rates of the parasympathetic and sympathetic responses. Physiologically, the vagal (parasympathetic) response is rapid, mediated by direct acetylcholine-gated channels, implying a large value for $a_p$. The sympathetic response is slower, mediated by second-messenger systems, implying a smaller value for $a_s$. The terms $b_{ps}$ and $b_{sp}$ quantify the cross-branch coupling, while $u(t)$ represents an exogenous forcing function such as respiration or workload, scaled by sensitivity coefficients $c_p$ and $c_s$. The stochastic innovations $dW_p(t)$ and $dW_s(t)$ are increments of independent Wiener processes, introducing intrinsic biological noise into the control loop.
 
-The observation process is linked to the point process likelihood. Given the conditional intensity $\lambda(t)$, the joint density (or likelihood) for event times under the realization of the intensity over $[0,T]$ is
+We visualize the behavior of these coupled states below. The simulation demonstrates how the two branches respond differently to the same stochastic perturbations due to their distinct time constants.
+
+```{r}
+#| label: fig-latent-sde
+#| fig-cap: "Trajectory of Latent Autonomic States. The blue trace (Parasympathetic) exhibits high-frequency variability due to its fast decay rate, while the red trace (Sympathetic) shows smoother, low-frequency trends. This frequency separation is intrinsic to the SDE formulation."
+
+sim_latent_sde <- function(duration = 60, dt = 0.01) {
+  n_steps <- duration / dt
+  times <- seq(0, duration, length.out = n_steps)
+  
+  # Parameters defining the timescales
+  a_p <- 2.5   # Fast vagal decay
+  a_s <- 0.2   # Slow sympathetic decay
+  sigma_p <- 1.0
+  sigma_s <- 0.5
+  
+  # Initialization
+  p <- numeric(n_steps)
+  s <- numeric(n_steps)
+  
+  set.seed(42)
+  # Euler-Maruyama Integration
+  for(i in 1:(n_steps-1)) {
+    # Generate Wiener increments
+    dw_p <- rnorm(1, sd = sqrt(dt))
+    dw_s <- rnorm(1, sd = sqrt(dt))
+    
+    # Update equations (uncoupled for clear visualization of timescales)
+    dp <- -a_p * p[i] * dt + sigma_p * dw_p
+    ds <- -a_s * s[i] * dt + sigma_s * dw_s
+    
+    p[i+1] <- p[i] + dp
+    s[i+1] <- s[i] + ds
+  }
+
+  # Visualization
+  par(mfrow = c(2, 1), mar = c(3, 5, 2, 2))
+  plot(times, p, type = 'l', col = "#0072B2", lwd = 1,
+       ylab = "Parasympathetic p(t)", xaxt = 'n', frame.plot = FALSE,
+       main = "Latent Stochastic Processes")
+  grid(col = "lightgray")
+  
+  plot(times, s, type = 'l', col = "#D55E00", lwd = 2,
+       ylab = "Sympathetic s(t)", xlab = "Time (s)", frame.plot = FALSE)
+  grid(col = "lightgray")
+}
+
+sim_latent_sde()
+
+```
+
+# 3. The Inverse Gaussian Observation Model
+
+The transition from the continuous latent states to the discrete event times requires a probabilistic mapping. We employ the Inverse Gaussian distribution  to describe the probability density of the waiting time until the next beat. The critical innovation in this framework is that the parameters of this distribution are not static; they are modulated instantaneously by the SDE states.
+
+## 3.1 The Time-Varying Mean Interval
+
+We define the instantaneous target heart rate $\rho(t)$ as a linear combination of the baseline pacing rate and the autonomic modulators. Consistent with physiological conventions where sympathetic activity increases rate and parasympathetic activity decreases it, we write:
 
 $$
-\mathcal{L}(\{t_i\}\mid \theta, p(\cdot), s(\cdot)) = \left[\prod_{i=1}^{N}\lambda(t_i\mid\mathcal{H}_{t_i})\right]\exp\left(-\int_{0}^{T}\lambda(u\mid\mathcal{H}_u)\,du\right),
+\rho(t) = \rho_0 + k_{sym}s(t) - k_{par}p(t)
 $$
 
-where $\theta$ denotes the collection of static parameters. In practice, the history term $H(\mathcal{H}_t)$ depends on recent inter-event times and can be implemented as a short memory kernel, such as an exponential kernel applied to previous events or as an autoregressive function of the most recent interbeat interval; this term captures refractoriness, immediate beat-to-beat dependence (including residual respiratory sinus arrhythmia when explicit respiration measurements are absent), and detector-specific short-term structure.
+The instantaneous mean R-R interval $\mu(t)$, which serves as the location parameter for the Inverse Gaussian density, is the reciprocal of this rate: $\mu(t) = 1 / \rho(t)$.
 
-Real recordings also contain artifacts and missingness. The model accommodates these realities by treating each observed event as potentially censored or corrupted through an auxiliary Bernoulli process that flags events removed due to ectopy, sensor dropout, or erroneous detections. When an event is identified as missing, the likelihood contribution for that interval is replaced by the corresponding survival term under the conditional intensity. The measurement process may also introduce timestamp jitter; small timestamp perturbation can be modeled as additive measurement noise on event times, though for high-quality electrocardiogram-based beat detection this term may be negligible. Where beat annotation uncertainty is substantial, explicit modeling of timestamp noise or probabilistic beat assignment should be included in the generative description.
+## 3.2 The Conditional Intensity Function
 
-Numerical implementation of the continuous-time generative model requires discretization for simulation and likelihood evaluation. The SDEs are discretized with an Euler–Maruyama or higher order scheme on a grid $\{t_k\}$ with step $\Delta t$ chosen to resolve the fastest physiological time constant. For each grid interval the latent state is propagated and the integral of the intensity is approximated by numerical quadrature, typically by summing the intensity evaluated at grid points multiplied by $\Delta t$ or by Simpson-type rules when greater accuracy is desired. Event generation under simulation is performed by thinning algorithms that sample candidate event times from an upper bound on the intensity and accept them with probability $\lambda(t)/\lambda_{\text{max}}$ to produce event sequences consistent with the instantaneous hazard. The complete data generation process therefore maps static parameters and stochastic latent trajectories to realizations of heartbeat times, subject to censoring and artifact processes that reflect the measurement environment.
+For point process simulation and likelihood estimation, we require the conditional intensity function $\lambda(t | \mathcal{H}_t)$. This function is derived from the Inverse Gaussian probability density function (PDF) $f(t)$ and its cumulative distribution function (CDF) $F(t)$.
 
-## Main mechanisms of the model and inner components
+The PDF for the time $t$ of the next beat, given the previous beat occurred at $u_k$, is:
 
-The modeling framework comprises several interlocking mechanisms, each corresponding to a distinct physiological or statistical function. These mechanisms include the latent autonomic dynamics, the mapping from latent states to instantaneous hazard, the short-term history module, the tonic/circadian modulation, the exogenous input pathway, the stochastic fluctuation processes, and the observation/censoring process. The model is constructed so that each mechanism can be interpreted in physiological terms while remaining amenable to statistically consistent inference.
+$$
+f(t \mid u_k, \mathbf{x}(t)) = \left[ \frac{\kappa}{2\pi(t-u_k)^3} \right]^{1/2} \exp \left\{ -\frac{\kappa [ (t-u_k) - \mu(t) ]^2 }{ 2 \mu(t)^2 (t-u_k) } \right\}
+$$
 
-The latent autonomic dynamics mechanism is central to the model. Parasympathetic and sympathetic influences are represented as continuous-valued state variables $p(t)$ and $s(t)$. The linear drift structure $-a_{p}p(t)$ and $-a_{s}s(t)$ imposes a restoring or decay tendency, such that absent input the state relaxes exponentially toward zero with characteristic time constants $\tau_{p}=1/a_{p}$ and $\tau_{s}=1/a_{s}$. Coupling terms $b_{ps}\,s(t)$ and $b_{sp}\,p(t)$ introduce directed interactions in which the state of one branch influences the rate of change of the other. These coupling coefficients can represent physiologically plausible mechanisms such as reciprocal modulation where sympathetic activation produces vagal withdrawal with a certain delay and magnitude, or more complex facilitative or gating interactions. The exogenous input gains $c_{p}$ and $c_{s}$ route experimentally controlled perturbations (for example, onset of exercise) into changes in autonomic drive, with magnitudes representing the sensitivity of each branch to the perturbation. The diffusion terms, with scale parameters $\sigma_{p}$ and $\sigma_{s}$, provide a mechanism for endogenous fluctuation and unmodeled inputs, ensuring that latent trajectories are not strictly deterministic given initial conditions and inputs.
+Here, $\kappa$ is the shape parameter (analogous to $\theta_{p+1}$ in Barbieri et al. 2005), which determines the variance and skewness of the interval distribution.
 
-The mapping from latent autonomic state to instantaneous hazard is another core mechanism and is implemented through the log-linear observation link. The coefficients $\alpha_{p}$ and $\alpha_{s}$ provide the conversion from modulator units to log-intensity units; they determine how a given change in the latent variable affects the instantaneous propensity for the next heartbeat. This mapping embodies the physiological notion that vagal tone has a rapid and strong influence on beat timing while sympathetic tone modulates more slowly and affects baseline heart rate. Because the intensity is in exponential form, shifts in latent state result in multiplicative changes in instantaneous hazard and hence nonlinear effects on the distribution of interbeat intervals, an aspect that captures the non-Gaussian nature of beat-time variability.
+The conditional intensity is defined as the hazard rate:
 
-The short-term history mechanism captures immediate past-dependent effects such as refractory behavior and high-frequency modulation due to respiration. Implementationally, this is realized by including a causal kernel applied to recent events or by including a parametric function of the last interbeat interval. The history kernel produces transient reductions or increases in hazard following an event; for example, an exponential kernel with negative amplitude enforces a short refractory period, reducing the probability of an immediate subsequent beat. The history term thus prevents the latent autonomic variables from attempting to explain phenomena that have inherently short memory and are better modeled as event-driven refractoriness, while also subsuming residual respiratory sinus arrhythmia when respiration is not separately measured.
+$$ 
+\lambda(t \mid \mathcal{H}_t) = \frac{f(t \mid u_k, \mathbf{x}(t))}{1 - F(t \mid u_k, \mathbf{x}(t))}
+$$
 
-The tonic or circadian mechanism provides low-frequency modulation of baseline susceptibility to beating and is particularly important for prolonged recordings. When present, a sinusoidal or low-frequency stochastic component modulates the baseline $\mu$ so that diurnal patterns in heart rate are represented. Parameterizing this slow component with amplitude and phase allows the model to separate day–night baseline shifts from short-term autonomic reactivity, thereby improving identification of the dynamic parameters of interest.
+This function rises sharply as the time elapsed since the last beat $t - u_k$ approaches the target mean $\mu(t)$, effectively representing the increasing probability of depolarization threshold crossing. Unlike Poisson intensities which are often flat or monotonic, the Inverse Gaussian hazard function naturally incorporates a refractory period (where $\lambda \approx 0$ for small $t-u_k$) and a rapid rise, mirroring the biophysics of the cardiac cycle.
 
-The observation and censoring mechanism accounts for how latent processes and the instantaneous hazard produce observed event times, and how measurement imperfections intervene. The point process law provides the probabilistic mapping, and the integral term in the likelihood captures the cumulative hazard over recording windows including periods with missing events. When artifacts are detected, the model treats intervals as censored and the corresponding likelihood terms are handled accordingly, preserving statistical coherence. The inclusion of a censoring mechanism is essential for real-world data where ectopic beats, sensor dropout, or annotation uncertainty are unavoidable.
+The code below visualizes this hazard function, demonstrating how a shift in the autonomic state (changing $\mu(t)$) alters the probability profile of the next beat.
 
-These inner components are not independent; they interact in ways that shape identifiability and the dynamics of inferred trajectories. For instance, the history mechanism and the parasympathetic latent process operate on overlapping fast time scales. If the history term is omitted, the parasympathetic latent variable will attempt to explain refractory and respiratory effects, biasing the estimated vagal dynamics. Conversely, an overly aggressive history kernel can absorb genuine vagal reactivity. The coupling terms influence both the transient response to perturbations and the recovery dynamics; positive feedback can amplify transient responses while negative feedback can produce faster return to baseline. The diffusion terms introduce stochasticity that propagates through the mapping to intensity and affects interbeat time dispersion; larger diffusion impairs the precision with which deterministic parameter values can be recovered. The deterministic tonic term interacts with slow sympathetic fluctuations and can confound estimates of tonic sympathetic tone if not properly specified or allowed to vary flexibly.
+```{r}
+#| label: fig-hazard-function
+#| fig-cap: "The Inverse Gaussian Hazard Function. The solid line represents the conditional intensity under baseline conditions. The dashed line shows the effect of sympathetic activation, which shortens the mean interval mu(t) and shifts the steep rising phase of the intensity to the left, increasing the probability of an earlier beat."
 
-Extensibility of the inner components permits the model to accommodate richer physiological hypotheses. Nonlinear drift functions may be used to capture saturating or rectified autonomic responses, state-dependent diffusion can represent heteroscedastic variability that increases with activity, and switching regimes may represent distinct autonomic operating modes such as sleep versus wake or rest versus heavy exercise. Each extension alters inference characteristics and should be justified by prior physiological knowledge and data richness.
+plot_ig_hazard <- function() {
+  # Define time axis (time since last beat)
+  tau <- seq(0.01, 3.0, length.out = 500)
+  
+  # Helper to compute Hazard
+  calc_hazard <- function(tau_vec, mu_val, lambda_scale) {
+    pdf_val <- numeric(length(tau_vec))
+    cdf_val <- numeric(length(tau_vec))
+    
+    # Calculate PDF and CDF for Inverse Gaussian
+    for(i in seq_along(tau_vec)) {
+      t <- tau_vec[i]
+      # PDF
+      term1 <- sqrt(lambda_scale / (2 * pi * t^3))
+      term2 <- exp(-lambda_scale * (t - mu_val)^2 / (2 * mu_val^2 * t))
+      pdf_val[i] <- term1 * term2
+      
+      # CDF
+      z1 <- sqrt(lambda_scale/t) * (t/mu_val - 1)
+      z2 <- -sqrt(lambda_scale/t) * (t/mu_val + 1)
+      cdf_val[i] <- pnorm(z1) + exp(2*lambda_scale/mu_val) * pnorm(z2)
+    }
+    
+    # Hazard = PDF / Survival
+    survival <- 1 - cdf_val
+    survival[survival < 1e-6] <- 1e-6 # Numerical floor
+    return(pdf_val / survival)
+  }
+  
+  # Scenario 1: Baseline (Mean Interval = 0.8s, approx 75 BPM)
+  h_base <- calc_hazard(tau, mu_val = 0.8, lambda_scale = 15)
+  
+  # Scenario 2: Sympathetic Activation (Mean Interval = 0.5s, 120 BPM)
+  h_sym <- calc_hazard(tau, mu_val = 0.5, lambda_scale = 15)
+  
+  par(mar = c(5, 5, 2, 2))
+  plot(tau, h_base, type = 'l', lwd = 3, col = "black", ylim = c(0, 40),
+       xlab = "Time since last beat (s)", ylab = expression(lambda(t * "|" * H[t])),
+       main = "Conditional Intensity Dynamics", frame.plot = FALSE)
+  lines(tau, h_sym, lwd = 3, col = "#D55E00", lty = 2)
+  
+  legend("topleft", legend = c("Baseline State", "Sympathetic State"),
+         col = c("black", "#D55E00"), lty = c(1, 2), lwd = 3, bty = "n")
+  grid(col = "lightgray")
+}
 
-## Model parameterization and physiological interpretation of each parameter
+plot_ig_hazard()
 
-The model is parameterized by the collection $\theta$ comprising decay rates, coupling coefficients, input gains, observation gains, diffusion scales, baseline intensity parameters, history kernel parameters, tonic component parameters, and initial condition parameters. Each parameter is described here in terms of its mathematical role, physiological meaning, typical units or scales, typical plausible ranges, identifiability considerations, and practical reparameterizations used to aid inference.
+```
 
-The parasympathetic decay rate $a_{p}>0$ appears in the SDE drift $-a_{p}p(t)$. Mathematically it governs the exponential relaxation of $p(t)$ in the absence of inputs. Physiologically it represents the inverse of the characteristic vagal time constant, with $\tau_{p}=1/a_{p}$ corresponding to the typical duration over which vagally mediated adjustments to heart period decay. Typical values for $\tau_{p}$ are on the order of one to a few seconds in healthy adult humans under resting conditions; consequently $a_{p}$ is typically in the range of $0.2$ to $1.0$ s$^{-1}$, though exact values depend on scaling conventions for $p$. For identifiability it is often advantageous to adopt a prior that concentrates mass on short time constants while allowing variability across subjects. Reparameterization in terms of $\tau_{p}$ simplifies prior elicitation and interpretation.
+# 4. Numerical Simulation Algorithm
 
-The sympathetic decay rate $a_{s}>0$ plays an analogous mathematical role for $s(t)$ and physiologically corresponds to the inverse of the sympathetic time constant $\tau_{s}=1/a_{s}$. Sympathetic-mediated changes in heart period evolve more slowly than vagal effects; typical $\tau_{s}$ values are on the order of tens of seconds to several minutes, implying $a_{s}$ values in the approximate range $0.005$ to $0.05$ s$^{-1}$. Because sympathetic time scales can substantially exceed recording segment lengths, identifiability of $a_{s}$ improves with longer recordings or the presence of perturbations that elicit large sympathetic responses.
+The integration of the continuous SDEs with the discrete point process requires a hybrid numerical scheme. We utilize the Euler-Maruyama method for the state evolution and a time-rescaling (or thinning) approach for the event generation. The simulation proceeds in discrete time steps $dt$, yet approximates the continuous-time intensity dynamics.
 
-The coupling coefficients $b_{ps}$ and $b_{sp}$ determine directed influences between branches. The parameter $b_{ps}$ multiplies $s(t)$ in the equation for $dp(t)$ and thus quantifies how sympathetic activity drives change in parasympathetic activity; a negative sign would indicate sympathetic-driven vagal withdrawal if the modeled conventions produce such an effect. The parameter $b_{sp}$ quantifies parasympathetic influence on sympathetic dynamics. Physiologically, these coefficients capture interactions mediated by central autonomic networks and reflex arcs, and they provide a way to infer directionality and relative dominance between branches. The natural units are inverse time (s$^{-1}$); magnitudes are typically small relative to self-decay rates, and their sign and scale require careful prior specification. Identifiability of coupling terms benefits from experimental perturbations and from asymmetries in time constants; in the absence of informative inputs or prolonged recordings, coupling estimates can be poorly constrained and highly correlated with other parameters.
+At each time step $t_i$:
 
-The exogenous input gains $c_{p}$ and $c_{s}$ convert a known input signal $u(t)$ into instantaneous influence on the latent processes. For an exercise indicator $u(t)$ that takes values 0 (rest) or 1 (exercise), $c_{s}$ represents the increase in sympathetic drive induced by exercise per unit of $u$, while $c_{p}$ represents the corresponding change to parasympathetic drive. Physiologically, exercise typically produces $c_{s}>0$ and $c_{p}<0$ when $p$ is defined in units such that increases reflect vagal activity. These gains determine the amplitude of the autonomic response to controlled provocations and are directly interpretable as reactivity indices in biomarker construction. Units follow the state scaling; typical magnitudes should be set relative to the scaling of $p$ and $s$, and priors should permit both excitatory and inhibitory effects.
+State Update: The values of $p(t_i)$ and $s(t_i)$ are updated using the finite difference form of the coupled SDEs.
+Parameter Mapping: The current autonomic states determine the instantaneous mean interval $\mu(t_i)$.
+Intensity Evaluation: The conditional intensity $\lambda(t_i)$ is calculated based on the current $\mu(t_i)$ and the time elapsed since the last event $t_i - u_{last}$.
+Event Generation: The probability of a heartbeat occurring in the interval $[t_i, t_i + dt)$ is approximated by $\lambda(t_i) dt$. A Bernoulli trial determines if an event occurs. If successful, $u_{last}$ is updated to $t_i$.
 
-The diffusion coefficients $\sigma_{p}\ge 0$ and $\sigma_{s}\ge 0$ scale the Wiener-driven noise terms and therefore determine the magnitude of stochastic fluctuations in autonomic drive. Mathematically these parameters control variance accumulation over time and thus the ensemble dispersion of latent trajectories. Physiologically larger diffusion reflects greater variability due to unmodeled physiological inputs, central noise, or other modulatory systems. Identifiability of diffusion requires sufficient temporal information to separate process noise from observation-driven variability; over short recordings diffusion and observation link gain parameters can be confounded. Where diffusion is inferred, informative priors or structural constraints can improve robustness.
+The complete algorithm is implemented in the R function below. This function encapsulates the entire generative process, allowing for the exploration of how different autonomic coupling parameters influence the resulting heart rate variability.
 
-The observation gains $\alpha_{p}>0$ and $\alpha_{s}>0$ convert latent autonomic states into contributions to the log-intensity of the point process. The product $\alpha_{p}p(t)$ specifies how vagal variation translates to instantaneous changes in propensity for a heartbeat; equivalently, the mapping determines the sensitivity of interbeat intervals to autonomic fluctuations. Physiologically vagal influences tend to have larger per-unit effects on beat timing compared with sympathetic influences on short time scales; this asymmetry may be encoded via prior expectations on $\alpha_{p}$ and $\alpha_{s}$. Estimation of these gains is crucial for mapping latent-unit fluctuations into interpretable heart-rate changes, and rescaling latent state variables to make $\alpha$'s near unity can simplify interpretation and prior elicitation.
+```{r}
+#| label: full-simulation-code
 
-The baseline log-intensity $\mu$ sets the nominal heart-beat propensity in the absence of modulatory effects and history. It is closely related to the mean heart rate, with the mean interbeat interval approximately given by the inverse of the expected hazard under stationarity. The prior for $\mu$ can be centered on the empirical log-rate estimated from observed data, and adjustments to $\mu$ interact with observation gains in determining overall heart-rate level; hence scaling identifiability issues between $\mu$ and $\alpha$ parameters must be monitored.
+#' Simulate SDE-Driven Inverse Gaussian Point Process
+#'
+#' @param duration Total simulation time (s)
+#' @param dt Integration time step (s)
+#' @param params List of model parameters
+#' @param input_fn Function u(t) for exogenous input
+sim_sde_ig_process <- function(duration, dt, params, input_fn) {
+  
+  n_steps <- ceiling(duration / dt)
+  time_grid <- seq(0, by = dt, length.out = n_steps)
+  
+  # State Vectors
+  p <- numeric(n_steps)
+  s <- numeric(n_steps)
+  lambda <- numeric(n_steps)
+  mu_vec <- numeric(n_steps)
+  
+  # Event Storage
+  spikes <- numeric(0)
+  last_spike_t <- -1.0 # Initialize before start
+  
+  # Pre-compute noise for efficiency
+  dW_p <- rnorm(n_steps, 0, sqrt(dt))
+  dW_s <- rnorm(n_steps, 0, sqrt(dt))
+  
+  # Parameter Unpacking
+  a_p <- params$a_p; a_s <- params$a_s
+  b_ps <- params$b_ps; b_sp <- params$b_sp
+  c_p <- params$c_p; c_s <- params$c_s
+  sig_p <- params$sig_p; sig_s <- params$sig_s
+  
+  rho_0 <- params$rho_0
+  k_sym <- params$k_sym
+  k_par <- params$k_par
+  lambda_scale <- params$lambda_scale
+  
+  for(i in 1:(n_steps-1)) {
+    t <- time_grid[i]
+    
+    # 1. Evaluate Input
+    u_val <- input_fn(t)
+    
+    # 2. Update SDE States (Euler-Maruyama)
+    # p(t+dt) = p(t) + (-a_p*p + b_ps*s + c_p*u)*dt + sig*dW
+    dp <- (-a_p * p[i] + b_ps * s[i] + c_p * u_val) * dt + sig_p * dW_p[i]
+    ds <- (-a_s * s[i] + b_sp * p[i] + c_s * u_val) * dt + sig_s * dW_s[i]
+    
+    p[i+1] <- p[i] + dp
+    s[i+1] <- s[i] + ds
+    
+    # 3. Map to Mean Interval mu(t)
+    # Rate rho(t) = Base + Sym - Par
+    current_rate <- rho_0 + k_sym * s[i+1] - k_par * p[i+1]
+    # Safety: Rate must be positive
+    if(current_rate < 0.5) current_rate <- 0.5
+    
+    current_mu <- 1 / current_rate
+    mu_vec[i+1] <- current_mu
+    
+    # 4. Calculate Conditional Intensity (Hazard)
+    tau <- t - last_spike_t
+    
+    # Safety: Avoid singularity at tau=0
+    if (tau < 1e-3) {
+      lambda_val <- 0
+    } else {
+      # Inverse Gaussian PDF
+      term1 <- sqrt(lambda_scale / (2 * pi * tau^3))
+      term2 <- exp(-lambda_scale * (tau - current_mu)^2 / (2 * current_mu^2 * tau))
+      pdf_val <- term1 * term2
+      
+      # Inverse Gaussian CDF
+      z1 <- sqrt(lambda_scale/tau) * (tau/current_mu - 1)
+      z2 <- -sqrt(lambda_scale/tau) * (tau/current_mu + 1)
+      cdf_val <- pnorm(z1) + exp(2 * lambda_scale / current_mu) * pnorm(z2)
+      
+      survival <- 1 - cdf_val
+      if(survival < 1e-8) survival <- 1e-8
+      
+      lambda_val <- pdf_val / survival
+    }
+    
+    lambda[i+1] <- lambda_val
+    
+    # 5. Event Generation (Bernoulli)
+    prob_fire <- lambda_val * dt
+    # Safety: Probability cannot exceed 1
+    if(prob_fire > 1) prob_fire <- 1
+    
+    if(runif(1) < prob_fire) {
+      spikes <- c(spikes, t)
+      last_spike_t <- t
+    }
+  }
+  
+  return(list(time = time_grid, p = p, s = s, mu = mu_vec, spikes = spikes))
+}
 
-The history kernel parameters control the shape and amplitude of the short-term memory term $H(\mathcal{H}_t)$. A canonical parametrization is $H(\mathcal{H}_t) = \int_{0}^{\infty} h(\tau) dN(t-\tau)$ with $h(\tau)=A_{\mathrm{hist}}\exp(-\tau/\kappa_{\mathrm{hist}})$, where $A_{\mathrm{hist}}$ is the kernel amplitude and $\kappa_{\mathrm{hist}}$ the decay time. The amplitude $A_{\mathrm{hist}}$ typically assumes negative values to represent refractory suppression immediately following an event, and the decay parameter $\kappa_{\mathrm{hist}}$ is on the order of a few hundred milliseconds to a few seconds. These parameters are directly interpretable in terms of immediate electrophysiological recovery and short-term modulation such as RSA when respiration is not otherwise modeled. Identifiability of history parameters is generally good when many beats are observed and the event-generating process is active across short time scales.
+```
 
-The tonic/circadian parameters include amplitude $A_{\mathrm{circ}}$, period (often fixed at 24 hours), and phase $\phi$. The amplitude quantifies the range of diurnal modulation in log-intensity and is useful for separating slowly varying baseline shifts from dynamic autonomic responses. When long-duration recordings are available, accurate estimation of tonic parameters improves separation of slow sympathetic dynamics from diurnal effects.
+# 5. Simulation Results and Discussion
 
-Initial state parameters specify the prior mean and covariance for $p(0)$ and $s(0)$. The prior mean may be set to reflect expected baseline autonomic tone; prior covariance encodes uncertainty and aids numerical stability during inference. Informative priors on initial states can aid identifiability in short segments where latent dynamics have insufficient time to fully express.
+To validate the model, we simulate a hypothetical physiological stress test. The protocol imposes a rectangular boxcar stimulus $u(t)$ representing a period of physical exertion. We expect the model to exhibit a withdrawal of parasympathetic tone and an increase in sympathetic tone, leading to a reduction in the mean R-R interval and a concomitant change in the stochastic structure of the beat train.
 
-Finally, parameters governing the censoring or artifact process (for example the rate of ectopy or probability of misdetection) describe the measurement environment. These parameters influence the likelihood by dictating which intervals are modeled as observed versus censored and should be chosen based on annotation protocols or estimated jointly when annotation uncertainty is present.
+The parameters for the simulation are selected to mimic human physiology: a baseline heart rate of 60 BPM ($\rho_0 = 1$), rapid vagal dynamics ($a_p = 2.0$), and slower sympathetic dynamics ($a_s = 0.2$). The scaling parameter $\kappa$ (lambda_scale) is set to 20, reflecting a realistic variance for healthy sinus rhythm.
 
-Parameter transformations and constraints facilitate numerical inference. Positivity constraints for decay rates and diffusion scales are implemented via log or softplus transforms; time-constant parametrization $ \tau = 1/a $ provides intuitive priors; rescaling of latent states to place observation gains near unity reduces posterior correlation between gains and baseline $\mu$. Hierarchical parameterizations that share hyperpriors across subjects allow pooling when multiple recordings are analyzed, improving estimation of parameters that are weakly identified within individual short recordings.
+```{r}
+#| label: fig-results
+#| fig-cap: "Simulation of Autonomic Response to Stress. Top: The exogenous input u(t) (black) drives the system. Middle: The autonomic states diverge; Sympathetic (red) rises slowly, Parasympathetic (blue) is suppressed. Bottom: The resulting tachogram (R-R intervals). Note the immediate shortening of intervals at onset and the gradual recovery at offset, driven by the SDE dynamics."
 
-In summary, the model parameters each have a clear mathematical role within the SDE-based latent dynamics and point-process observation framework and a direct or interpretable physiological counterpart. The decay rates correspond to characteristic autonomic time constants, coupling coefficients express directed inter-branch interaction, input gains quantify responsiveness to perturbations, observation gains convert latent fluctuations to heart-rate effects, diffusion parameters characterize endogenous variability, history parameters capture event-driven short-term structure, tonic parameters represent slow baseline modulation, and censoring parameters model measurement realities. Careful prior elicitation, thoughtful reparameterization, and judicious use of experimental perturbations are essential to render these parameters identifiable and to translate them into reliable biomarkers of resilience and adaptation.
+# Define Input: Stress ON between t=300 and t=420
+input_boxcar <- function(t) {
+  if(t >= 300 && t <= 420) return(1) else return(0)
+}
+
+# Parameter Set
+params <- list(
+  a_p = 2.0, b_ps = 0.0, c_p = -1.0, sig_p = 0.5, # Vagal Withdrawal
+  a_s = 0.2, b_sp = 0.0, c_s = 0.5,  sig_s = 0.2, # Sympathetic Activation
+  rho_0 = 1.0,  # 60 BPM baseline
+  k_sym = 0.8,
+  k_par = 0.8,
+  lambda_scale = 20
+)
+
+# Run Simulation
+set.seed(2026)
+res <- sim_sde_ig_process(duration = 720, dt = 0.005, params, input_boxcar)
+
+# Visualization
+layout(matrix(c(1, 2, 3), 3, 1, byrow=TRUE), heights=c(1, 1.5, 2))
+par(mar = c(2, 5, 2, 2), oma = c(2,0,0,0))
+
+# 1. Input
+plot(res$time, sapply(res$time, input_boxcar), type='l', lwd=2, 
+     ylab="Input u(t)", xaxt='n', frame.plot=FALSE)
+grid(col="lightgray")
+
+# 2. States
+plot(res$time, res$s, type='l', col="#D55E00", lwd=2, ylim=range(c(res$s, res$p)),
+     ylab="Autonomic States", xaxt='n', frame.plot=FALSE)
+lines(res$time, res$p, col="#0072B2", lwd=1.5)
+legend("topleft", legend=c("Sympathetic", "Parasympathetic"), 
+       col=c("#D55E00", "#0072B2"), lwd=c(2, 1.5), bty="n")
+grid(col="lightgray")
+
+# 3. Tachogram (RR Intervals)
+rr_intervals <- diff(res$spikes)
+beat_times <- res$spikes[-1]
+plot(beat_times, rr_intervals, type='o', pch=20, cex=0.6, col="darkgrey",
+     ylab="R-R Interval (s)", xlab="Time (s)", frame.plot=FALSE)
+# Overlay the theoretical mean mu(t) sampled at beat times
+# We find the index in time_grid closest to each beat time
+mu_at_beats <- approx(res$time, res$mu, xout = beat_times)$y
+lines(beat_times, mu_at_beats, col="black", lwd=2)
+legend("bottomleft", legend=c("R-R Intervals", "Theoretical Mean mu(t)"),
+       col=c("darkgrey", "black"), pch=c(20, NA), lty=c(1, 1), bty="n")
+grid(col="lightgray")
+
+```
+
+The results underscore the efficacy of the proposed model. The upper panel displays the square-wave input, representing the transition from rest to exercise and back. The middle panel reveals the differential kinetics of the autonomic branches: the parasympathetic state (blue) responds rapidly to the onset and offset of the stimulus, whereas the sympathetic state (red) exhibits a damped, inertial response.
+
+Crucially, the bottom panel demonstrates that the generated R-R intervals are not deterministic. They fluctuate stochastically around the time-varying theoretical mean $\mu(t)$ (black line). The variance of these fluctuations is not arbitrary but is governed by the Inverse Gaussian scaling parameter $\kappa$ and the instantaneous mean, consistent with the known property that heartbeat variance is dependent on the mean rate. By successfully coupling continuous SDE drivers with the rigorous Inverse Gaussian observation model, this framework provides a physiologically grounded engine for generating synthetic heart rate variability data with realistic temporal and spectral characteristics.

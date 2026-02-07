@@ -7,8 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Matías Castillo-Aguilar">
+<meta name="dcterms.date" content="2026-02-07">
 
-<title>Just check the PULSE – 2026-XX SDE R-R</title>
+<title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – 2026-XX SDE R-R</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,6 +21,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -143,12 +179,19 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a>
+  <li><a href="#abstract" id="toc-abstract" class="nav-link active" data-scroll-target="#abstract"><span class="header-section-number">1</span> Abstract</a></li>
+  <li><a href="#introduction-and-theoretical-motivation" id="toc-introduction-and-theoretical-motivation" class="nav-link" data-scroll-target="#introduction-and-theoretical-motivation"><span class="header-section-number">2</span> 1. Introduction and Theoretical Motivation</a></li>
+  <li><a href="#latent-autonomic-dynamics" id="toc-latent-autonomic-dynamics" class="nav-link" data-scroll-target="#latent-autonomic-dynamics"><span class="header-section-number">3</span> 2. Latent Autonomic Dynamics</a>
   <ul class="collapse">
-  <li><a href="#formal-description-of-the-complete-data-generation-process" id="toc-formal-description-of-the-complete-data-generation-process" class="nav-link" data-scroll-target="#formal-description-of-the-complete-data-generation-process">Formal description of the complete data generation process</a></li>
-  <li><a href="#main-mechanisms-of-the-model-and-inner-components" id="toc-main-mechanisms-of-the-model-and-inner-components" class="nav-link" data-scroll-target="#main-mechanisms-of-the-model-and-inner-components">Main mechanisms of the model and inner components</a></li>
-  <li><a href="#model-parameterization-and-physiological-interpretation-of-each-parameter" id="toc-model-parameterization-and-physiological-interpretation-of-each-parameter" class="nav-link" data-scroll-target="#model-parameterization-and-physiological-interpretation-of-each-parameter">Model parameterization and physiological interpretation of each parameter</a></li>
+  <li><a href="#the-coupled-stochastic-differential-equations" id="toc-the-coupled-stochastic-differential-equations" class="nav-link" data-scroll-target="#the-coupled-stochastic-differential-equations"><span class="header-section-number">3.1</span> 2.1 The Coupled Stochastic Differential Equations</a></li>
   </ul></li>
+  <li><a href="#the-inverse-gaussian-observation-model" id="toc-the-inverse-gaussian-observation-model" class="nav-link" data-scroll-target="#the-inverse-gaussian-observation-model"><span class="header-section-number">4</span> 3. The Inverse Gaussian Observation Model</a>
+  <ul class="collapse">
+  <li><a href="#the-time-varying-mean-interval" id="toc-the-time-varying-mean-interval" class="nav-link" data-scroll-target="#the-time-varying-mean-interval"><span class="header-section-number">4.1</span> 3.1 The Time-Varying Mean Interval</a></li>
+  <li><a href="#the-conditional-intensity-function" id="toc-the-conditional-intensity-function" class="nav-link" data-scroll-target="#the-conditional-intensity-function"><span class="header-section-number">4.2</span> 3.2 The Conditional Intensity Function</a></li>
+  </ul></li>
+  <li><a href="#numerical-simulation-algorithm" id="toc-numerical-simulation-algorithm" class="nav-link" data-scroll-target="#numerical-simulation-algorithm"><span class="header-section-number">5</span> 4. Numerical Simulation Algorithm</a></li>
+  <li><a href="#simulation-results-and-discussion" id="toc-simulation-results-and-discussion" class="nav-link" data-scroll-target="#simulation-results-and-discussion"><span class="header-section-number">6</span> 5. Simulation Results and Discussion</a></li>
   </ul>
 </nav>
     </div>
@@ -157,8 +200,8 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Just check the PULSE</h1>
-<p class="subtitle lead">A point-process framework for estimating latent sympathovagal dynamics from R–R intervals</p>
+<h1 class="title">A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability</h1>
+<p class="subtitle lead">The SDE-Inverse Gaussian Model</p>
 </div>
 
 
@@ -172,6 +215,12 @@ window.Quarto = {
           </div>
   </div>
     
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">February 7, 2026</p>
+    </div>
+  </div>
   
     
   </div>
@@ -181,63 +230,365 @@ window.Quarto = {
 </header>
 
 
-<section id="methods" class="level1">
-<h1>Methods</h1>
-<p>This methods section provides a detailed and formal description of the complete data generation process, the principal mechanistic components of the modeling framework, and the parameterization with explicit physiological interpretation for each parameter. The mathematical description emphasizes a continuous-time representation suitable for event-driven cardiac data (R–R intervals), and describes how latent autonomic processes and observation mechanisms combine to produce observable heartbeat sequences. The presentation is structured into three substantive parts that correspond to the requested focus: first, the formal generative model for data; second, an exposition of the model’s internal mechanisms and their interactions; and third, a comprehensive parameter-by-parameter description linking model quantities to physiological constructs and their operational meaning for inference and biomarker construction.</p>
-<section id="formal-description-of-the-complete-data-generation-process" class="level2">
-<h2 class="anchored" data-anchor-id="formal-description-of-the-complete-data-generation-process">Formal description of the complete data generation process</h2>
-<p>Let <span class="math inline">\(\{t_i\}_{i=1}^{N}\)</span> denote the observed heartbeat event times recorded over an observation window <span class="math inline">\([0,T]\)</span>. The generative model treats heartbeat occurrences as a conditionally inhomogeneous point process whose conditional intensity <span class="math inline">\(\lambda(t\mid\mathcal{H}_t)\)</span> depends on latent autonomic state processes, exogenous inputs, a slowly varying tonic component, and a short-term history dependence term. The generative model is hierarchical: latent continuous-time stochastic processes generate time-varying modulatory signals that determine the conditional hazard; the hazard governs the random occurrence of events; observed R–R intervals are the inter-event times <span class="math inline">\(\Delta t_i = t_i - t_{i-1}\)</span> produced by the point process; a separate censoring and artifact process may remove or distort certain events to reflect measurement realities.</p>
-<p>The conditional intensity is specified on the log scale to ensure positivity and to enable additive decomposition of effects. Formally,</p>
-<p><span class="math display">\[
-\log\lambda(t\mid\mathcal{H}_t) = \mu + \alpha_{p}\,p(t) - \alpha_{s}\,s(t) + \gamma\,T_{\mathrm{circ}}(t) + \beta\,u(t) + H(\mathcal{H}_t),
-\]</span></p>
-<p>where <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> are latent processes representing parasympathetic and sympathetic activity respectively, <span class="math inline">\(T_{\mathrm{circ}}(t)\)</span> is a slow tonic or circadian component, <span class="math inline">\(u(t)\)</span> is a known deterministic exogenous input (for example an indicator of exercise), and <span class="math inline">\(H(\mathcal{H}_t)\)</span> denotes a causal history-dependent term. The signs in the expression are chosen to reflect the canonical physiological directions: elevations in <span class="math inline">\(p(t)\)</span> lengthen interbeat intervals (reduce instantaneous heart rate) so that <span class="math inline">\(\alpha_{p}\)</span> acts positively on log intensity in conjunction with a negative sign on the time axis mapping; elevations in <span class="math inline">\(s(t)\)</span> shorten interbeat intervals (increase instantaneous heart rate), captured through the negative sign before <span class="math inline">\(\alpha_{s}\)</span>. The baseline level <span class="math inline">\(\mu\)</span> provides the log-hazard in the absence of modulatory inputs and history effects.</p>
-<p>The latent autonomic processes evolve under linear stochastic differential equations (SDEs) with coupling terms that permit directed influences between the branches. The SDE formulation preserves the continuous-time nature of underlying physiology and provides a natural way to represent differences in intrinsic time scales and stochastic fluctuation magnitudes. The SDE system is given by</p>
+<p>For a deep dive into point processes models applied for modeling R-R intervals, please check this <a href="docs/point-process.html">Zero-to-Hero guide</a>!</p>
+<section id="abstract" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Abstract</h1>
+<p>We propose a hybrid generative model for heart rate variability that integrates the biophysical rigor of the Inverse Gaussian first-passage time distribution with the continuous dynamical flexibility of stochastic differential equations. Existing approaches often rely on discrete autoregressive structures that discretize physiological time or Poisson-based intensity functions that lack the specific integrate-and-fire mechanics of the sinoatrial node. The framework presented herein models the latent sympathetic and parasympathetic autonomic drives as coupled Ornstein-Uhlenbeck processes. These continuous states dynamically modulate the drift parameter of an Inverse Gaussian probability density which governs the precise timing of the next heartbeat. This formulation preserves the continuous nature of autonomic control while accurately reproducing the stochastic properties of membrane depolarization thresholds.</p>
+</section>
+<section id="introduction-and-theoretical-motivation" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> 1. Introduction and Theoretical Motivation</h1>
+<p>The statistical modeling of heart rate variability requires a unified framework that accounts for the discrete nature of the heartbeat event and the continuous nature of the underlying physiological drivers. The sinoatrial node functions as a biological oscillator where membrane potential rises via ionic currents until a threshold is reached, triggering an action potential. This biophysical process of accumulation to a threshold is mathematically described by a random walk with drift, the first-passage times of which follow an Inverse Gaussian distribution.</p>
+<p>While stationary Inverse Gaussian models successfully describe resting heart rate distributions, they typically fail to capture the complex, time-varying dynamics of the autonomic nervous system during non-stationary conditions such as exercise or postural changes. Conversely, standard point process models that employ log-linear intensity functions often treat the heart as a Poisson-like generator, neglecting the intrinsic refractory and integrative properties of the cardiac tissue.</p>
+<p>To resolve these limitations, we introduce a state-space formulation where the parameters of the Inverse Gaussian observation model are not static or discretely updated, but are driven by continuous stochastic differential equations (SDEs). This approach allows for the explicit representation of the distinct time scales of the sympathetic and parasympathetic branches while maintaining the rigorous probabilistic structure of the Inverse Gaussian renewal process.</p>
+</section>
+<section id="latent-autonomic-dynamics" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> 2. Latent Autonomic Dynamics</h1>
+<p>The unobserved physiological state of the system is defined by a vector <span class="math inline">\(\mathbf{x}(t) = [p(t), s(t)]^T\)</span>, representing the instantaneous activity of the parasympathetic and sympathetic branches, respectively. Unlike discrete-time models that update state variables only upon the occurrence of a heartbeat, we model these states as continuous stochastic processes governing the system evolution between events.</p>
+<section id="the-coupled-stochastic-differential-equations" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="the-coupled-stochastic-differential-equations"><span class="header-section-number">3.1</span> 2.1 The Coupled Stochastic Differential Equations</h2>
+<p>The evolution of the autonomic states is governed by a system of linear stochastic differential equations. This formulation allows for the directed coupling of the two branches, capturing phenomena such as sympathovagal balance and accentuated antagonism. The system is defined as follows:</p>
 <p><span class="math display">\[
 \begin{aligned}
-dp(t) &amp;= -a_{p}\,p(t)\,dt + b_{ps}\,s(t)\,dt + c_{p}\,u(t)\,dt + \sigma_{p}\,dW_{p}(t), \\
-ds(t) &amp;= -a_{s}\,s(t)\,dt + b_{sp}\,p(t)\,dt + c_{s}\,u(t)\,dt + \sigma_{s}\,dW_{s}(t),
+dp(t) &amp;= \left( -a_{p}p(t) + b_{ps}s(t) + c_{p}u(t) \right) dt + \sigma_{p}dW_{p}(t) \\
+ds(t) &amp;= \left( -a_{s}s(t) + b_{sp}p(t) + c_{s}u(t) \right) dt + \sigma_{s}dW_{s}(t)
 \end{aligned}
 \]</span></p>
-<p>with <span class="math inline">\(a_{p}&gt;0\)</span> and <span class="math inline">\(a_{s}&gt;0\)</span> being decay rates, <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> quantifying cross-branch coupling, <span class="math inline">\(c_{p}\)</span> and <span class="math inline">\(c_{s}\)</span> representing exogenous input gains, and <span class="math inline">\(\sigma_{p}\,dW_{p}\)</span>, <span class="math inline">\(\sigma_{s}\,dW_{s}\)</span> representing independent (or, optionally, correlated) Wiener-driven diffusion terms. Initial conditions <span class="math inline">\(p(0)\)</span> and <span class="math inline">\(s(0)\)</span> are drawn from a prescribed prior distribution, typically Gaussian with mean reflecting baseline autonomic tone and variance reflecting prior uncertainty. The tonic component <span class="math inline">\(T_{\mathrm{circ}}(t)\)</span> can be represented either deterministically, for example by a sinusoid <span class="math inline">\(A_{\mathrm{circ}}\sin(2\pi t/24 + \phi)\)</span> when diurnal modulation is relevant, or as a low-frequency stochastic drift term when long recordings are considered without explicit periodic structure.</p>
-<p>The observation process is linked to the point process likelihood. Given the conditional intensity <span class="math inline">\(\lambda(t)\)</span>, the joint density (or likelihood) for event times under the realization of the intensity over <span class="math inline">\([0,T]\)</span> is</p>
+<p>The parameters <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> represent the decay rates of the parasympathetic and sympathetic responses. Physiologically, the vagal (parasympathetic) response is rapid, mediated by direct acetylcholine-gated channels, implying a large value for <span class="math inline">\(a_p\)</span>. The sympathetic response is slower, mediated by second-messenger systems, implying a smaller value for <span class="math inline">\(a_s\)</span>. The terms <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> quantify the cross-branch coupling, while <span class="math inline">\(u(t)\)</span> represents an exogenous forcing function such as respiration or workload, scaled by sensitivity coefficients <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span>. The stochastic innovations <span class="math inline">\(dW_p(t)\)</span> and <span class="math inline">\(dW_s(t)\)</span> are increments of independent Wiener processes, introducing intrinsic biological noise into the control loop.</p>
+<p>We visualize the behavior of these coupled states below. The simulation demonstrates how the two branches respond differently to the same stochastic perturbations due to their distinct time constants.</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>sim_latent_sde <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">duration =</span> <span class="dv">60</span>, <span class="at">dt =</span> <span class="fl">0.01</span>) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  n_steps <span class="ot">&lt;-</span> duration <span class="sc">/</span> dt</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  times <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">0</span>, duration, <span class="at">length.out =</span> n_steps)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Parameters defining the timescales</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  a_p <span class="ot">&lt;-</span> <span class="fl">2.5</span>   <span class="co"># Fast vagal decay</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  a_s <span class="ot">&lt;-</span> <span class="fl">0.2</span>   <span class="co"># Slow sympathetic decay</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  sigma_p <span class="ot">&lt;-</span> <span class="fl">1.0</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  sigma_s <span class="ot">&lt;-</span> <span class="fl">0.5</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Initialization</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  p <span class="ot">&lt;-</span> <span class="fu">numeric</span>(n_steps)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> <span class="fu">numeric</span>(n_steps)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Euler-Maruyama Integration</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>(n_steps<span class="dv">-1</span>)) {</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Generate Wiener increments</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    dw_p <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">1</span>, <span class="at">sd =</span> <span class="fu">sqrt</span>(dt))</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    dw_s <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">1</span>, <span class="at">sd =</span> <span class="fu">sqrt</span>(dt))</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Update equations (uncoupled for clear visualization of timescales)</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    dp <span class="ot">&lt;-</span> <span class="sc">-</span>a_p <span class="sc">*</span> p[i] <span class="sc">*</span> dt <span class="sc">+</span> sigma_p <span class="sc">*</span> dw_p</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    ds <span class="ot">&lt;-</span> <span class="sc">-</span>a_s <span class="sc">*</span> s[i] <span class="sc">*</span> dt <span class="sc">+</span> sigma_s <span class="sc">*</span> dw_s</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    p[i<span class="sc">+</span><span class="dv">1</span>] <span class="ot">&lt;-</span> p[i] <span class="sc">+</span> dp</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    s[i<span class="sc">+</span><span class="dv">1</span>] <span class="ot">&lt;-</span> s[i] <span class="sc">+</span> ds</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Visualization</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">2</span>, <span class="dv">2</span>))</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(times, p, <span class="at">type =</span> <span class="st">'l'</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">1</span>,</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>       <span class="at">ylab =</span> <span class="st">"Parasympathetic p(t)"</span>, <span class="at">xaxt =</span> <span class="st">'n'</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>       <span class="at">main =</span> <span class="st">"Latent Stochastic Processes"</span>)</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>)</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(times, s, <span class="at">type =</span> <span class="st">'l'</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>       <span class="at">ylab =</span> <span class="st">"Sympathetic s(t)"</span>, <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>)</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="fu">sim_latent_sde</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-latent-sde" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-latent-sde-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-latent-sde-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-latent-sde-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Trajectory of Latent Autonomic States. The blue trace (Parasympathetic) exhibits high-frequency variability due to its fast decay rate, while the red trace (Sympathetic) shows smoother, low-frequency trends. This frequency separation is intrinsic to the SDE formulation.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="the-inverse-gaussian-observation-model" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> 3. The Inverse Gaussian Observation Model</h1>
+<p>The transition from the continuous latent states to the discrete event times requires a probabilistic mapping. We employ the Inverse Gaussian distribution to describe the probability density of the waiting time until the next beat. The critical innovation in this framework is that the parameters of this distribution are not static; they are modulated instantaneously by the SDE states.</p>
+<section id="the-time-varying-mean-interval" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="the-time-varying-mean-interval"><span class="header-section-number">4.1</span> 3.1 The Time-Varying Mean Interval</h2>
+<p>We define the instantaneous target heart rate <span class="math inline">\(\rho(t)\)</span> as a linear combination of the baseline pacing rate and the autonomic modulators. Consistent with physiological conventions where sympathetic activity increases rate and parasympathetic activity decreases it, we write:</p>
 <p><span class="math display">\[
-\mathcal{L}(\{t_i\}\mid \theta, p(\cdot), s(\cdot)) = \left[\prod_{i=1}^{N}\lambda(t_i\mid\mathcal{H}_{t_i})\right]\exp\left(-\int_{0}^{T}\lambda(u\mid\mathcal{H}_u)\,du\right),
+\rho(t) = \rho_0 + k_{sym}s(t) - k_{par}p(t)
 \]</span></p>
-<p>where <span class="math inline">\(\theta\)</span> denotes the collection of static parameters. In practice, the history term <span class="math inline">\(H(\mathcal{H}_t)\)</span> depends on recent inter-event times and can be implemented as a short memory kernel, such as an exponential kernel applied to previous events or as an autoregressive function of the most recent interbeat interval; this term captures refractoriness, immediate beat-to-beat dependence (including residual respiratory sinus arrhythmia when explicit respiration measurements are absent), and detector-specific short-term structure.</p>
-<p>Real recordings also contain artifacts and missingness. The model accommodates these realities by treating each observed event as potentially censored or corrupted through an auxiliary Bernoulli process that flags events removed due to ectopy, sensor dropout, or erroneous detections. When an event is identified as missing, the likelihood contribution for that interval is replaced by the corresponding survival term under the conditional intensity. The measurement process may also introduce timestamp jitter; small timestamp perturbation can be modeled as additive measurement noise on event times, though for high-quality electrocardiogram-based beat detection this term may be negligible. Where beat annotation uncertainty is substantial, explicit modeling of timestamp noise or probabilistic beat assignment should be included in the generative description.</p>
-<p>Numerical implementation of the continuous-time generative model requires discretization for simulation and likelihood evaluation. The SDEs are discretized with an Euler–Maruyama or higher order scheme on a grid <span class="math inline">\(\{t_k\}\)</span> with step <span class="math inline">\(\Delta t\)</span> chosen to resolve the fastest physiological time constant. For each grid interval the latent state is propagated and the integral of the intensity is approximated by numerical quadrature, typically by summing the intensity evaluated at grid points multiplied by <span class="math inline">\(\Delta t\)</span> or by Simpson-type rules when greater accuracy is desired. Event generation under simulation is performed by thinning algorithms that sample candidate event times from an upper bound on the intensity and accept them with probability <span class="math inline">\(\lambda(t)/\lambda_{\text{max}}\)</span> to produce event sequences consistent with the instantaneous hazard. The complete data generation process therefore maps static parameters and stochastic latent trajectories to realizations of heartbeat times, subject to censoring and artifact processes that reflect the measurement environment.</p>
+<p>The instantaneous mean R-R interval <span class="math inline">\(\mu(t)\)</span>, which serves as the location parameter for the Inverse Gaussian density, is the reciprocal of this rate: <span class="math inline">\(\mu(t) = 1 / \rho(t)\)</span>.</p>
 </section>
-<section id="main-mechanisms-of-the-model-and-inner-components" class="level2">
-<h2 class="anchored" data-anchor-id="main-mechanisms-of-the-model-and-inner-components">Main mechanisms of the model and inner components</h2>
-<p>The modeling framework comprises several interlocking mechanisms, each corresponding to a distinct physiological or statistical function. These mechanisms include the latent autonomic dynamics, the mapping from latent states to instantaneous hazard, the short-term history module, the tonic/circadian modulation, the exogenous input pathway, the stochastic fluctuation processes, and the observation/censoring process. The model is constructed so that each mechanism can be interpreted in physiological terms while remaining amenable to statistically consistent inference.</p>
-<p>The latent autonomic dynamics mechanism is central to the model. Parasympathetic and sympathetic influences are represented as continuous-valued state variables <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span>. The linear drift structure <span class="math inline">\(-a_{p}p(t)\)</span> and <span class="math inline">\(-a_{s}s(t)\)</span> imposes a restoring or decay tendency, such that absent input the state relaxes exponentially toward zero with characteristic time constants <span class="math inline">\(\tau_{p}=1/a_{p}\)</span> and <span class="math inline">\(\tau_{s}=1/a_{s}\)</span>. Coupling terms <span class="math inline">\(b_{ps}\,s(t)\)</span> and <span class="math inline">\(b_{sp}\,p(t)\)</span> introduce directed interactions in which the state of one branch influences the rate of change of the other. These coupling coefficients can represent physiologically plausible mechanisms such as reciprocal modulation where sympathetic activation produces vagal withdrawal with a certain delay and magnitude, or more complex facilitative or gating interactions. The exogenous input gains <span class="math inline">\(c_{p}\)</span> and <span class="math inline">\(c_{s}\)</span> route experimentally controlled perturbations (for example, onset of exercise) into changes in autonomic drive, with magnitudes representing the sensitivity of each branch to the perturbation. The diffusion terms, with scale parameters <span class="math inline">\(\sigma_{p}\)</span> and <span class="math inline">\(\sigma_{s}\)</span>, provide a mechanism for endogenous fluctuation and unmodeled inputs, ensuring that latent trajectories are not strictly deterministic given initial conditions and inputs.</p>
-<p>The mapping from latent autonomic state to instantaneous hazard is another core mechanism and is implemented through the log-linear observation link. The coefficients <span class="math inline">\(\alpha_{p}\)</span> and <span class="math inline">\(\alpha_{s}\)</span> provide the conversion from modulator units to log-intensity units; they determine how a given change in the latent variable affects the instantaneous propensity for the next heartbeat. This mapping embodies the physiological notion that vagal tone has a rapid and strong influence on beat timing while sympathetic tone modulates more slowly and affects baseline heart rate. Because the intensity is in exponential form, shifts in latent state result in multiplicative changes in instantaneous hazard and hence nonlinear effects on the distribution of interbeat intervals, an aspect that captures the non-Gaussian nature of beat-time variability.</p>
-<p>The short-term history mechanism captures immediate past-dependent effects such as refractory behavior and high-frequency modulation due to respiration. Implementationally, this is realized by including a causal kernel applied to recent events or by including a parametric function of the last interbeat interval. The history kernel produces transient reductions or increases in hazard following an event; for example, an exponential kernel with negative amplitude enforces a short refractory period, reducing the probability of an immediate subsequent beat. The history term thus prevents the latent autonomic variables from attempting to explain phenomena that have inherently short memory and are better modeled as event-driven refractoriness, while also subsuming residual respiratory sinus arrhythmia when respiration is not separately measured.</p>
-<p>The tonic or circadian mechanism provides low-frequency modulation of baseline susceptibility to beating and is particularly important for prolonged recordings. When present, a sinusoidal or low-frequency stochastic component modulates the baseline <span class="math inline">\(\mu\)</span> so that diurnal patterns in heart rate are represented. Parameterizing this slow component with amplitude and phase allows the model to separate day–night baseline shifts from short-term autonomic reactivity, thereby improving identification of the dynamic parameters of interest.</p>
-<p>The observation and censoring mechanism accounts for how latent processes and the instantaneous hazard produce observed event times, and how measurement imperfections intervene. The point process law provides the probabilistic mapping, and the integral term in the likelihood captures the cumulative hazard over recording windows including periods with missing events. When artifacts are detected, the model treats intervals as censored and the corresponding likelihood terms are handled accordingly, preserving statistical coherence. The inclusion of a censoring mechanism is essential for real-world data where ectopic beats, sensor dropout, or annotation uncertainty are unavoidable.</p>
-<p>These inner components are not independent; they interact in ways that shape identifiability and the dynamics of inferred trajectories. For instance, the history mechanism and the parasympathetic latent process operate on overlapping fast time scales. If the history term is omitted, the parasympathetic latent variable will attempt to explain refractory and respiratory effects, biasing the estimated vagal dynamics. Conversely, an overly aggressive history kernel can absorb genuine vagal reactivity. The coupling terms influence both the transient response to perturbations and the recovery dynamics; positive feedback can amplify transient responses while negative feedback can produce faster return to baseline. The diffusion terms introduce stochasticity that propagates through the mapping to intensity and affects interbeat time dispersion; larger diffusion impairs the precision with which deterministic parameter values can be recovered. The deterministic tonic term interacts with slow sympathetic fluctuations and can confound estimates of tonic sympathetic tone if not properly specified or allowed to vary flexibly.</p>
-<p>Extensibility of the inner components permits the model to accommodate richer physiological hypotheses. Nonlinear drift functions may be used to capture saturating or rectified autonomic responses, state-dependent diffusion can represent heteroscedastic variability that increases with activity, and switching regimes may represent distinct autonomic operating modes such as sleep versus wake or rest versus heavy exercise. Each extension alters inference characteristics and should be justified by prior physiological knowledge and data richness.</p>
+<section id="the-conditional-intensity-function" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="the-conditional-intensity-function"><span class="header-section-number">4.2</span> 3.2 The Conditional Intensity Function</h2>
+<p>For point process simulation and likelihood estimation, we require the conditional intensity function <span class="math inline">\(\lambda(t | \mathcal{H}_t)\)</span>. This function is derived from the Inverse Gaussian probability density function (PDF) <span class="math inline">\(f(t)\)</span> and its cumulative distribution function (CDF) <span class="math inline">\(F(t)\)</span>.</p>
+<p>The PDF for the time <span class="math inline">\(t\)</span> of the next beat, given the previous beat occurred at <span class="math inline">\(u_k\)</span>, is:</p>
+<p><span class="math display">\[
+f(t \mid u_k, \mathbf{x}(t)) = \left[ \frac{\kappa}{2\pi(t-u_k)^3} \right]^{1/2} \exp \left\{ -\frac{\kappa [ (t-u_k) - \mu(t) ]^2 }{ 2 \mu(t)^2 (t-u_k) } \right\}
+\]</span></p>
+<p>Here, <span class="math inline">\(\kappa\)</span> is the shape parameter (analogous to <span class="math inline">\(\theta_{p+1}\)</span> in Barbieri et al.&nbsp;2005), which determines the variance and skewness of the interval distribution.</p>
+<p>The conditional intensity is defined as the hazard rate:</p>
+<p><span class="math display">\[
+\lambda(t \mid \mathcal{H}_t) = \frac{f(t \mid u_k, \mathbf{x}(t))}{1 - F(t \mid u_k, \mathbf{x}(t))}
+\]</span></p>
+<p>This function rises sharply as the time elapsed since the last beat <span class="math inline">\(t - u_k\)</span> approaches the target mean <span class="math inline">\(\mu(t)\)</span>, effectively representing the increasing probability of depolarization threshold crossing. Unlike Poisson intensities which are often flat or monotonic, the Inverse Gaussian hazard function naturally incorporates a refractory period (where <span class="math inline">\(\lambda \approx 0\)</span> for small <span class="math inline">\(t-u_k\)</span>) and a rapid rise, mirroring the biophysics of the cardiac cycle.</p>
+<p>The code below visualizes this hazard function, demonstrating how a shift in the autonomic state (changing <span class="math inline">\(\mu(t)\)</span>) alters the probability profile of the next beat.</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>plot_ig_hazard <span class="ot">&lt;-</span> <span class="cf">function</span>() {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Define time axis (time since last beat)</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  tau <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fl">0.01</span>, <span class="fl">3.0</span>, <span class="at">length.out =</span> <span class="dv">500</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Helper to compute Hazard</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  calc_hazard <span class="ot">&lt;-</span> <span class="cf">function</span>(tau_vec, mu_val, lambda_scale) {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    pdf_val <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">length</span>(tau_vec))</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    cdf_val <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">length</span>(tau_vec))</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Calculate PDF and CDF for Inverse Gaussian</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span>(i <span class="cf">in</span> <span class="fu">seq_along</span>(tau_vec)) {</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>      t <span class="ot">&lt;-</span> tau_vec[i]</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>      <span class="co"># PDF</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>      term1 <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(lambda_scale <span class="sc">/</span> (<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> t<span class="sc">^</span><span class="dv">3</span>))</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>      term2 <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span>lambda_scale <span class="sc">*</span> (t <span class="sc">-</span> mu_val)<span class="sc">^</span><span class="dv">2</span> <span class="sc">/</span> (<span class="dv">2</span> <span class="sc">*</span> mu_val<span class="sc">^</span><span class="dv">2</span> <span class="sc">*</span> t))</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>      pdf_val[i] <span class="ot">&lt;-</span> term1 <span class="sc">*</span> term2</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>      <span class="co"># CDF</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>      z1 <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(lambda_scale<span class="sc">/</span>t) <span class="sc">*</span> (t<span class="sc">/</span>mu_val <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>      z2 <span class="ot">&lt;-</span> <span class="sc">-</span><span class="fu">sqrt</span>(lambda_scale<span class="sc">/</span>t) <span class="sc">*</span> (t<span class="sc">/</span>mu_val <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>      cdf_val[i] <span class="ot">&lt;-</span> <span class="fu">pnorm</span>(z1) <span class="sc">+</span> <span class="fu">exp</span>(<span class="dv">2</span><span class="sc">*</span>lambda_scale<span class="sc">/</span>mu_val) <span class="sc">*</span> <span class="fu">pnorm</span>(z2)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Hazard = PDF / Survival</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    survival <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> cdf_val</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    survival[survival <span class="sc">&lt;</span> <span class="fl">1e-6</span>] <span class="ot">&lt;-</span> <span class="fl">1e-6</span> <span class="co"># Numerical floor</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(pdf_val <span class="sc">/</span> survival)</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Scenario 1: Baseline (Mean Interval = 0.8s, approx 75 BPM)</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>  h_base <span class="ot">&lt;-</span> <span class="fu">calc_hazard</span>(tau, <span class="at">mu_val =</span> <span class="fl">0.8</span>, <span class="at">lambda_scale =</span> <span class="dv">15</span>)</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Scenario 2: Sympathetic Activation (Mean Interval = 0.5s, 120 BPM)</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>  h_sym <span class="ot">&lt;-</span> <span class="fu">calc_hazard</span>(tau, <span class="at">mu_val =</span> <span class="fl">0.5</span>, <span class="at">lambda_scale =</span> <span class="dv">15</span>)</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">5</span>, <span class="dv">5</span>, <span class="dv">2</span>, <span class="dv">2</span>))</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(tau, h_base, <span class="at">type =</span> <span class="st">'l'</span>, <span class="at">lwd =</span> <span class="dv">3</span>, <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">40</span>),</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>       <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>, <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">lambda</span>(t <span class="sc">*</span> <span class="st">"|"</span> <span class="sc">*</span> H[t])),</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>       <span class="at">main =</span> <span class="st">"Conditional Intensity Dynamics"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lines</span>(tau, h_sym, <span class="at">lwd =</span> <span class="dv">3</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">legend</span>(<span class="st">"topleft"</span>, <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Baseline State"</span>, <span class="st">"Sympathetic State"</span>),</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>         <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#D55E00"</span>), <span class="at">lty =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">lwd =</span> <span class="dv">3</span>, <span class="at">bty =</span> <span class="st">"n"</span>)</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>)</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_ig_hazard</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-hazard-function" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-hazard-function-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-hazard-function-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hazard-function-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: The Inverse Gaussian Hazard Function. The solid line represents the conditional intensity under baseline conditions. The dashed line shows the effect of sympathetic activation, which shortens the mean interval mu(t) and shifts the steep rising phase of the intensity to the left, increasing the probability of an earlier beat.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
 </section>
-<section id="model-parameterization-and-physiological-interpretation-of-each-parameter" class="level2">
-<h2 class="anchored" data-anchor-id="model-parameterization-and-physiological-interpretation-of-each-parameter">Model parameterization and physiological interpretation of each parameter</h2>
-<p>The model is parameterized by the collection <span class="math inline">\(\theta\)</span> comprising decay rates, coupling coefficients, input gains, observation gains, diffusion scales, baseline intensity parameters, history kernel parameters, tonic component parameters, and initial condition parameters. Each parameter is described here in terms of its mathematical role, physiological meaning, typical units or scales, typical plausible ranges, identifiability considerations, and practical reparameterizations used to aid inference.</p>
-<p>The parasympathetic decay rate <span class="math inline">\(a_{p}&gt;0\)</span> appears in the SDE drift <span class="math inline">\(-a_{p}p(t)\)</span>. Mathematically it governs the exponential relaxation of <span class="math inline">\(p(t)\)</span> in the absence of inputs. Physiologically it represents the inverse of the characteristic vagal time constant, with <span class="math inline">\(\tau_{p}=1/a_{p}\)</span> corresponding to the typical duration over which vagally mediated adjustments to heart period decay. Typical values for <span class="math inline">\(\tau_{p}\)</span> are on the order of one to a few seconds in healthy adult humans under resting conditions; consequently <span class="math inline">\(a_{p}\)</span> is typically in the range of <span class="math inline">\(0.2\)</span> to <span class="math inline">\(1.0\)</span> s<span class="math inline">\(^{-1}\)</span>, though exact values depend on scaling conventions for <span class="math inline">\(p\)</span>. For identifiability it is often advantageous to adopt a prior that concentrates mass on short time constants while allowing variability across subjects. Reparameterization in terms of <span class="math inline">\(\tau_{p}\)</span> simplifies prior elicitation and interpretation.</p>
-<p>The sympathetic decay rate <span class="math inline">\(a_{s}&gt;0\)</span> plays an analogous mathematical role for <span class="math inline">\(s(t)\)</span> and physiologically corresponds to the inverse of the sympathetic time constant <span class="math inline">\(\tau_{s}=1/a_{s}\)</span>. Sympathetic-mediated changes in heart period evolve more slowly than vagal effects; typical <span class="math inline">\(\tau_{s}\)</span> values are on the order of tens of seconds to several minutes, implying <span class="math inline">\(a_{s}\)</span> values in the approximate range <span class="math inline">\(0.005\)</span> to <span class="math inline">\(0.05\)</span> s<span class="math inline">\(^{-1}\)</span>. Because sympathetic time scales can substantially exceed recording segment lengths, identifiability of <span class="math inline">\(a_{s}\)</span> improves with longer recordings or the presence of perturbations that elicit large sympathetic responses.</p>
-<p>The coupling coefficients <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> determine directed influences between branches. The parameter <span class="math inline">\(b_{ps}\)</span> multiplies <span class="math inline">\(s(t)\)</span> in the equation for <span class="math inline">\(dp(t)\)</span> and thus quantifies how sympathetic activity drives change in parasympathetic activity; a negative sign would indicate sympathetic-driven vagal withdrawal if the modeled conventions produce such an effect. The parameter <span class="math inline">\(b_{sp}\)</span> quantifies parasympathetic influence on sympathetic dynamics. Physiologically, these coefficients capture interactions mediated by central autonomic networks and reflex arcs, and they provide a way to infer directionality and relative dominance between branches. The natural units are inverse time (s<span class="math inline">\(^{-1}\)</span>); magnitudes are typically small relative to self-decay rates, and their sign and scale require careful prior specification. Identifiability of coupling terms benefits from experimental perturbations and from asymmetries in time constants; in the absence of informative inputs or prolonged recordings, coupling estimates can be poorly constrained and highly correlated with other parameters.</p>
-<p>The exogenous input gains <span class="math inline">\(c_{p}\)</span> and <span class="math inline">\(c_{s}\)</span> convert a known input signal <span class="math inline">\(u(t)\)</span> into instantaneous influence on the latent processes. For an exercise indicator <span class="math inline">\(u(t)\)</span> that takes values 0 (rest) or 1 (exercise), <span class="math inline">\(c_{s}\)</span> represents the increase in sympathetic drive induced by exercise per unit of <span class="math inline">\(u\)</span>, while <span class="math inline">\(c_{p}\)</span> represents the corresponding change to parasympathetic drive. Physiologically, exercise typically produces <span class="math inline">\(c_{s}&gt;0\)</span> and <span class="math inline">\(c_{p}&lt;0\)</span> when <span class="math inline">\(p\)</span> is defined in units such that increases reflect vagal activity. These gains determine the amplitude of the autonomic response to controlled provocations and are directly interpretable as reactivity indices in biomarker construction. Units follow the state scaling; typical magnitudes should be set relative to the scaling of <span class="math inline">\(p\)</span> and <span class="math inline">\(s\)</span>, and priors should permit both excitatory and inhibitory effects.</p>
-<p>The diffusion coefficients <span class="math inline">\(\sigma_{p}\ge 0\)</span> and <span class="math inline">\(\sigma_{s}\ge 0\)</span> scale the Wiener-driven noise terms and therefore determine the magnitude of stochastic fluctuations in autonomic drive. Mathematically these parameters control variance accumulation over time and thus the ensemble dispersion of latent trajectories. Physiologically larger diffusion reflects greater variability due to unmodeled physiological inputs, central noise, or other modulatory systems. Identifiability of diffusion requires sufficient temporal information to separate process noise from observation-driven variability; over short recordings diffusion and observation link gain parameters can be confounded. Where diffusion is inferred, informative priors or structural constraints can improve robustness.</p>
-<p>The observation gains <span class="math inline">\(\alpha_{p}&gt;0\)</span> and <span class="math inline">\(\alpha_{s}&gt;0\)</span> convert latent autonomic states into contributions to the log-intensity of the point process. The product <span class="math inline">\(\alpha_{p}p(t)\)</span> specifies how vagal variation translates to instantaneous changes in propensity for a heartbeat; equivalently, the mapping determines the sensitivity of interbeat intervals to autonomic fluctuations. Physiologically vagal influences tend to have larger per-unit effects on beat timing compared with sympathetic influences on short time scales; this asymmetry may be encoded via prior expectations on <span class="math inline">\(\alpha_{p}\)</span> and <span class="math inline">\(\alpha_{s}\)</span>. Estimation of these gains is crucial for mapping latent-unit fluctuations into interpretable heart-rate changes, and rescaling latent state variables to make <span class="math inline">\(\alpha\)</span>’s near unity can simplify interpretation and prior elicitation.</p>
-<p>The baseline log-intensity <span class="math inline">\(\mu\)</span> sets the nominal heart-beat propensity in the absence of modulatory effects and history. It is closely related to the mean heart rate, with the mean interbeat interval approximately given by the inverse of the expected hazard under stationarity. The prior for <span class="math inline">\(\mu\)</span> can be centered on the empirical log-rate estimated from observed data, and adjustments to <span class="math inline">\(\mu\)</span> interact with observation gains in determining overall heart-rate level; hence scaling identifiability issues between <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\alpha\)</span> parameters must be monitored.</p>
-<p>The history kernel parameters control the shape and amplitude of the short-term memory term <span class="math inline">\(H(\mathcal{H}_t)\)</span>. A canonical parametrization is <span class="math inline">\(H(\mathcal{H}_t) = \int_{0}^{\infty} h(\tau) dN(t-\tau)\)</span> with <span class="math inline">\(h(\tau)=A_{\mathrm{hist}}\exp(-\tau/\kappa_{\mathrm{hist}})\)</span>, where <span class="math inline">\(A_{\mathrm{hist}}\)</span> is the kernel amplitude and <span class="math inline">\(\kappa_{\mathrm{hist}}\)</span> the decay time. The amplitude <span class="math inline">\(A_{\mathrm{hist}}\)</span> typically assumes negative values to represent refractory suppression immediately following an event, and the decay parameter <span class="math inline">\(\kappa_{\mathrm{hist}}\)</span> is on the order of a few hundred milliseconds to a few seconds. These parameters are directly interpretable in terms of immediate electrophysiological recovery and short-term modulation such as RSA when respiration is not otherwise modeled. Identifiability of history parameters is generally good when many beats are observed and the event-generating process is active across short time scales.</p>
-<p>The tonic/circadian parameters include amplitude <span class="math inline">\(A_{\mathrm{circ}}\)</span>, period (often fixed at 24 hours), and phase <span class="math inline">\(\phi\)</span>. The amplitude quantifies the range of diurnal modulation in log-intensity and is useful for separating slowly varying baseline shifts from dynamic autonomic responses. When long-duration recordings are available, accurate estimation of tonic parameters improves separation of slow sympathetic dynamics from diurnal effects.</p>
-<p>Initial state parameters specify the prior mean and covariance for <span class="math inline">\(p(0)\)</span> and <span class="math inline">\(s(0)\)</span>. The prior mean may be set to reflect expected baseline autonomic tone; prior covariance encodes uncertainty and aids numerical stability during inference. Informative priors on initial states can aid identifiability in short segments where latent dynamics have insufficient time to fully express.</p>
-<p>Finally, parameters governing the censoring or artifact process (for example the rate of ectopy or probability of misdetection) describe the measurement environment. These parameters influence the likelihood by dictating which intervals are modeled as observed versus censored and should be chosen based on annotation protocols or estimated jointly when annotation uncertainty is present.</p>
-<p>Parameter transformations and constraints facilitate numerical inference. Positivity constraints for decay rates and diffusion scales are implemented via log or softplus transforms; time-constant parametrization $ = 1/a $ provides intuitive priors; rescaling of latent states to place observation gains near unity reduces posterior correlation between gains and baseline <span class="math inline">\(\mu\)</span>. Hierarchical parameterizations that share hyperpriors across subjects allow pooling when multiple recordings are analyzed, improving estimation of parameters that are weakly identified within individual short recordings.</p>
-<p>In summary, the model parameters each have a clear mathematical role within the SDE-based latent dynamics and point-process observation framework and a direct or interpretable physiological counterpart. The decay rates correspond to characteristic autonomic time constants, coupling coefficients express directed inter-branch interaction, input gains quantify responsiveness to perturbations, observation gains convert latent fluctuations to heart-rate effects, diffusion parameters characterize endogenous variability, history parameters capture event-driven short-term structure, tonic parameters represent slow baseline modulation, and censoring parameters model measurement realities. Careful prior elicitation, thoughtful reparameterization, and judicious use of experimental perturbations are essential to render these parameters identifiable and to translate them into reliable biomarkers of resilience and adaptation.</p>
+</section>
+<section id="numerical-simulation-algorithm" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> 4. Numerical Simulation Algorithm</h1>
+<p>The integration of the continuous SDEs with the discrete point process requires a hybrid numerical scheme. We utilize the Euler-Maruyama method for the state evolution and a time-rescaling (or thinning) approach for the event generation. The simulation proceeds in discrete time steps <span class="math inline">\(dt\)</span>, yet approximates the continuous-time intensity dynamics.</p>
+<p>At each time step <span class="math inline">\(t_i\)</span>:</p>
+<p>State Update: The values of <span class="math inline">\(p(t_i)\)</span> and <span class="math inline">\(s(t_i)\)</span> are updated using the finite difference form of the coupled SDEs. Parameter Mapping: The current autonomic states determine the instantaneous mean interval <span class="math inline">\(\mu(t_i)\)</span>. Intensity Evaluation: The conditional intensity <span class="math inline">\(\lambda(t_i)\)</span> is calculated based on the current <span class="math inline">\(\mu(t_i)\)</span> and the time elapsed since the last event <span class="math inline">\(t_i - u_{last}\)</span>. Event Generation: The probability of a heartbeat occurring in the interval <span class="math inline">\([t_i, t_i + dt)\)</span> is approximated by <span class="math inline">\(\lambda(t_i) dt\)</span>. A Bernoulli trial determines if an event occurs. If successful, <span class="math inline">\(u_{last}\)</span> is updated to <span class="math inline">\(t_i\)</span>.</p>
+<p>The complete algorithm is implemented in the R function below. This function encapsulates the entire generative process, allowing for the exploration of how different autonomic coupling parameters influence the resulting heart rate variability.</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Simulate SDE-Driven Inverse Gaussian Point Process</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param duration Total simulation time (s)</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param dt Integration time step (s)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param params List of model parameters</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param input_fn Function u(t) for exogenous input</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>sim_sde_ig_process <span class="ot">&lt;-</span> <span class="cf">function</span>(duration, dt, params, input_fn) {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  n_steps <span class="ot">&lt;-</span> <span class="fu">ceiling</span>(duration <span class="sc">/</span> dt)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  time_grid <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="at">by =</span> dt, <span class="at">length.out =</span> n_steps)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># State Vectors</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  p <span class="ot">&lt;-</span> <span class="fu">numeric</span>(n_steps)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> <span class="fu">numeric</span>(n_steps)</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  lambda <span class="ot">&lt;-</span> <span class="fu">numeric</span>(n_steps)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  mu_vec <span class="ot">&lt;-</span> <span class="fu">numeric</span>(n_steps)</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Event Storage</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  spikes <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="dv">0</span>)</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  last_spike_t <span class="ot">&lt;-</span> <span class="sc">-</span><span class="fl">1.0</span> <span class="co"># Initialize before start</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Pre-compute noise for efficiency</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>  dW_p <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(n_steps, <span class="dv">0</span>, <span class="fu">sqrt</span>(dt))</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>  dW_s <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(n_steps, <span class="dv">0</span>, <span class="fu">sqrt</span>(dt))</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Parameter Unpacking</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>  a_p <span class="ot">&lt;-</span> params<span class="sc">$</span>a_p; a_s <span class="ot">&lt;-</span> params<span class="sc">$</span>a_s</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>  b_ps <span class="ot">&lt;-</span> params<span class="sc">$</span>b_ps; b_sp <span class="ot">&lt;-</span> params<span class="sc">$</span>b_sp</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>  c_p <span class="ot">&lt;-</span> params<span class="sc">$</span>c_p; c_s <span class="ot">&lt;-</span> params<span class="sc">$</span>c_s</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>  sig_p <span class="ot">&lt;-</span> params<span class="sc">$</span>sig_p; sig_s <span class="ot">&lt;-</span> params<span class="sc">$</span>sig_s</span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>  rho_0 <span class="ot">&lt;-</span> params<span class="sc">$</span>rho_0</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>  k_sym <span class="ot">&lt;-</span> params<span class="sc">$</span>k_sym</span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>  k_par <span class="ot">&lt;-</span> params<span class="sc">$</span>k_par</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>  lambda_scale <span class="ot">&lt;-</span> params<span class="sc">$</span>lambda_scale</span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>(n_steps<span class="dv">-1</span>)) {</span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>    t <span class="ot">&lt;-</span> time_grid[i]</span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 1. Evaluate Input</span></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>    u_val <span class="ot">&lt;-</span> <span class="fu">input_fn</span>(t)</span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 2. Update SDE States (Euler-Maruyama)</span></span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>    <span class="co"># p(t+dt) = p(t) + (-a_p*p + b_ps*s + c_p*u)*dt + sig*dW</span></span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>    dp <span class="ot">&lt;-</span> (<span class="sc">-</span>a_p <span class="sc">*</span> p[i] <span class="sc">+</span> b_ps <span class="sc">*</span> s[i] <span class="sc">+</span> c_p <span class="sc">*</span> u_val) <span class="sc">*</span> dt <span class="sc">+</span> sig_p <span class="sc">*</span> dW_p[i]</span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>    ds <span class="ot">&lt;-</span> (<span class="sc">-</span>a_s <span class="sc">*</span> s[i] <span class="sc">+</span> b_sp <span class="sc">*</span> p[i] <span class="sc">+</span> c_s <span class="sc">*</span> u_val) <span class="sc">*</span> dt <span class="sc">+</span> sig_s <span class="sc">*</span> dW_s[i]</span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a>    p[i<span class="sc">+</span><span class="dv">1</span>] <span class="ot">&lt;-</span> p[i] <span class="sc">+</span> dp</span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a>    s[i<span class="sc">+</span><span class="dv">1</span>] <span class="ot">&lt;-</span> s[i] <span class="sc">+</span> ds</span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 3. Map to Mean Interval mu(t)</span></span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Rate rho(t) = Base + Sym - Par</span></span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a>    current_rate <span class="ot">&lt;-</span> rho_0 <span class="sc">+</span> k_sym <span class="sc">*</span> s[i<span class="sc">+</span><span class="dv">1</span>] <span class="sc">-</span> k_par <span class="sc">*</span> p[i<span class="sc">+</span><span class="dv">1</span>]</span>
+<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Safety: Rate must be positive</span></span>
+<span id="cb3-55"><a href="#cb3-55" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(current_rate <span class="sc">&lt;</span> <span class="fl">0.5</span>) current_rate <span class="ot">&lt;-</span> <span class="fl">0.5</span></span>
+<span id="cb3-56"><a href="#cb3-56" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-57"><a href="#cb3-57" aria-hidden="true" tabindex="-1"></a>    current_mu <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">/</span> current_rate</span>
+<span id="cb3-58"><a href="#cb3-58" aria-hidden="true" tabindex="-1"></a>    mu_vec[i<span class="sc">+</span><span class="dv">1</span>] <span class="ot">&lt;-</span> current_mu</span>
+<span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-60"><a href="#cb3-60" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 4. Calculate Conditional Intensity (Hazard)</span></span>
+<span id="cb3-61"><a href="#cb3-61" aria-hidden="true" tabindex="-1"></a>    tau <span class="ot">&lt;-</span> t <span class="sc">-</span> last_spike_t</span>
+<span id="cb3-62"><a href="#cb3-62" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-63"><a href="#cb3-63" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Safety: Avoid singularity at tau=0</span></span>
+<span id="cb3-64"><a href="#cb3-64" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (tau <span class="sc">&lt;</span> <span class="fl">1e-3</span>) {</span>
+<span id="cb3-65"><a href="#cb3-65" aria-hidden="true" tabindex="-1"></a>      lambda_val <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb3-66"><a href="#cb3-66" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb3-67"><a href="#cb3-67" aria-hidden="true" tabindex="-1"></a>      <span class="co"># Inverse Gaussian PDF</span></span>
+<span id="cb3-68"><a href="#cb3-68" aria-hidden="true" tabindex="-1"></a>      term1 <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(lambda_scale <span class="sc">/</span> (<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> tau<span class="sc">^</span><span class="dv">3</span>))</span>
+<span id="cb3-69"><a href="#cb3-69" aria-hidden="true" tabindex="-1"></a>      term2 <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span>lambda_scale <span class="sc">*</span> (tau <span class="sc">-</span> current_mu)<span class="sc">^</span><span class="dv">2</span> <span class="sc">/</span> (<span class="dv">2</span> <span class="sc">*</span> current_mu<span class="sc">^</span><span class="dv">2</span> <span class="sc">*</span> tau))</span>
+<span id="cb3-70"><a href="#cb3-70" aria-hidden="true" tabindex="-1"></a>      pdf_val <span class="ot">&lt;-</span> term1 <span class="sc">*</span> term2</span>
+<span id="cb3-71"><a href="#cb3-71" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb3-72"><a href="#cb3-72" aria-hidden="true" tabindex="-1"></a>      <span class="co"># Inverse Gaussian CDF</span></span>
+<span id="cb3-73"><a href="#cb3-73" aria-hidden="true" tabindex="-1"></a>      z1 <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(lambda_scale<span class="sc">/</span>tau) <span class="sc">*</span> (tau<span class="sc">/</span>current_mu <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb3-74"><a href="#cb3-74" aria-hidden="true" tabindex="-1"></a>      z2 <span class="ot">&lt;-</span> <span class="sc">-</span><span class="fu">sqrt</span>(lambda_scale<span class="sc">/</span>tau) <span class="sc">*</span> (tau<span class="sc">/</span>current_mu <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb3-75"><a href="#cb3-75" aria-hidden="true" tabindex="-1"></a>      cdf_val <span class="ot">&lt;-</span> <span class="fu">pnorm</span>(z1) <span class="sc">+</span> <span class="fu">exp</span>(<span class="dv">2</span> <span class="sc">*</span> lambda_scale <span class="sc">/</span> current_mu) <span class="sc">*</span> <span class="fu">pnorm</span>(z2)</span>
+<span id="cb3-76"><a href="#cb3-76" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb3-77"><a href="#cb3-77" aria-hidden="true" tabindex="-1"></a>      survival <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> cdf_val</span>
+<span id="cb3-78"><a href="#cb3-78" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span>(survival <span class="sc">&lt;</span> <span class="fl">1e-8</span>) survival <span class="ot">&lt;-</span> <span class="fl">1e-8</span></span>
+<span id="cb3-79"><a href="#cb3-79" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb3-80"><a href="#cb3-80" aria-hidden="true" tabindex="-1"></a>      lambda_val <span class="ot">&lt;-</span> pdf_val <span class="sc">/</span> survival</span>
+<span id="cb3-81"><a href="#cb3-81" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb3-82"><a href="#cb3-82" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-83"><a href="#cb3-83" aria-hidden="true" tabindex="-1"></a>    lambda[i<span class="sc">+</span><span class="dv">1</span>] <span class="ot">&lt;-</span> lambda_val</span>
+<span id="cb3-84"><a href="#cb3-84" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-85"><a href="#cb3-85" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 5. Event Generation (Bernoulli)</span></span>
+<span id="cb3-86"><a href="#cb3-86" aria-hidden="true" tabindex="-1"></a>    prob_fire <span class="ot">&lt;-</span> lambda_val <span class="sc">*</span> dt</span>
+<span id="cb3-87"><a href="#cb3-87" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Safety: Probability cannot exceed 1</span></span>
+<span id="cb3-88"><a href="#cb3-88" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(prob_fire <span class="sc">&gt;</span> <span class="dv">1</span>) prob_fire <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb3-89"><a href="#cb3-89" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-90"><a href="#cb3-90" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="fu">runif</span>(<span class="dv">1</span>) <span class="sc">&lt;</span> prob_fire) {</span>
+<span id="cb3-91"><a href="#cb3-91" aria-hidden="true" tabindex="-1"></a>      spikes <span class="ot">&lt;-</span> <span class="fu">c</span>(spikes, t)</span>
+<span id="cb3-92"><a href="#cb3-92" aria-hidden="true" tabindex="-1"></a>      last_spike_t <span class="ot">&lt;-</span> t</span>
+<span id="cb3-93"><a href="#cb3-93" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb3-94"><a href="#cb3-94" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-95"><a href="#cb3-95" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-96"><a href="#cb3-96" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">list</span>(<span class="at">time =</span> time_grid, <span class="at">p =</span> p, <span class="at">s =</span> s, <span class="at">mu =</span> mu_vec, <span class="at">spikes =</span> spikes))</span>
+<span id="cb3-97"><a href="#cb3-97" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="simulation-results-and-discussion" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> 5. Simulation Results and Discussion</h1>
+<p>To validate the model, we simulate a hypothetical physiological stress test. The protocol imposes a rectangular boxcar stimulus <span class="math inline">\(u(t)\)</span> representing a period of physical exertion. We expect the model to exhibit a withdrawal of parasympathetic tone and an increase in sympathetic tone, leading to a reduction in the mean R-R interval and a concomitant change in the stochastic structure of the beat train.</p>
+<p>The parameters for the simulation are selected to mimic human physiology: a baseline heart rate of 60 BPM (<span class="math inline">\(\rho_0 = 1\)</span>), rapid vagal dynamics (<span class="math inline">\(a_p = 2.0\)</span>), and slower sympathetic dynamics (<span class="math inline">\(a_s = 0.2\)</span>). The scaling parameter <span class="math inline">\(\kappa\)</span> (lambda_scale) is set to 20, reflecting a realistic variance for healthy sinus rhythm.</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Define Input: Stress ON between t=300 and t=420</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>input_boxcar <span class="ot">&lt;-</span> <span class="cf">function</span>(t) {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(t <span class="sc">&gt;=</span> <span class="dv">300</span> <span class="sc">&amp;&amp;</span> t <span class="sc">&lt;=</span> <span class="dv">420</span>) <span class="fu">return</span>(<span class="dv">1</span>) <span class="cf">else</span> <span class="fu">return</span>(<span class="dv">0</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Parameter Set</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>params <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">a_p =</span> <span class="fl">2.0</span>, <span class="at">b_ps =</span> <span class="fl">0.0</span>, <span class="at">c_p =</span> <span class="sc">-</span><span class="fl">1.0</span>, <span class="at">sig_p =</span> <span class="fl">0.5</span>, <span class="co"># Vagal Withdrawal</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">a_s =</span> <span class="fl">0.2</span>, <span class="at">b_sp =</span> <span class="fl">0.0</span>, <span class="at">c_s =</span> <span class="fl">0.5</span>,  <span class="at">sig_s =</span> <span class="fl">0.2</span>, <span class="co"># Sympathetic Activation</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">rho_0 =</span> <span class="fl">1.0</span>,  <span class="co"># 60 BPM baseline</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">k_sym =</span> <span class="fl">0.8</span>,</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">k_par =</span> <span class="fl">0.8</span>,</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">lambda_scale =</span> <span class="dv">20</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Run Simulation</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2026</span>)</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>res <span class="ot">&lt;-</span> <span class="fu">sim_sde_ig_process</span>(<span class="at">duration =</span> <span class="dv">720</span>, <span class="at">dt =</span> <span class="fl">0.005</span>, params, input_boxcar)</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualization</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="fu">layout</span>(<span class="fu">matrix</span>(<span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>), <span class="dv">3</span>, <span class="dv">1</span>, <span class="at">byrow=</span><span class="cn">TRUE</span>), <span class="at">heights=</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="fl">1.5</span>, <span class="dv">2</span>))</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">5</span>, <span class="dv">2</span>, <span class="dv">2</span>), <span class="at">oma =</span> <span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>))</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Input</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(res<span class="sc">$</span>time, <span class="fu">sapply</span>(res<span class="sc">$</span>time, input_boxcar), <span class="at">type=</span><span class="st">'l'</span>, <span class="at">lwd=</span><span class="dv">2</span>, </span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab=</span><span class="st">"Input u(t)"</span>, <span class="at">xaxt=</span><span class="st">'n'</span>, <span class="at">frame.plot=</span><span class="cn">FALSE</span>)</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col=</span><span class="st">"lightgray"</span>)</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. States</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(res<span class="sc">$</span>time, res<span class="sc">$</span>s, <span class="at">type=</span><span class="st">'l'</span>, <span class="at">col=</span><span class="st">"#D55E00"</span>, <span class="at">lwd=</span><span class="dv">2</span>, <span class="at">ylim=</span><span class="fu">range</span>(<span class="fu">c</span>(res<span class="sc">$</span>s, res<span class="sc">$</span>p)),</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab=</span><span class="st">"Autonomic States"</span>, <span class="at">xaxt=</span><span class="st">'n'</span>, <span class="at">frame.plot=</span><span class="cn">FALSE</span>)</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(res<span class="sc">$</span>time, res<span class="sc">$</span>p, <span class="at">col=</span><span class="st">"#0072B2"</span>, <span class="at">lwd=</span><span class="fl">1.5</span>)</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>, <span class="at">legend=</span><span class="fu">c</span>(<span class="st">"Sympathetic"</span>, <span class="st">"Parasympathetic"</span>), </span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>       <span class="at">col=</span><span class="fu">c</span>(<span class="st">"#D55E00"</span>, <span class="st">"#0072B2"</span>), <span class="at">lwd=</span><span class="fu">c</span>(<span class="dv">2</span>, <span class="fl">1.5</span>), <span class="at">bty=</span><span class="st">"n"</span>)</span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col=</span><span class="st">"lightgray"</span>)</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Tachogram (RR Intervals)</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>rr_intervals <span class="ot">&lt;-</span> <span class="fu">diff</span>(res<span class="sc">$</span>spikes)</span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>beat_times <span class="ot">&lt;-</span> res<span class="sc">$</span>spikes[<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(beat_times, rr_intervals, <span class="at">type=</span><span class="st">'o'</span>, <span class="at">pch=</span><span class="dv">20</span>, <span class="at">cex=</span><span class="fl">0.6</span>, <span class="at">col=</span><span class="st">"darkgrey"</span>,</span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab=</span><span class="st">"R-R Interval (s)"</span>, <span class="at">xlab=</span><span class="st">"Time (s)"</span>, <span class="at">frame.plot=</span><span class="cn">FALSE</span>)</span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a><span class="co"># Overlay the theoretical mean mu(t) sampled at beat times</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a><span class="co"># We find the index in time_grid closest to each beat time</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>mu_at_beats <span class="ot">&lt;-</span> <span class="fu">approx</span>(res<span class="sc">$</span>time, res<span class="sc">$</span>mu, <span class="at">xout =</span> beat_times)<span class="sc">$</span>y</span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(beat_times, mu_at_beats, <span class="at">col=</span><span class="st">"black"</span>, <span class="at">lwd=</span><span class="dv">2</span>)</span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"bottomleft"</span>, <span class="at">legend=</span><span class="fu">c</span>(<span class="st">"R-R Intervals"</span>, <span class="st">"Theoretical Mean mu(t)"</span>),</span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a>       <span class="at">col=</span><span class="fu">c</span>(<span class="st">"darkgrey"</span>, <span class="st">"black"</span>), <span class="at">pch=</span><span class="fu">c</span>(<span class="dv">20</span>, <span class="cn">NA</span>), <span class="at">lty=</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>), <span class="at">bty=</span><span class="st">"n"</span>)</span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col=</span><span class="st">"lightgray"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-results" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-results-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Simulation of Autonomic Response to Stress. Top: The exogenous input u(t) (black) drives the system. Middle: The autonomic states diverge; Sympathetic (red) rises slowly, Parasympathetic (blue) is suppressed. Bottom: The resulting tachogram (R-R intervals). Note the immediate shortening of intervals at onset and the gradual recovery at offset, driven by the SDE dynamics.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The results underscore the efficacy of the proposed model. The upper panel displays the square-wave input, representing the transition from rest to exercise and back. The middle panel reveals the differential kinetics of the autonomic branches: the parasympathetic state (blue) responds rapidly to the onset and offset of the stimulus, whereas the sympathetic state (red) exhibits a damped, inertial response.</p>
+<p>Crucially, the bottom panel demonstrates that the generated R-R intervals are not deterministic. They fluctuate stochastically around the time-varying theoretical mean <span class="math inline">\(\mu(t)\)</span> (black line). The variance of these fluctuations is not arbitrary but is governed by the Inverse Gaussian scaling parameter <span class="math inline">\(\kappa\)</span> and the instantaneous mean, consistent with the known property that heartbeat variance is dependent on the mean rate. By successfully coupling continuous SDE drivers with the rigorous Inverse Gaussian observation model, this framework provides a physiologically grounded engine for generating synthetic heart rate variability data with realistic temporal and spectral characteristics.</p>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
