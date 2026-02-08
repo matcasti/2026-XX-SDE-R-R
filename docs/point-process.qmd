@@ -392,13 +392,14 @@ Imagine you are looking at a dashboard in an ICU. You have the raw ECG, but you 
 ```{r}
 #| label: fig-deep-dive
 #| fig-cap: "The Anatomy of a Stress Response. Top: The 'Stressor' represents an external challenge. Middle: The latent states respond with different time-constants. Note the 'Vagal Crash' and 'Sympathetic Rise'. Bottom: The R-R intervals (Tachogram) show the tangible result of these hidden battles."
+#| fig-height: 8
 
 # Calculate intervals
 rr_intervals <- diff(sim_data$spikes)
 rr_times <- sim_data$spikes[-1]
 
 layout(matrix(c(1, 2, 3), 3, 1, byrow=TRUE), heights=c(1, 1.5, 2))
-par(mfrow=c(3,1), mar=c(2,5,1,1), oma=c(2,0,2,0))
+par(mar=c(2,5,1,1), oma=c(2,0,2,0))
 
 # Panel 1: The Input
 plot(sim_data$time, sim_data$u, type='l', lwd=2, col="black", 
