@@ -4,7 +4,7 @@ subtitle: "A 'Zero-to-Hero' Guide to Modeling Autonomic Dynamics"
 author: "Matías Castillo-Aguilar"
 format: 
   html:
-    code-fold: show
+    code-fold: true
     toc: true
     number-sections: true
     theme: cosmo

@@ -5,7 +5,7 @@ author: "Matías Castillo-Aguilar"
 date: today
 format: 
   html:
-    code-fold: show
+    code-fold: true
     toc: true
     number-sections: true
     theme: cosmo

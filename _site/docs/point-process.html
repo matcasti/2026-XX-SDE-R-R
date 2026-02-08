@@ -255,7 +255,7 @@ window.Quarto = {
 <p>This is why we choose the Inverse Gaussian for our model. We aren’t just picking a bell curve because it looks nice. We are picking the distribution that physically describes how membrane potentials rise to a threshold. It is the mathematically correct description of the “leaky bucket” mechanics of your heart cells.</p>
 <p>Let’s visualize this. In the code below, we simulate the “bucket” (membrane potential) filling up with noisy water. Watch how the randomness in the filling process leads to variation in the time it takes to spill (the heartbeat).</p>
 <div class="cell">
-<details open="" class="code-fold">
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -337,7 +337,7 @@ Figure&nbsp;1: The Integrate-and-Fire Mechanism. The blue line represents the me
 <p>The Inverse Gaussian model captures this beautifully. Its hazard rate starts at zero (refractory), rises steeply as the “bucket” fills, and then tapers off. This shape perfectly mimics the physiological recovery of the heart tissue.</p>
 <p>Let’s visualize this “Hazard Rate” profile. This curve represents the urgency of the heart to beat as time ticks by since the last beat.</p>
 <div class="cell">
-<details open="" class="code-fold">
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Time since last spike (tau)</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>tau <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fl">0.01</span>, <span class="fl">1.5</span>, <span class="at">length.out=</span><span class="dv">500</span>)</span>
@@ -408,7 +408,7 @@ dp(t) = \text{Decay} + \text{Input} + \text{Crosstalk}(s(t)) + \text{Noise}
 <p>The crosstalk term means the value of the <em>other</em> state influences how this state changes. This gives us a rich, interconnected system where the “hidden drivers” are dancing together, pushing and pulling the drift rate of our Inverse Gaussian bucket.</p>
 <p>Let’s visualize this dance. In the code below, we simulate these two hidden processes. Notice how the blue line (Parasympathetic) is jagged and fast, while the red line (Sympathetic) is smooth and rolling. This difference in “texture” is exactly what allows us to distinguish them mathematically just by looking at the heartbeats!</p>
 <div class="cell">
-<details open="" class="code-fold">
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Parameters</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>dt <span class="ot">&lt;-</span> <span class="fl">0.01</span></span>
@@ -489,7 +489,7 @@ Figure&nbsp;3: The Hidden Drivers. This simulation shows the latent autonomic st
 <p><em>New State = Old State + (Average Change over Time) + (Random Shove).</em></p>
 <p>In our case, the “Average Change” is the physics of the autonomic tank leaking and filling, and the “Random Shove” is the biological noise that keeps our heart from being a perfect, boring metronome.</p>
 <div class="cell">
-<details open="" class="code-fold">
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># This is a conceptual snippet for the loop we will use.</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Imagine s[i] is the Sympathetic level right now.</span></span>
@@ -520,7 +520,7 @@ Figure&nbsp;3: The Hidden Drivers. This simulation shows the latent autonomic st
 <h2 data-number="3.3" class="anchored" data-anchor-id="coding-the-full-digital-twin"><span class="header-section-number">3.3</span> Coding the Full Digital Twin</h2>
 <p>Let’s build the complete engine. We will include a “Stressor” function. Imagine this as a “jump scare” or the moment you start pedaling a bike. We want to see how the SDEs respond and how that response ripples through the Inverse Gaussian probability field.</p>
 <div class="cell">
-<details open="" class="code-fold">
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># The Zero-to-Hero Heart Simulator</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co"># This function generates a complete dataset including the hidden states</span></span>
@@ -611,7 +611,7 @@ Figure&nbsp;3: The Hidden Drivers. This simulation shows the latent autonomic st
 <p>If our model is any good, it should behave like a real person. Let’s look at our simulation results through the lens of a clinician. In this phase, we move from being “Engineers” to being “Analysts.”</p>
 <p>Imagine you are looking at a dashboard in an ICU. You have the raw ECG, but you also have these magical “augmented reality” glasses that show you the invisible nervous system activity. In the plot below, we visualize exactly that.</p>
 <div class="cell">
-<details open="" class="code-fold">
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate intervals</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>rr_intervals <span class="ot">&lt;-</span> <span class="fu">diff</span>(sim_data<span class="sc">$</span>spikes)</span>
