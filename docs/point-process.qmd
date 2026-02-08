@@ -250,13 +250,6 @@ This framework moves us from a purely statistical description (distributions and
 
 In the next phases, we will see how to put this all together to generate realistic heartbeat data and, crucially, how to work backward to infer these hidden states from a patient's ECG.
 
-
-
-
-
-
-This expanded "Zero-to-Hero" guide covers Phase 3 and 4 in exhaustive detail, maintaining a conversational tone while maximizing technical depth for your Quarto document.
-
 # Building the Simulation in R
 
 ## Step-by-Step Implementation Guide
@@ -404,6 +397,7 @@ Imagine you are looking at a dashboard in an ICU. You have the raw ECG, but you 
 rr_intervals <- diff(sim_data$spikes)
 rr_times <- sim_data$spikes[-1]
 
+layout(matrix(c(1, 2, 3), 3, 1, byrow=TRUE), heights=c(1, 1.5, 2))
 par(mfrow=c(3,1), mar=c(2,5,1,1), oma=c(2,0,2,0))
 
 # Panel 1: The Input
@@ -428,7 +422,7 @@ grid()
 
 Look closely at the transition at second 40. The moment the stress starts, the blue line (Parasympathetic) vanishes almost instantly. This is "Vagal Withdrawal". Because the blue line was providing high-frequency "jitter", notice how the R-R intervals not only get shorter but also become more "regular" or "stiff". This is a classic hallmark of stress: a loss of complexity.
 
-Then, at second 80, when the stress stops, the blue line bounces back quickly, but the red line (Sympathetic) lingers. This is why your heart keeps pounding for a minute after a narrow miss in traffic. The "Sympathetic Tail" is a direct result of our SDE time-constants ().
+Then, at second 80, when the stress stops, the blue line bounces back quickly, but the red line (Sympathetic) lingers. This is why your heart keeps pounding for a minute after a narrow miss in traffic. The "Sympathetic Tail" is a direct result of our SDE time-constants ($a_s$).
 
 ## Comparison with Barbieri et al. (2005): The Philosophical Shift
 
