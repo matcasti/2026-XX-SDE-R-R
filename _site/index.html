@@ -180,18 +180,18 @@ window.Quarto = {
    
   <ul>
   <li><a href="#abstract" id="toc-abstract" class="nav-link active" data-scroll-target="#abstract"><span class="header-section-number">1</span> Abstract</a></li>
-  <li><a href="#introduction-and-theoretical-motivation" id="toc-introduction-and-theoretical-motivation" class="nav-link" data-scroll-target="#introduction-and-theoretical-motivation"><span class="header-section-number">2</span> 1. Introduction and Theoretical Motivation</a></li>
-  <li><a href="#latent-autonomic-dynamics" id="toc-latent-autonomic-dynamics" class="nav-link" data-scroll-target="#latent-autonomic-dynamics"><span class="header-section-number">3</span> 2. Latent Autonomic Dynamics</a>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction"><span class="header-section-number">2</span> Introduction</a></li>
+  <li><a href="#latent-autonomic-dynamics" id="toc-latent-autonomic-dynamics" class="nav-link" data-scroll-target="#latent-autonomic-dynamics"><span class="header-section-number">3</span> Latent Autonomic Dynamics</a>
   <ul class="collapse">
-  <li><a href="#the-coupled-stochastic-differential-equations" id="toc-the-coupled-stochastic-differential-equations" class="nav-link" data-scroll-target="#the-coupled-stochastic-differential-equations"><span class="header-section-number">3.1</span> 2.1 The Coupled Stochastic Differential Equations</a></li>
+  <li><a href="#the-coupled-stochastic-differential-equations" id="toc-the-coupled-stochastic-differential-equations" class="nav-link" data-scroll-target="#the-coupled-stochastic-differential-equations"><span class="header-section-number">3.1</span> The Coupled Stochastic Differential Equations</a></li>
   </ul></li>
-  <li><a href="#the-inverse-gaussian-observation-model" id="toc-the-inverse-gaussian-observation-model" class="nav-link" data-scroll-target="#the-inverse-gaussian-observation-model"><span class="header-section-number">4</span> 3. The Inverse Gaussian Observation Model</a>
+  <li><a href="#the-inverse-gaussian-observation-model" id="toc-the-inverse-gaussian-observation-model" class="nav-link" data-scroll-target="#the-inverse-gaussian-observation-model"><span class="header-section-number">4</span> The Inverse Gaussian Observation Model</a>
   <ul class="collapse">
-  <li><a href="#the-time-varying-mean-interval" id="toc-the-time-varying-mean-interval" class="nav-link" data-scroll-target="#the-time-varying-mean-interval"><span class="header-section-number">4.1</span> 3.1 The Time-Varying Mean Interval</a></li>
-  <li><a href="#the-conditional-intensity-function" id="toc-the-conditional-intensity-function" class="nav-link" data-scroll-target="#the-conditional-intensity-function"><span class="header-section-number">4.2</span> 3.2 The Conditional Intensity Function</a></li>
+  <li><a href="#the-time-varying-mean-interval" id="toc-the-time-varying-mean-interval" class="nav-link" data-scroll-target="#the-time-varying-mean-interval"><span class="header-section-number">4.1</span> The Time-Varying Mean Interval</a></li>
+  <li><a href="#the-conditional-intensity-function" id="toc-the-conditional-intensity-function" class="nav-link" data-scroll-target="#the-conditional-intensity-function"><span class="header-section-number">4.2</span> The Conditional Intensity Function</a></li>
   </ul></li>
-  <li><a href="#numerical-simulation-algorithm" id="toc-numerical-simulation-algorithm" class="nav-link" data-scroll-target="#numerical-simulation-algorithm"><span class="header-section-number">5</span> 4. Numerical Simulation Algorithm</a></li>
-  <li><a href="#simulation-results-and-discussion" id="toc-simulation-results-and-discussion" class="nav-link" data-scroll-target="#simulation-results-and-discussion"><span class="header-section-number">6</span> 5. Simulation Results and Discussion</a></li>
+  <li><a href="#numerical-simulation-algorithm" id="toc-numerical-simulation-algorithm" class="nav-link" data-scroll-target="#numerical-simulation-algorithm"><span class="header-section-number">5</span> Numerical Simulation Algorithm</a></li>
+  <li><a href="#simulation-results-and-discussion" id="toc-simulation-results-and-discussion" class="nav-link" data-scroll-target="#simulation-results-and-discussion"><span class="header-section-number">6</span> Simulation Results and Discussion</a></li>
   </ul>
 </nav>
     </div>
@@ -235,17 +235,17 @@ window.Quarto = {
 <h1 data-number="1"><span class="header-section-number">1</span> Abstract</h1>
 <p>We propose a hybrid generative model for heart rate variability that integrates the biophysical rigor of the Inverse Gaussian first-passage time distribution with the continuous dynamical flexibility of stochastic differential equations. Existing approaches often rely on discrete autoregressive structures that discretize physiological time or Poisson-based intensity functions that lack the specific integrate-and-fire mechanics of the sinoatrial node. The framework presented herein models the latent sympathetic and parasympathetic autonomic drives as coupled Ornstein-Uhlenbeck processes. These continuous states dynamically modulate the drift parameter of an Inverse Gaussian probability density which governs the precise timing of the next heartbeat. This formulation preserves the continuous nature of autonomic control while accurately reproducing the stochastic properties of membrane depolarization thresholds.</p>
 </section>
-<section id="introduction-and-theoretical-motivation" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> 1. Introduction and Theoretical Motivation</h1>
+<section id="introduction" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Introduction</h1>
 <p>The statistical modeling of heart rate variability requires a unified framework that accounts for the discrete nature of the heartbeat event and the continuous nature of the underlying physiological drivers. The sinoatrial node functions as a biological oscillator where membrane potential rises via ionic currents until a threshold is reached, triggering an action potential. This biophysical process of accumulation to a threshold is mathematically described by a random walk with drift, the first-passage times of which follow an Inverse Gaussian distribution.</p>
 <p>While stationary Inverse Gaussian models successfully describe resting heart rate distributions, they typically fail to capture the complex, time-varying dynamics of the autonomic nervous system during non-stationary conditions such as exercise or postural changes. Conversely, standard point process models that employ log-linear intensity functions often treat the heart as a Poisson-like generator, neglecting the intrinsic refractory and integrative properties of the cardiac tissue.</p>
 <p>To resolve these limitations, we introduce a state-space formulation where the parameters of the Inverse Gaussian observation model are not static or discretely updated, but are driven by continuous stochastic differential equations (SDEs). This approach allows for the explicit representation of the distinct time scales of the sympathetic and parasympathetic branches while maintaining the rigorous probabilistic structure of the Inverse Gaussian renewal process.</p>
 </section>
 <section id="latent-autonomic-dynamics" class="level1" data-number="3">
-<h1 data-number="3"><span class="header-section-number">3</span> 2. Latent Autonomic Dynamics</h1>
+<h1 data-number="3"><span class="header-section-number">3</span> Latent Autonomic Dynamics</h1>
 <p>The unobserved physiological state of the system is defined by a vector <span class="math inline">\(\mathbf{x}(t) = [p(t), s(t)]^T\)</span>, representing the instantaneous activity of the parasympathetic and sympathetic branches, respectively. Unlike discrete-time models that update state variables only upon the occurrence of a heartbeat, we model these states as continuous stochastic processes governing the system evolution between events.</p>
 <section id="the-coupled-stochastic-differential-equations" class="level2" data-number="3.1">
-<h2 data-number="3.1" class="anchored" data-anchor-id="the-coupled-stochastic-differential-equations"><span class="header-section-number">3.1</span> 2.1 The Coupled Stochastic Differential Equations</h2>
+<h2 data-number="3.1" class="anchored" data-anchor-id="the-coupled-stochastic-differential-equations"><span class="header-section-number">3.1</span> The Coupled Stochastic Differential Equations</h2>
 <p>The evolution of the autonomic states is governed by a system of linear stochastic differential equations. This formulation allows for the directed coupling of the two branches, capturing phenomena such as sympathovagal balance and accentuated antagonism. The system is defined as follows:</p>
 <p><span class="math display">\[
 \begin{aligned}
@@ -317,10 +317,10 @@ Figure&nbsp;1: Trajectory of Latent Autonomic States. The blue trace (Parasympat
 </section>
 </section>
 <section id="the-inverse-gaussian-observation-model" class="level1" data-number="4">
-<h1 data-number="4"><span class="header-section-number">4</span> 3. The Inverse Gaussian Observation Model</h1>
+<h1 data-number="4"><span class="header-section-number">4</span> The Inverse Gaussian Observation Model</h1>
 <p>The transition from the continuous latent states to the discrete event times requires a probabilistic mapping. We employ the Inverse Gaussian distribution to describe the probability density of the waiting time until the next beat. The critical innovation in this framework is that the parameters of this distribution are not static; they are modulated instantaneously by the SDE states.</p>
 <section id="the-time-varying-mean-interval" class="level2" data-number="4.1">
-<h2 data-number="4.1" class="anchored" data-anchor-id="the-time-varying-mean-interval"><span class="header-section-number">4.1</span> 3.1 The Time-Varying Mean Interval</h2>
+<h2 data-number="4.1" class="anchored" data-anchor-id="the-time-varying-mean-interval"><span class="header-section-number">4.1</span> The Time-Varying Mean Interval</h2>
 <p>We define the instantaneous target heart rate <span class="math inline">\(\rho(t)\)</span> as a linear combination of the baseline pacing rate and the autonomic modulators. Consistent with physiological conventions where sympathetic activity increases rate and parasympathetic activity decreases it, we write:</p>
 <p><span class="math display">\[
 \rho(t) = \rho_0 + k_{sym}s(t) - k_{par}p(t)
@@ -328,7 +328,7 @@ Figure&nbsp;1: Trajectory of Latent Autonomic States. The blue trace (Parasympat
 <p>The instantaneous mean R-R interval <span class="math inline">\(\mu(t)\)</span>, which serves as the location parameter for the Inverse Gaussian density, is the reciprocal of this rate: <span class="math inline">\(\mu(t) = 1 / \rho(t)\)</span>.</p>
 </section>
 <section id="the-conditional-intensity-function" class="level2" data-number="4.2">
-<h2 data-number="4.2" class="anchored" data-anchor-id="the-conditional-intensity-function"><span class="header-section-number">4.2</span> 3.2 The Conditional Intensity Function</h2>
+<h2 data-number="4.2" class="anchored" data-anchor-id="the-conditional-intensity-function"><span class="header-section-number">4.2</span> The Conditional Intensity Function</h2>
 <p>For point process simulation and likelihood estimation, we require the conditional intensity function <span class="math inline">\(\lambda(t | \mathcal{H}_t)\)</span>. This function is derived from the Inverse Gaussian probability density function (PDF) <span class="math inline">\(f(t)\)</span> and its cumulative distribution function (CDF) <span class="math inline">\(F(t)\)</span>.</p>
 <p>The PDF for the time <span class="math inline">\(t\)</span> of the next beat, given the previous beat occurred at <span class="math inline">\(u_k\)</span>, is:</p>
 <p><span class="math display">\[
@@ -408,7 +408,7 @@ Figure&nbsp;2: The Inverse Gaussian Hazard Function. The solid line represents t
 </section>
 </section>
 <section id="numerical-simulation-algorithm" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> 4. Numerical Simulation Algorithm</h1>
+<h1 data-number="5"><span class="header-section-number">5</span> Numerical Simulation Algorithm</h1>
 <p>The integration of the continuous SDEs with the discrete point process requires a hybrid numerical scheme. We utilize the Euler-Maruyama method for the state evolution and a time-rescaling (or thinning) approach for the event generation. The simulation proceeds in discrete time steps <span class="math inline">\(dt\)</span>, yet approximates the continuous-time intensity dynamics.</p>
 <p>At each time step <span class="math inline">\(t_i\)</span>:</p>
 <p>State Update: The values of <span class="math inline">\(p(t_i)\)</span> and <span class="math inline">\(s(t_i)\)</span> are updated using the finite difference form of the coupled SDEs. Parameter Mapping: The current autonomic states determine the instantaneous mean interval <span class="math inline">\(\mu(t_i)\)</span>. Intensity Evaluation: The conditional intensity <span class="math inline">\(\lambda(t_i)\)</span> is calculated based on the current <span class="math inline">\(\mu(t_i)\)</span> and the time elapsed since the last event <span class="math inline">\(t_i - u_{last}\)</span>. Event Generation: The probability of a heartbeat occurring in the interval <span class="math inline">\([t_i, t_i + dt)\)</span> is approximated by <span class="math inline">\(\lambda(t_i) dt\)</span>. A Bernoulli trial determines if an event occurs. If successful, <span class="math inline">\(u_{last}\)</span> is updated to <span class="math inline">\(t_i\)</span>.</p>
@@ -517,7 +517,7 @@ Figure&nbsp;2: The Inverse Gaussian Hazard Function. The solid line represents t
 </div>
 </section>
 <section id="simulation-results-and-discussion" class="level1" data-number="6">
-<h1 data-number="6"><span class="header-section-number">6</span> 5. Simulation Results and Discussion</h1>
+<h1 data-number="6"><span class="header-section-number">6</span> Simulation Results and Discussion</h1>
 <p>To validate the model, we simulate a hypothetical physiological stress test. The protocol imposes a rectangular boxcar stimulus <span class="math inline">\(u(t)\)</span> representing a period of physical exertion. We expect the model to exhibit a withdrawal of parasympathetic tone and an increase in sympathetic tone, leading to a reduction in the mean R-R interval and a concomitant change in the stochastic structure of the beat train.</p>
 <p>The parameters for the simulation are selected to mimic human physiology: a baseline heart rate of 60 BPM (<span class="math inline">\(\rho_0 = 1\)</span>), rapid vagal dynamics (<span class="math inline">\(a_p = 2.0\)</span>), and slower sympathetic dynamics (<span class="math inline">\(a_s = 0.2\)</span>). The scaling parameter <span class="math inline">\(\kappa\)</span> (lambda_scale) is set to 20, reflecting a realistic variance for healthy sinus rhythm.</p>
 <div class="cell">
