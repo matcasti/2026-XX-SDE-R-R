@@ -1,123 +1,139 @@
-# sim_and_viz.R
-# Simulate 2-latent SDEs (PNS = p, SNS = s) and Poisson-bin heartbeat counts.
-# Visualize latents, smoothed HR (bpm), and beat raster.
+# ==============================================================================
+# Inverse Gaussian Point Process Model for HRV
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. SIMULATION ENGINE
+# ------------------------------------------------------------------------------
+
+#' Simulate Heartbeat Series with SDE-Driven Autonomic Dynamics
+#'
+#' @param duration_secs Total time to simulate (seconds)
+#' @param dt Simulation time step (high resolution recommended, e.g., 0.005)
+#' @param stress_fn A function taking time 't' and returning scalar input u(t)
+#' @return List containing time grid, state trajectories, and spike times
+simulate_heart_sde_ig <- function(duration_secs, dt = 0.005, stress_fn = NULL) {
+
+  # Default stressor: No stress if function not provided
+  if(is.null(stress_fn)) stress_fn <- function(t) { 0 }
+
+  times <- seq(0, duration_secs, by = dt)
+  n <- length(times)
+
+  # --- Model Parameters (The "Physiology") ---
+  # Parasympathetic (Fast decay, High noise)
+  a_p <- 0.4; sig_p <- 0.2; k_par <- 0.2
+  # Sympathetic (Slow decay, Low noise)
+  a_s <- 0.04; sig_s <- 0.1; k_sym <- 0.4
+  # Coupling effects
+  a_sp <- -0.05; a_ps <- -0.1;
+
+  # Pacemaker properties
+  rho_0 <- 1.1; kappa <- 20
+
+  # --- Initialization ---
+  s <- numeric(n); p <- numeric(n)
+  u <- numeric(n)
+  spikes <- numeric(0); last_spike_t <- -2.0
+
+  # --- Main Loop ---
+  for(i in 1:(n-1)) {
+    t_curr <- times[i]
+    u_val <- stress_fn(t_curr)
+    u[i] <- u_val
+
+    # 1. Euler-Maruyama Update for SDEs
+    # p(t) is suppressed by stress, s(t) is excited by stress
+    dp <- (-a_p * p[i] + a_ps * s[i] - 0.4 * u_val) * dt + sig_p * rnorm(1, 0, sqrt(dt))
+    ds <- (-a_s * s[i] + a_sp * p[i] + 0.1 * u_val) * dt + sig_s * rnorm(1, 0, sqrt(dt))
+
+    p[i+1] <- p[i] + dp
+    s[i+1] <- s[i] + ds
+
+    # 2. Map States to Mean Interval (mu)
+    current_rate <- rho_0 + k_sym * s[i+1] - k_par * p[i+1]
+    current_rate <- max(0.3, current_rate) # Floor at ~24 BPM
+    mu <- 1 / current_rate
+
+    # 3. Calculate Inverse Gaussian Hazard
+
+    ## Time since last heartbeat
+    tau <- t_curr - last_spike_t
+
+    if(tau < 0.02) {
+      lambda_val <- 0 # Refractory period
+    } else {
+      # Numerical safeguards for large exponents
+      exp_arg <- 2 * kappa / mu
+      term_cdf_part <- exp(exp_arg) * pnorm(-sqrt(kappa/tau)*(tau/mu + 1))
+      if(exp_arg > 700) {
+        # If huge, CDF term explodes/saturates
+        term_cdf_part <- 0
+      } else {
+        term_cdf_part <- exp(exp_arg) * pnorm(-sqrt(kappa/tau)*(tau/mu + 1))
+      }
+
+      term_pdf <- sqrt(kappa/(2*pi*tau^3)) * exp(-kappa*(tau-mu)^2/(2*mu^2*tau))
+      term_cdf <- pnorm(sqrt(kappa/tau)*(tau/mu - 1)) + term_cdf_part
+
+      # Hazard = PDF / Survival
+      lambda_val <- term_pdf / max(1e-9, (1 - term_cdf))
+      if(is.na(lambda_val) || is.infinite(lambda_val)) lambda_val <- 0
+    }
+
+    # 4. Bernoulli Trial (Thinning)
+    if(runif(1) < lambda_val * dt) {
+      spikes <- c(spikes, times[i+1])
+      last_spike_t <- times[i+1]
+    }
+  }
+
+  return(list(time=times, s=s, p=p, spikes=spikes, u=u))
+}
+
+# ------------------------------------------------------------------------------
+# 2. MAIN EXECUTION BLOCK
+# ------------------------------------------------------------------------------
+
+# --- A. Generate Synthetic Data ---
+cat("\n--- 1. Generating Synthetic 'Patient' Data ---\n")
+
+stress_scenario <- function(t) {
+  if(t < 300) return(0)
+  if(t >= 300 & t < 360) return((t-300)/60) # Linear ramp 0->1
+  if(t >= 360 & t < 420) return(1) # 1
+  return(0) # Recovery
+}
 
 set.seed(123)
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(zoo)
+sim_data <- simulate_heart_sde_ig(duration_secs = 720, stress_fn = stress_scenario)
 
-# ---- simulation settings ----
-total_minutes <- 12
-T_sec <- total_minutes * 60   # 720 s
-dt <- 0.1                    # time step (s)
-time <- seq(0, T_sec, by = dt)
-K <- length(time)
+# Extract just the "observed" spike times for the filter
+observed_spikes <- sim_data$spikes
+cat(paste("Generated", length(observed_spikes), "heartbeats.\n"))
 
-# protocol: 5 min rest, 2 min exercise, 5 min rest
-u <- rep(0, K)
-u[time >= 5*60 & time < 7*60] <- 1
-# optional: extend easily for 24h by changing total_minutes
+# --- C. Visualization ---
+cat("\n--- 3. Visualizing Results ---\n")
 
-# ---- true parameters (physiological-ish) ----
-a_p <- 1/2        # PNS decay rate => tau_p = 2 s
-a_s <- 1/60       # SNS decay rate => tau_s = 60 s
-b_ps <- -0.02     # SNS -> PNS coupling (suppression)
-b_sp <- -0.02    # PNS -> SNS coupling (small)
-c_p <- -0.8       # input gain on PNS (exercise reduces PNS)
-c_s <-  1.0       # input gain on SNS (exercise increases SNS)
-sigma_p <- 0.25
-sigma_s <- 0.25
+# Layout: 3 Plots stackedX
+par(mfrow=c(3,1), mar=c(3,4,2,2), oma=c(2,0,0,0))
 
-# observation params
-mu <- 0.0         # baseline log-rate (log beats per second) => exp(0)=1 Hz = 60 bpm
-alpha_p <- 1.0
-alpha_s <- 1.0
-kappa <- -3.0     # simple 1-lag history effect (strong refractoriness)
-# note: history term multiplies previous bin count (0/1 typical for small dt)
+# Plot 1: R-R Intervals (Tachogram)
+rr_intervals <- diff(observed_spikes)
+rr_times <- observed_spikes[-1]
+plot(rr_times, rr_intervals, type='l', pch=19, cex=0.6, col="grey30",
+     ylab="R-R Interval (s)", main="Observed Heart Rate Variability", frame.plot=F,
+     ylim = c(0, 2))
+grid()
 
-# ---- simulate latent SDEs (Euler-Maruyama) ----
-p <- numeric(K); s <- numeric(K)
-p[1] <- 0; s[1] <- 0  # initial states
-for (k in 1:(K-1)) {
-  dp_det <- (-a_p * p[k] + b_ps * s[k] + c_p * u[k]) * dt
-  ds_det <- (-a_s * s[k] + b_sp * p[k] + c_s * u[k]) * dt
-  p[k+1] <- p[k] + dp_det + rnorm(1, 0, sigma_p * sqrt(dt))
-  s[k+1] <- s[k] + ds_det + rnorm(1, 0, sigma_s * sqrt(dt))
-}
+# Plot 2: Parasympathetic Recovery
+plot(sim_data$time, sim_data$p, type='l', col="#0072B2", lwd=1,
+     ylab="Parasympathetic Tone", main="Vagal Tone Estimation",
+     frame.plot=F)
+grid()
 
-# ---- generate counts by Poisson approximation over each dt bin ----
-lambda <- exp(mu + alpha_p * p - alpha_s * s)  # instantaneous rate in beats/sec
-# incorporate 1-lag history: implement sequentially
-y <- integer(K)
-for (k in 1:K) {
-  hist_term <- ifelse(k==1, 0, kappa * y[k-1])
-  rate_k <- exp(mu + alpha_p * p[k] - alpha_s * s[k] + hist_term)
-  # Poisson with mean rate * dt
-  y[k] <- rpois(1, lambda = rate_k * dt)
-  # avoid more than 1 per tiny dt for visualization realism (optional)
-  # if (y[k] > 1) y[k] <- 1
-}
-
-# reconstruct beat times (place counts at bin centers, if count>0 put that many ticks)
-beat_times <- rep(time, times = y)
-
-# ---- compute smoothed HR (bpm) for plotting: moving window counts per 60s -> bpm ----
-# instantaneous rate estimate via moving sum over 5-second window, scaled to bpm
-window_s <- 5       # seconds
-window_bins <- round(window_s / dt)
-counts_ts <- y
-smoothed_rate_bps <- rollapply(counts_ts, width = window_bins, FUN = function(x) sum(x) / (window_s), align="right", fill=NA)
-smoothed_bpm <- smoothed_rate_bps * 60
-
-# package for plotting
-df <- tibble(
-  t = time,
-  p = p,
-  s = s,
-  lambda = lambda,
-  count = y,
-  smoothed_bpm = smoothed_bpm,
-  u = u
-)
-
-plot(smoothed_bpm ~ t, type = "l", df)
-
-# ---- visualization ----
-# 1) Latent states + protocol
-p1 <- ggplot(df, aes(x = t)) +
-  annotate(geom = "rect", xmin = 5*60, xmax = 7*60, ymin = -Inf, ymax = Inf, fill = "orange", alpha = 0.3) +
-  geom_line(aes(y = p, color = "PNS (p)")) +
-  geom_line(aes(y = s, color = "SNS (s)")) +
-  scale_color_manual("", values = c("PNS (p)" = "steelblue", "SNS (s)" = "firebrick")) +
-  labs(x = "Time (s)", y = "Latent state (arb. units)", title = "Simulated latent states (PNS & SNS)\norange = exercise window") +
-  theme_minimal()
-
-# 2) Smoothed HR (bpm) + true instantaneous rate (lambda*60)
-p2 <- ggplot(df, aes(x = t)) +
-  geom_line(aes(y = smoothed_bpm), linewidth = 0.9, na.rm = TRUE) +
-  geom_line(aes(y = lambda * 60), linetype = "dashed", alpha = 0.7) +
-  labs(x = "Time (s)", y = "Heart rate (bpm)", title = "Smoothed HR (window 5s) and true instantaneous HR (dashed)") +
-  theme_minimal()
-
-# 3) raster of beat times + counts
-if (length(beat_times) > 0) {
-  beat_df <- tibble(t = beat_times, id = 1:length(beat_times))
-  p3 <- ggplot() +
-    geom_point(data = beat_df, aes(x = t, y = id %% 50), shape = '|', size = 3) +
-    labs(x = "Time (s)", y = "Beat raster (mod 50)", title = "Simulated beat raster (tick per beat)") +
-    theme_minimal()
-} else {
-  p3 <- ggplot() + ggtitle("No beats simulated (unexpected).")
-}
-
-# show plots
-print(p1)
-print(p2)
-print(p3)
-
-# save plots optionally
-# ggsave("latents.png", p1, width=10, height=4)
-# ggsave("hr.png", p2, width=10, height=3)
-# ggsave("raster.png", p3, width=10, height=2.5)
+# Plot 3: Sympathetic Recovery
+plot(sim_data$time, sim_data$s, type='l', col="#D55E00", lwd=1,
+     ylab="Sympathetic Tone", main="Sympathetic Tone Estimation",
+     frame.plot=F)
+grid()
