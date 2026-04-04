@@ -1,8 +1,13 @@
 ---
 title: "A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability"
 subtitle: "The SDE-Inverse Gaussian Model"
-author: "Matías Castillo-Aguilar"
+author: 
+  - name: "Matías Castillo-Aguilar"
+    affiliation: "Escuela de Medicina, Universidad de Magallanes"
+    orcid: "https://orcid.org/0000-0001-7291-247X"
+bibliography: references.bib
 date: today
+title-block-style: manuscript
 format: 
   html:
     code-fold: true
@@ -10,8 +15,6 @@ format:
     number-sections: true
     theme: cosmo
 ---
-
-For a deep dive into point processes models applied for modeling R-R intervals, please check this [Zero-to-Hero guide](docs/point-process.html)!
 
 # Abstract
 
@@ -23,9 +26,9 @@ Heart rate variability (HRV) has long been used as a noninvasive window into aut
 
 A parallel line of research sought to embed cardiac rhythm in explicit stochastic models. Early integrate-and-fire descriptions of pacemaker activity motivated first-passage-time formulations in which each heartbeat is generated when a stochastic membrane potential reaches threshold. In that context, the inverse-Gaussian distribution arises naturally as the distribution of first-passage times for a drift-diffusion process. This observation provided a physiological bridge between cellular electrophysiology and statistical modeling of inter-beat intervals. Rather than treating RR intervals as realizations of a Gaussian time series, the heartbeat sequence can be viewed as a renewal process with a parametric inter-event distribution grounded in first-passage theory.
 
-This renewal perspective matured with the development of point-process models for HRV. In influential work by Riccardo Barbieri and colleagues, heartbeat times were modeled as a conditional point process with inverse-Gaussian inter-event intervals whose parameters evolved in time. That framework introduced a local likelihood formulation for nonstationary RR data and established a rigorous diagnostic toolset based on the time-rescaling theorem. By transforming event times through the integrated conditional intensity, model adequacy could be assessed via standard uniformity tests, providing a principled alternative to heuristic residual analysis. These contributions repositioned HRV modeling within the broader statistical theory of event processes and made explicit the likelihood structure underlying beat-to-beat variability.
+This renewal perspective matured with the development of point-process models for HRV. In influential work by Riccardo Barbieri and colleagues [@barbieri2005point], heartbeat times were modeled as a conditional point process with inverse-Gaussian inter-event intervals whose parameters evolved in time. That framework introduced a local likelihood formulation for nonstationary RR data and established a rigorous diagnostic toolset based on the time-rescaling theorem. By transforming event times through the integrated conditional intensity, model adequacy could be assessed via standard uniformity tests, providing a principled alternative to heuristic residual analysis. These contributions repositioned HRV modeling within the broader statistical theory of event processes and made explicit the likelihood structure underlying beat-to-beat variability.
 
-Subsequent developments extended the point-process paradigm to accommodate covariates, history dependence, and adaptive filtering. Time-varying parameterizations allowed heart rate to respond dynamically to respiration, blood pressure, or external perturbations, while maintaining the renewal structure of the observation model. These methods improved short-term prediction and enabled real-time tracking of instantaneous heart rate and variability. However, in many implementations, time variation was encoded through deterministic basis expansions or autoregressive updates of scalar parameters, rather than through an explicit stochastic dynamical system representing latent autonomic drives. As a result, although the models were statistically rigorous, their parameters were not always directly interpretable as physiological time constants or interaction gains.
+Subsequent developments extended the point-process paradigm to accommodate covariates, history dependence, and adaptive filtering [@barbieri2006special]. Time-varying parameterizations allowed heart rate to respond dynamically to respiration, blood pressure, or external perturbations, while maintaining the renewal structure of the observation model. These methods improved short-term prediction and enabled real-time tracking of instantaneous heart rate and variability. However, in many implementations, time variation was encoded through deterministic basis expansions or autoregressive updates of scalar parameters, rather than through an explicit stochastic dynamical system representing latent autonomic drives. As a result, although the models were statistically rigorous, their parameters were not always directly interpretable as physiological time constants or interaction gains.
 
 Concurrently, state-space modeling became a central framework in systems physiology. Linear Gaussian state-space models and their nonlinear extensions were used to represent hidden regulatory processes underlying observable signals, including cardiovascular and respiratory dynamics. Stochastic differential equations, particularly the Ornstein-Uhlenbeck (OU) process, became standard tools for modeling mean-reverting physiological fluctuations. The OU process offers analytical tractability and a clear interpretation in terms of decay rates and diffusion intensity, properties that align naturally with concepts of autonomic tone and variability. In many applications, however, state-space models were applied to uniformly sampled signals, and the irregular timing of heartbeats was addressed only after interpolation or resampling.
 
@@ -37,752 +40,977 @@ Within this landscape, the present work positions itself as an explicit synthesi
 
 In doing so, this work contributes to an ongoing effort to move HRV modeling beyond descriptive variability metrics toward mechanistic, testable representations of autonomic control. Its position relative to the existing literature is therefore not that of a new summary index or purely predictive algorithm, but that of a structured generative model built directly on established theoretical foundations in first-passage processes, point-process statistics, and stochastic dynamical systems.
 
-# Latent Autonomic Dynamics
+# Methods
 
-The core of the proposed framework lies in the mathematical formulation of the unobserved physiological drivers that govern cardiac rhythmicity. In standard point process models of heart rate variability (HRV), the conditional intensity function is often modulated by a simple autoregressive structure or a direct function of past events. While statistically tractable, these approaches frequently obscure the distinct biological origins of the observed variability. A more physiologically faithful representation requires explicitly modeling the autonomic nervous system (ANS) not as a static parameter set, but as a dynamic, continuous-time system that evolves independently of the discrete heartbeat events it generates.
+```{r}
+#| label: setup
+#| include: false
 
-We define the latent state of the system, $\mathbf{x}(t)$, as a two-dimensional vector representing the instantaneous activity of the two principal branches of the ANS:
+# ============================================================
+# Model infrastructure — all functions defined here so the
+# document is fully self-contained and portable.
+# ============================================================
+
+# ---- Parameter object ----
+
+make_model_params <- function(
+    a_p = 2.0, a_s = 0.2,
+    sigma_p = 0.30, sigma_s = 0.20,
+    mu_0 = 0.85, kappa = 15.0,
+    c_p = 0.0, c_s = 0.0) {
+  stopifnot(a_p > 0, a_s > 0, a_p > a_s,
+            sigma_p > 0, sigma_s > 0,
+            mu_0 > 0, kappa > 0)
+  list(
+    structural = list(a_p = a_p, a_s = a_s,
+                      b_ps = 0.0, b_sp = 0.0,
+                      k_par = 1.0, k_sym = 1.0),
+    free       = list(sigma_p = sigma_p, sigma_s = sigma_s,
+                      mu_0 = mu_0, kappa = kappa,
+                      c_p = c_p, c_s = c_s)
+  )
+}
+
+# ---- Log link ----
+
+compute_mu    <- function(p, s, mu_0) mu_0 * exp(p - s)
+compute_delta <- function(p, s) s - p
+
+# ---- Exact OU transition kernel ----
+
+ou_exact_step <- function(x_now, a, sigma, c_gain = 0, u_now = 0, dt) {
+  e_adt     <- exp(-a * dt)
+  mean_next <- x_now * e_adt + (c_gain * u_now / a) * (-expm1(-a * dt))
+  var_next  <- (sigma^2 / (2 * a)) * (-expm1(-2 * a * dt))
+  mean_next + sqrt(var_next) * rnorm(1)
+}
+
+ou_log_transition_density <- function(x_next, x_now, a, sigma,
+                                      c_gain = 0, u_now = 0, dt) {
+  e_adt     <- exp(-a * dt)
+  mean_next <- x_now * e_adt + (c_gain * u_now / a) * (-expm1(-a * dt))
+  var_next  <- (sigma^2 / (2 * a)) * (-expm1(-2 * a * dt))
+  dnorm(x_next, mean = mean_next, sd = sqrt(var_next), log = TRUE)
+}
+
+# ---- Log-space IG computations (Mächler 2012) ----
+
+log1mexp <- function(x) {
+  stopifnot(all(x < 0))
+  ifelse(x >= log(0.5), log(-expm1(x)), log1p(-exp(x)))
+}
+
+log_ig_pdf <- function(tau, mu, kappa)
+  0.5 * log(kappa) - 0.5 * log(2 * pi * tau^3) -
+  kappa * (tau - mu)^2 / (2 * mu^2 * tau)
+
+log_ig_survival <- function(tau, mu, kappa) {
+  sq   <- sqrt(kappa / tau)
+  z1   <- sq * (tau / mu - 1)
+  z2   <- sq * (tau / mu + 1)
+  logA <- pnorm(-z1, log.p = TRUE)
+  logB <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)
+  d    <- logB - logA
+  if (is.nan(d) || d >= 0) return(-Inf)
+  logA + log1mexp(d)
+}
+
+log_ig_hazard <- function(tau, mu, kappa) {
+  if (tau < 1e-9) return(-Inf)
+  log_ig_pdf(tau, mu, kappa) - log_ig_survival(tau, mu, kappa)
+}
+
+ig_hazard <- function(tau, mu, kappa) exp(log_ig_hazard(tau, mu, kappa))
+
+ig_hazard_peak <- function(mu, kappa) {
+  opt <- optimize(function(tau) log_ig_hazard(tau, mu, kappa),
+                  interval = c(1e-3, 3 * mu), maximum = TRUE, tol = 1e-6)
+  list(tau_peak = opt$maximum, lambda_peak = exp(opt$objective))
+}
+
+ig_hazard_bound <- function(mu_min, kappa, safety_factor = 1.1)
+  ig_hazard_peak(mu_min, kappa)$lambda_peak * safety_factor
+
+# ---- Survival-ratio event generation ----
+
+p_fire_survival_ratio <- function(tau, mu, kappa, dt) {
+  if (tau < 1e-9) return(0)
+  ls0 <- log_ig_survival(tau,      mu, kappa)
+  ls1 <- log_ig_survival(tau + dt, mu, kappa)
+  if (!is.finite(ls0)) return(0)
+  min(max(-expm1(ls1 - ls0), 0), 1)
+}
+
+lewis_ogata_thinning <- function(time_grid, mu_grid, kappa, lambda_star) {
+  T_end   <- tail(time_grid, 1)
+  spikes  <- numeric(0)
+  t_cur   <- time_grid[1]
+  t_last  <- -Inf
+  mu_fn   <- approxfun(time_grid, mu_grid, rule = 2)
+  while (t_cur < T_end) {
+    t_prop  <- t_cur + rexp(1, lambda_star)
+    if (t_prop >= T_end) break
+    tau_p   <- t_prop - t_last
+    lam_p   <- ig_hazard(tau_p, mu_fn(t_prop), kappa)
+    if (runif(1) < lam_p / lambda_star) {
+      spikes <- c(spikes, t_prop); t_last <- t_prop
+    }
+    t_cur <- t_prop
+  }
+  spikes
+}
+
+# ---- Observation model interface ----
+
+make_rr_obs_model <- function() {
+  list(
+    type            = "point_process_ig",
+    required_states = c("p", "s"),
+    description     = "IG point process; identifiable qty: Delta(t)=s(t)-p(t)",
+    log_intensity   = function(tau, p, s, fp) {
+      if (tau < 1e-3) return(-Inf)
+      log_ig_hazard(tau, compute_mu(p, s, fp$mu_0), fp$kappa)
+    }
+  )
+}
+
+# ---- Main simulation ----
+
+sim_sde_ig <- function(duration, dt, params,
+                       input_fn   = function(t) 0,
+                       obs_models = list(make_rr_obs_model()),
+                       seed       = NULL) {
+  if (!is.null(seed)) set.seed(seed)
+  sp <- params$structural; fp <- params$free
+  n  <- ceiling(duration / dt)
+  tg <- seq(0, by = dt, length.out = n)
+  p  <- numeric(n); s <- numeric(n)
+  mu_v <- numeric(n); dlt <- numeric(n); loglam <- numeric(n)
+  spikes <- numeric(0); last_t <- 0
+  for (i in seq_len(n - 1)) {
+    u <- input_fn(tg[i])
+    p[i+1] <- ou_exact_step(p[i], sp$a_p, fp$sigma_p, fp$c_p, u, dt)
+    s[i+1] <- ou_exact_step(s[i], sp$a_s, fp$sigma_s, fp$c_s, u, dt)
+    mu_v[i+1] <- compute_mu(p[i+1], s[i+1], fp$mu_0)
+    dlt[i+1]  <- compute_delta(p[i+1], s[i+1])
+    tau       <- tg[i+1] - last_t
+    loglam[i+1] <- obs_models[[1]]$log_intensity(tau, p[i+1], s[i+1], fp)
+    pf <- p_fire_survival_ratio(tau, mu_v[i+1], fp$kappa, dt)
+    if (runif(1) < pf) { spikes <- c(spikes, tg[i+1]); last_t <- tg[i+1] }
+  }
+  list(time = tg, p = p, s = s, delta = dlt,
+       mu = mu_v, lambda = exp(loglam), log_lambda = loglam,
+       spikes = spikes, params = params)
+}
+
+# ---- Time-rescaling diagnostics ----
+
+compute_time_rescaling <- function(res) {
+  lam <- res$lambda; tg <- res$time; sp <- res$spikes
+  dt  <- tg[2] - tg[1]
+  lm  <- (lam[-1] + lam[-length(lam)]) / 2
+  cml <- c(0, cumsum(lm * dt))
+  n   <- length(sp)
+  if (n < 2) return(numeric(0))
+  vapply(seq_len(n - 1), function(k) {
+    i0 <- which.min(abs(tg - sp[k]))
+    i1 <- which.min(abs(tg - sp[k + 1]))
+    if (i1 <= i0) 0 else cml[i1] - cml[i0]
+  }, numeric(1))
+}
+
+# ---- Numerical comparison utilities ----
+
+study_firing_bias <- function(mu = 0.85, kappa = 12, dt = 0.005,
+                              tau_range = c(0.05, 2.5)) {
+  tau_v  <- seq(tau_range[1], tau_range[2], length.out = 600)
+  p_surv <- vapply(tau_v, p_fire_survival_ratio, numeric(1),
+                   mu = mu, kappa = kappa, dt = dt)
+  lam_v  <- vapply(tau_v, ig_hazard, numeric(1), mu = mu, kappa = kappa)
+  p_bern <- pmin(lam_v * dt, 1)
+  rel_e  <- ifelse(p_surv > 1e-10, (p_bern - p_surv) / p_surv * 100, 0)
+  data.frame(tau = tau_v, p_survival = p_surv, p_bernoulli = p_bern,
+             lambda = lam_v, rel_error_pct = rel_e)
+}
+
+# ---- Shared simulation parameters ----
+
+PARAMS <- make_model_params(
+  a_p = 2.0, a_s = 0.2,
+  sigma_p = 0.25, sigma_s = 0.20,
+  mu_0 = 0.85, kappa = 12.0,
+  c_p = -0.8, c_s = 0.5
+)
+
+INPUT_FN <- function(t) as.numeric(t >= 300 & t <= 420)
+
+set.seed(2026)
+RES <- sim_sde_ig(720, 0.005, PARAMS, INPUT_FN)
+```
+
+## Latent Autonomic Dynamics
+
+A fundamental constraint governs any state-space model driven by a single scalar observation stream: the data can identify only the **projection** of the latent state onto the observation space, not the full state vector. For the two-branch autonomic system defined here, the observable scalar process is the net autonomic drive
 
 $$
-\mathbf{x}(t) = \begin{bmatrix} p(t) \\ s(t) \end{bmatrix}
+\Delta(t) \;=\; s(t) \;-\; p(t),
 $$
 
-Here, $p(t)$ denotes the parasympathetic (vagal) tone, and $s(t)$ denotes the sympathetic tone. These state variables are dimensionless quantities representing the deviation of autonomic activity from a homeostatic baseline. Unlike discrete-time models that update state variables only upon the occurrence of a heartbeat (an approach that conflates the observation process with the underlying dynamics) we model $p(t)$ and $s(t)$ as continuous stochastic processes. This separation of timescales is critical: the ANS operates continuously, integrating internal and external stimuli, whereas the heartbeat is merely a discrete sampling of this continuous control signal.
+which enters the mean RR interval through the log link established in Section 4. The individual branches $p(t)$ and $s(t)$ are not separately identified from RR data alone; only their difference is. This is not a limitation of the estimation method but a structural property of the model: any additive constant shared by $p(t)$ and $s(t)$ cancels in $\Delta(t)$ and leaves the likelihood invariant.
 
-## The Coupled Stochastic Differential Equations
+An additional identifiability constraint arises from the observation gains. The original formulation contained free sensitivity coefficients $k_\text{par}$ and $k_\text{sym}$ that scaled the contribution of each branch to the mean interval. Because the data identifies only $\Delta(t)$, the gains and the diffusion amplitudes $\sigma_p$, $\sigma_s$ share a common scale: multiplying $k_\text{sym}$ by $\alpha$ and dividing $s(t)$ and $\sigma_s$ by $\alpha$ leaves the likelihood unchanged for any $\alpha > 0$. This scale aliasing is resolved by normalizing $k_\text{par} = k_\text{sym} = 1$, absorbing the effective scale into $\sigma_p$ and $\sigma_s$. These are then interpretable as the amplitudes of autonomic noise in units directly linked to the log mean interval.
 
-To capture the time-varying nature of autonomic control, the evolution of the state vector $\mathbf{x}(t)$ is governed by a system of coupled linear stochastic differential equations (SDEs). This formulation provides a rigorous mechanism to encode the known physiological properties of the ANS, specifically the distinct temporal dynamics of vagal and sympathetic signaling and their complex interaction.
+The resulting net drive $\Delta(t) = s(t) - p(t)$ is, under the constraints imposed here (Section 3.2), a linear combination of two independent Ornstein-Uhlenbeck processes. Its spectral density function has two poles: one in the low-frequency (LF) band determined by $a_s$, and one in the high-frequency (HF) band determined by $a_p$. This is precisely the continuous-time ARMA(2,1) [CARMA(2,1)] spectral structure that a single RR stream can identify. Its parameters are the LF and HF power amplitudes — corresponding to $\sigma_s^2/(2a_s)$ and $\sigma_p^2/(2a_p)$ respectively — together with the baseline mean interval $\mu_0$ and the shape parameter $\kappa$.
 
-The system is defined by the following matrix differential equation:
+###  Structural and Free Parameter Decomposition
+
+A critical distinction governs inference. The **spectral pole locations** — the frequencies of the LF and HF oscillations — are determined by the decay rates $a_p$ and $a_s$. These quantities are not learned from RR data: the vagal time constant ($\tau_p = 1/a_p \approx 0.3$–$0.7$ s) is set by the kinetics of acetylcholine binding at muscarinic receptors [@berger1989], and the sympathetic time constant ($\tau_s = 1/a_s \approx 5$–$20$ s) is set by the second-messenger cascade underlying norepinephrine action [@malliani1991]. Treating them as free parameters would introduce a second, empirically unresolvable aliasing: the RR series identifies only the product $\sigma_p^2/(2a_p)$ (the vagal spectral area), not $\sigma_p$ and $a_p$ individually.
+
+The parameter set is therefore partitioned as follows.
+
+```{r}
+#| label: tbl-params
+#| tbl-cap: "Model parameter taxonomy. Structural parameters are fixed by the neuroscience literature and are not estimated from RR data. Free parameters are identifiable from a single RR interval stream under the constraints stated in the text."
+#| echo: false
+
+param_table <- data.frame(
+  Parameter   = c("$a_p$", "$a_s$", "$b_{ps},\\, b_{sp}$",
+                  "$k_\\text{par},\\, k_\\text{sym}$",
+                  "$\\sigma_p$", "$\\sigma_s$",
+                  "$\\mu_0$", "$\\kappa$",
+                  "$c_p,\\, c_s$"),
+  Class       = c("Structural", "Structural", "Structural", "Structural",
+                  "Free", "Free", "Free", "Free", "Free"),
+  Value       = c("2.0 Hz", "0.2 Hz",
+                  "0 (fixed)", "1 (fixed)",
+                  "Estimated", "Estimated",
+                  "Estimated", "Estimated",
+                  "Estimated or 0"),
+  Interpretation = c(
+    "Vagal decay rate; $\\tau_p = 0.5$ s",
+    "Sympathetic decay rate; $\\tau_s = 5$ s",
+    "Cross-branch coupling (zero for single-stream identifiability)",
+    "Observation gains (normalized; scale absorbed into $\\sigma$)",
+    "Vagal noise amplitude $\\to$ HF spectral power",
+    "Sympathetic noise amplitude $\\to$ LF spectral power",
+    "Baseline mean RR interval at autonomic neutrality",
+    "IG shape; controls interval regularity",
+    "Branch sensitivities to exogenous input $u(t)$"
+  )
+)
+
+knitr::kable(param_table, escape = FALSE,
+             col.names = c("Parameter", "Class", "Value / constraint",
+                           "Physiological interpretation"))
+```
+
+###  The Net Autonomic Drive
+
+The quantity directly estimated from the RR series is $\Delta(t) = s(t) - p(t)$. Its dynamics follow from the two uncoupled OU processes (Section 3.2):
 
 $$
-d\mathbf{x}(t) = \mathbf{A} \mathbf{x}(t) dt + \mathbf{C} u(t) dt + \mathbf{\Sigma} d\mathbf{W}(t)
+d\Delta(t) \;=\; ds(t) - dp(t) \;=\;
+\bigl[-a_s s(t) + c_s u(t)\bigr]dt + \sigma_s\,dW_s
+-\bigl[-a_p p(t) + c_p u(t)\bigr]dt - \sigma_p\,dW_p.
 $$
 
-Expanding this into its component scalar equations reveals the specific structural dependencies:
+Because $a_p \neq a_s$, $\Delta(t)$ is not itself an OU process but a sum of two OU processes with distinct time constants. Its spectral density is
+
+$$
+S_\Delta(f) \;=\; \frac{\sigma_s^2/(2\pi)}{a_s^2 + (2\pi f)^2}
+             \;+\; \frac{\sigma_p^2/(2\pi)}{a_p^2 + (2\pi f)^2},
+$$
+
+a two-Lorentzian form with poles at $f_\text{LF} = a_s/(2\pi)$ and $f_\text{HF} = a_p/(2\pi)$. This spectrum is identifiable from the second-order properties of the RR interval series. The amplitude of each Lorentzian — determined by $\sigma_s^2/a_s$ and $\sigma_p^2/a_p$ — corresponds to the spectral area in each frequency band, linking the model parameters directly to classical HRV spectral indices.
+
+##  The Constrained Stochastic Differential Equations
+
+The autonomic state vector $\mathbf{x}(t) = [p(t),\, s(t)]^\top$ evolves according to a system of coupled linear SDEs. For inference from a single RR stream, the cross-branch coupling terms $b_{ps}$ and $b_{sp}$ are fixed at zero. Their identification requires a second independent observation stream — such as a simultaneous respiration signal, which pins the vagal component through the respiratory sinus arrhythmia mechanism, or continuous blood pressure, which provides an independent measurement of the sympatho-vagal balance through baroreflex dynamics (Section 6, extensibility). The constrained system is:
 
 $$
 \begin{aligned}
-dp(t) &= \left( -a_{p}p(t) + b_{ps}s(t) + c_{p}u(t) \right) dt + \sigma_{p}dW_{p}(t) \\
-ds(t) &= \left( -a_{s}s(t) + b_{sp}p(t) + c_{s}u(t) \right) dt + \sigma_{s}dW_{s}(t)
+dp(t) &= \bigl[-a_p\, p(t) + c_p\, u(t)\bigr]\,dt + \sigma_p\,dW_p(t) \\
+ds(t) &= \bigl[-a_s\, s(t) + c_s\, u(t)\bigr]\,dt + \sigma_s\,dW_s(t)
 \end{aligned}
 $$
 
-### Decay Kinetics and Time Constants
+where $W_p$ and $W_s$ are independent standard Wiener processes. Each branch is an Ornstein-Uhlenbeck process: mean-reverting to the homeostatic baseline (or to the input-driven equilibrium when $u(t) \neq 0$), with a time constant and noise amplitude set by its respective parameters. The structural parameters $a_p$ and $a_s$ are fixed at physiologically calibrated values; only $\sigma_p$, $\sigma_s$, $\mu_0$, $\kappa$, and when an external input is present, $c_p$ and $c_s$, are estimated from data.
 
-The diagonal elements of the drift matrix, $-a_p$ and $-a_s$, represent the rate of decay or return-to-baseline for the parasympathetic and sympathetic branches, respectively. These parameters are not arbitrary; they encode the fundamental biophysics of neurotransmission at the sinoatrial node. The parasympathetic response is mediated primarily by the release of acetylcholine (ACh), which binds to muscarinic receptors and directly activates acetylcholine-gated potassium channels ($I_{K,ACh}$). This pathway is remarkably fast, with a latency of roughly 200 ms and a rapid washout, allowing for beat-to-beat modulation of the heart rate. Consequently, the parameter $a_p$ is assigned a large value (typically $a_p > 1.0$), ensuring that perturbations to $p(t)$ dissipate quickly. This mathematical feature is responsible for the high-frequency (HF) component of HRV, often associated with respiratory sinus arrhythmia (RSA).
+###  Vagal Kinetics and the HF Band
 
-In contrast, the sympathetic response is mediated by norepinephrine (NE) binding to beta-adrenergic receptors. This binding initiates a complex second-messenger cascade involving cyclic AMP (cAMP) and protein kinase A (PKA) to modulate calcium and funny currents ($I_f$). This metabolic pathway introduces significant latency and a prolonged duration of action. Accordingly, the parameter $a_s$ is assigned a small value (typically $a_s < 0.3$), resulting in a "sluggish" system state that integrates inputs over a longer horizon. This slower dynamic corresponds to the low-frequency (LF) component of HRV, reflecting the damped, inertial nature of sympathetic regulation.
-
-The distinct time constants of the two branches can be visualized by examining their impulse response. The code below simulates the system's reaction to a momentary "spike" of input. The parasympathetic state decays rapidly, resetting almost immediately, whereas the sympathetic state carries a "memory" of the event, decaying slowly over time.
+The parasympathetic state $p(t)$, governed by $a_p = 2.0$ Hz (time constant $\tau_p = 0.5$ s), acts as a high-pass filter on the Wiener process noise. Its impulse response decays within approximately $2$–$3$ s. This rapid recovery allows beat-to-beat vagal modulation and is responsible for the spectral power in the HF band ($0.15$–$0.4$ Hz), classically associated with respiratory sinus arrhythmia [@task1996].
 
 ```{r}
 #| label: fig-impulse-response
-#| fig-cap: "Impulse Response Function. A theoretical unit impulse is applied at t=1s. The Parasympathetic branch (blue) dissipates the energy within seconds, while the Sympathetic branch (red) sustains the activation, illustrating its integrative nature."
+#| fig-cap: "Theoretical impulse response of the vagal (blue) and sympathetic (red) branches. A unit impulse at $t = 1$ s illustrates the order-of-magnitude difference in recovery time. The vagal response dissipates within seconds; the sympathetic response persists for tens of seconds."
+#| fig-height: 3.8
 
-t_imp <- seq(0, 30, by=0.1)
-# Impulse occurring at t=1
-impulse_p <- ifelse(t_imp >= 1, exp(-2.0 * (t_imp - 1)), 0) # a_p = 2.0
-impulse_s <- ifelse(t_imp >= 1, exp(-0.2 * (t_imp - 1)), 0) # a_s = 0.2
+t_imp <- seq(0, 40, by = 0.05)
+imp_p <- ifelse(t_imp >= 1, exp(-2.0 * (t_imp - 1)), 0)
+imp_s <- ifelse(t_imp >= 1, exp(-0.2 * (t_imp - 1)), 0)
 
-plot(t_imp, impulse_p, type='l', col="#0072B2", lwd=2, 
-     xlab="Time (s)", ylab="Response Magnitude", main="Autonomic Decay Kinetics", frame.plot=FALSE)
-lines(t_imp, impulse_s, col="#D55E00", lwd=2)
-abline(v=1, lty=2, col="grey")
-text(1.5, 0.8, "Impulse", col="grey")
-legend("topright", legend=c("Parasympathetic (Fast)", "Sympathetic (Slow)"), 
-       col=c("#0072B2", "#D55E00"), lwd=2, bty="n")
+par(mar = c(4, 4.5, 1.5, 1))
+plot(t_imp, imp_p, type = "l", col = "#0072B2", lwd = 2.5,
+     xlab = "Time (s)", ylab = "Response magnitude",
+     frame.plot = FALSE, ylim = c(0, 1.05))
+lines(t_imp, imp_s, col = "#D55E00", lwd = 2.5)
+abline(v = 1, lty = 2, col = "gray60")
+legend("topright",
+       legend = c(
+         expression("Parasympathetic" ~~ (a[p] == 2.0 ~ Hz ~ ", " ~ tau[p] == 0.5 ~ s)),
+         expression("Sympathetic"     ~~ (a[s] == 0.2 ~ Hz ~ ", " ~ tau[s] == 5.0 ~ s))
+       ),
+       col = c("#0072B2", "#D55E00"), lwd = 2.5, bty = "n", cex = 0.85)
+grid(col = "lightgray", lty = 1)
 ```
 
+###  Sympathetic Inertia and the LF Band
 
-### Autonomic Coupling and Interaction
+The sympathetic state $s(t)$, governed by $a_s = 0.2$ Hz (time constant $\tau_s = 5$ s), acts as a low-pass filter. Its slow decay integrates inputs over a prolonged window, producing the smooth, trending components of autonomic regulation. The emergent spectral power is concentrated in the LF band ($0.04$–$0.15$ Hz) without any explicit oscillatory forcing, arising purely from the interaction of OU dynamics and the Wiener process.
 
-A critical limitation of many HRV models is the assumption of independence between the two autonomic branches. Physiology dictates that the sympathetic and parasympathetic systems are inextricably linked, often acting in concert (co-activation) or in opposition (reciprocal inhibition). The off-diagonal terms $b_{ps}$ and $b_{sp}$ in our SDE formulation explicitly model this cross-branch coupling.
+##  Visualization of the Latent State Trajectories
 
-The term $b_{ps}s(t)$ represents the influence of sympathetic activity on the parasympathetic state, while $b_{sp}p(t)$ represents the reverse. For instance, a negative value for $b_{ps}$ would model the phenomenon of "accentuated antagonism", where high levels of sympathetic tone can inhibit vagal outflow presynaptically. Conversely, positive coupling coefficients could simulate conditions of autonomic co-activation, often seen during intense physical stress or specific pathological states. By retaining these coupling terms, the model moves beyond a simple linear superposition of effects and allows for the emergence of non-linear control dynamics characteristic of complex biological systems.
-
-To understand how the branches interact, we can visualize the "phase space" of the system. This plot shows how the state vector $[p(t), s(t)]$ evolves when coupling terms are introduced. Specifically, we simulate 'accentuated antagonism' ($b_{ps} < 0$), where high sympathetic tone actively suppresses parasympathetic activity, creating a curved trajectory rather than a straight line.
-
-```{r}
-#| label: fig-phase-portrait
-#| fig-cap: "Phase Portrait of Autonomic Coupling. The arrows indicate the flow of the system state. Note how the vector field is distorted by the coupling term b_ps = -0.5, showing that high Sympathetic values (x-axis) force the Parasympathetic values (y-axis) to decrease."
-
-# Grid of states
-p_seq <- seq(-3, 3, length.out=15)
-s_seq <- seq(-3, 3, length.out=15)
-grid <- expand.grid(p=p_seq, s=s_seq)
-
-# Dynamics with Coupling: dp/dt includes -0.5 * s
-dp <- -2.0 * grid$p - 0.5 * grid$s 
-ds <- -0.2 * grid$s 
-
-plot(grid$s, grid$p, type="n", xlab="Sympathetic State s(t)", ylab="Parasympathetic State p(t)",
-     main="Coupled Phase Space (Accentuated Antagonism)", frame.plot=FALSE)
-shape::Arrows(grid$s, grid$p, grid$s + ds*0.1, grid$p + dp*0.1, arr.length = 0.0, col="grey", arr.type = "triangle", arr.width = 0.1)
-points(0,0, pch=19, col="black") # Attractor at origin
-```
-
-### Exogenous Forcing and Stochasticity
-
-The system is driven by two distinct types of inputs: deterministic exogenous forcing and stochastic intrinsic noise. The term $u(t)$ represents a known external stimulus, such as physical workload, respiration, or a pharmacological intervention. The sensitivity coefficients $c_p$ and $c_s$ determine the magnitude and direction of the response of each branch to this input. For example, in a model of exercise physiology, a positive step function in $u(t)$ (representing the onset of running) would typically be associated with a positive $c_s$ (sympathetic activation) and a negative $c_p$ (parasympathetic withdrawal). This directed forcing allows the model to reproduce the classic "vagal withdrawal" followed by "sympathetic surge" observed at the onset of exercise.
-
-The stochastic terms $\sigma_{p}dW_{p}(t)$ and $\sigma_{s}dW_{s}(t)$ introduce biological variability into the system. The increments $dW$ represent independent Wiener processes (Brownian motion), and the diffusion coefficients $\sigma$ scale the intensity of this noise. This "process noise" more than being merely a measurement error, it reflects the aggregate effect of unmodeled physiological inputs, such as thermal fluctuations in ion channels, irregular neural firing rates, and higher-order cortical inputs to the brainstem. By driving the differential equations with Brownian noise, the resulting state trajectories $p(t)$ and $s(t)$ become Ornstein-Uhlenbeck (OU) processes. The OU process is particularly well-suited for physiological modeling because it is mean-reverting, ensuring that autonomic tone does not drift strictly randomly (like a pure random walk) but fluctuates boundedly around a homeostatic set point defined by the input $u(t)$.
-
-## Physiological Interpretation of the State Trajectories
-
-The solution to these coupled SDEs yields continuous trajectories that offer a mechanistic explanation for the spectral characteristics of heart rate. The parasympathetic state $p(t)$, driven by a large decay rate $a_p$, acts as a high-pass filter for the stochastic noise $\sigma_p dW_p$. It tracks rapid fluctuations and noise closely, generating the "grassy", high-frequency variability seen in time-series plots of vagal tone. The sympathetic state $s(t)$, with its small decay rate $a_s$, acts as a low-pass filter. It smooths out the rapid fluctuations of the noise $\sigma_s dW_s$, resulting in slow, rolling trends that persist over tens of seconds or minutes.
-
-This frequency separation (which emerges naturally from the time constants of the SDEs rather than being imposed by ad-hoc filtering) is a key strength of this framework. It implies that even if the driving noise inputs $dW_p$ and $dW_s$ are both white (flat spectrum), the resulting physiological states will naturally exhibit the characteristic $1/f$ scaling or distinct spectral peaks (LF and HF) observed in real human HRV data. Furthermore, because these states modulate the parameters of the observation model continuously, the resulting point process is doubly stochastic (a Cox process), capable of producing the clustering and over-dispersion typical of inter-beat interval series.
-
-By grounding the latent dynamics in the biophysics of neural regulation, this SDE formulation provides a robust scaffold. It allows us to dissociate the source of variability (the neural signal) from the mechanism of event generation (the sinoatrial node integration), a distinction that is crucial for the accurate inverse modeling of physiological states from observed R-R intervals.
-
-We visualize the behavior of these coupled states below. The simulation demonstrates how the two branches respond differently to the same stochastic perturbations due to their distinct time constants.
+The following simulation illustrates the distinct spectral signatures of the two autonomous branches and the net drive $\Delta(t) = s(t) - p(t)$ that is directly identified from RR data.
 
 ```{r}
 #| label: fig-latent-sde
-#| fig-cap: "Trajectory of Latent Autonomic States. The blue trace (Parasympathetic) exhibits high-frequency variability due to its fast decay rate, while the red trace (Sympathetic) shows smoother, low-frequency trends. This frequency separation is intrinsic to the SDE formulation."
+#| fig-cap: "Simulated trajectories of the latent autonomic states under baseline conditions ($u(t) = 0$, all free parameters at their reference values). **Top:** Parasympathetic state $p(t)$ — high-frequency texture driven by the fast decay rate. **Middle:** Sympathetic state $s(t)$ — smooth, slow-trending trajectory. **Bottom:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$ — the quantity directly identified by the RR interval series. Positive values indicate sympathetic dominance; negative values indicate vagal dominance."
+#| fig-height: 6
 
-sim_latent_sde <- function(duration = 60, dt = 0.01) {
-  n_steps <- duration / dt
-  times <- seq(0, duration, length.out = n_steps)
-  
-  # Parameters defining the timescales
-  a_p <- 2.5   # Fast vagal decay
-  a_s <- 0.2   # Slow sympathetic decay
-  sigma_p <- 1.0
-  sigma_s <- 0.5
-  
-  # Initialization
-  p <- numeric(n_steps)
-  s <- numeric(n_steps)
-  
-  set.seed(42)
-  # Euler-Maruyama Integration
-  for(i in 1:(n_steps-1)) {
-    # Generate Wiener increments
-    dw_p <- rnorm(1, sd = sqrt(dt))
-    dw_s <- rnorm(1, sd = sqrt(dt))
-    
-    # Update equations (uncoupled for clear visualization of timescales)
-    dp <- -a_p * p[i] * dt + sigma_p * dw_p
-    ds <- -a_s * s[i] * dt + sigma_s * dw_s
-    
-    p[i+1] <- p[i] + dp
-    s[i+1] <- s[i] + ds
-  }
+p0 <- make_model_params(a_p = 2.0, a_s = 0.2, sigma_p = 0.25,
+                        sigma_s = 0.20, mu_0 = 0.85, kappa = 12)
+set.seed(101)
+r0 <- sim_sde_ig(120, 0.005, p0)
 
-  # Visualization
-  par(mfrow = c(2, 1), mar = c(3, 5, 2, 2))
-  plot(times, p, type = 'l', col = "#0072B2", lwd = 1,
-       ylab = "Parasympathetic p(t)", xaxt = 'n', frame.plot = FALSE,
-       main = "Latent Stochastic Processes")
-  grid(col = "lightgray")
-  
-  plot(times, s, type = 'l', col = "#D55E00", lwd = 2,
-       ylab = "Sympathetic s(t)", xlab = "Time (s)", frame.plot = FALSE)
-  grid(col = "lightgray")
-}
+layout(matrix(1:3, 3, 1))
+par(mar = c(1.5, 5, 1, 1.5), oma = c(3, 0, 0, 0))
 
-sim_latent_sde()
+plot(r0$time, r0$p, type = "l", col = "#0072B2", lwd = 1.2,
+     ylab = "p(t)", xaxt = "n", frame.plot = FALSE)
+abline(h = 0, lty = 2, col = "gray70"); grid(col = "lightgray", lty = 1)
 
+plot(r0$time, r0$s, type = "l", col = "#D55E00", lwd = 2,
+     ylab = "s(t)", xaxt = "n", frame.plot = FALSE)
+abline(h = 0, lty = 2, col = "gray70"); grid(col = "lightgray", lty = 1)
+
+plot(r0$time, r0$delta, type = "l", col = "#2C5F2E", lwd = 1.8,
+     ylab = expression(Delta(t) == s(t) - p(t)),
+     xlab = "Time (s)", frame.plot = FALSE)
+abline(h = 0, lty = 2, col = "gray70"); grid(col = "lightgray", lty = 1)
+mtext("Time (s)", side = 1, outer = TRUE, line = 1.5)
 ```
 
-# The Inverse Gaussian Observation Model
 
-The transition from continuous latent autonomic states to discrete cardiac event times requires a probabilistic mapping that is both statistically sound and physiologically grounded. While the coupled SDEs describe the "driver" of the system (the fluctuating neural tone), the "clock" that actually triggers each heartbeat is the sinoatrial (SA) node. To mathematically represent this, we employ the Inverse Gaussian distribution. This choice is the unique solution to the first-passage time problem for a Wiener process with positive drift, which is the canonical stochastic model for membrane depolarization.
+## The Inverse Gaussian Observation Model
 
-## Biophysical Rationale: The Integrate-and-Fire Mechanism
+###  Biophysical Rationale: The Integrate-and-Fire Mechanism
 
-In the biological oscillator of the SA node, the membrane potential does not remain static between beats. Instead, it undergoes a gradual diastolic depolarization, rising from a hyperpolarized state until it hits a voltage threshold, at which point an action potential is fired and the potential resets.
+The mapping from continuous latent autonomic states to discrete heartbeat times is grounded in the biophysics of the sinoatrial node. During diastole, the pacemaker membrane potential rises from a hyperpolarized resting level under the influence of a net inward depolarizing current. If this potential trajectory is idealized as a Wiener process with positive drift, the time to reach the firing threshold follows an Inverse Gaussian (IG) distribution — the canonical first-passage time distribution for Brownian motion with drift [@chhikara1988]. This provides a direct structural link between statistical modeling of inter-beat intervals and cardiac cellular electrophysiology, distinguishing the present framework from Poisson or Gaussian observation models that lack this mechanistic grounding.
 
-If we idealize this membrane potential trajectory as a random walk (Brownian motion) superimposed on a linear upward drift (the depolarization current), the time interval between two successive threshold crossings follows an Inverse Gaussian distribution. This provides a direct structural link between the statistical distribution of R-R intervals and the underlying electrophysiology. Unlike Poisson models, which imply a "memoryless" generation process where the probability of an event is independent of the time since the last event, the Inverse Gaussian model explicitly accounts for the history of the accumulation process.
+### The Log-Link Mean Interval
 
-To make this abstraction concrete, the following simulation visualizes the "race to threshold." It displays multiple realizations of the stochastic membrane potential trajectories. Note how increased drift (simulating sympathetic drive) causes the paths to hit the threshold earlier, while decreased drift (parasympathetic) delays the crossing.
+The time-varying mean interval $\mu(t)$ connects the latent autonomic states to the location parameter of the IG distribution. We define this link as
+
+$$
+\mu(t) \;=\; \mu_0 \cdot \exp\!\bigl(p(t) - s(t)\bigr) \;=\; \mu_0 \cdot \exp\!\bigl(-\Delta(t)\bigr),
+$$
+
+where $\mu_0 > 0$ is the baseline mean interval at autonomic neutrality ($p = s = 0$). This **log link** replaces the linear formulation used in earlier implementations and offers three essential properties.
+
+First, $\mu(t) > 0$ for all state values without exception, by construction. No clipping, flooring, or soft constraint is required. The linear link $\mu(t) = 1/(\rho_0 + k_\text{sym}s - k_\text{par}p)$ can produce negative or undefined values when autonomic state fluctuations push the rate below zero, requiring ad hoc correction that biases the likelihood.
+
+Second, the log link is the **canonical link for positive continuous outcomes** and encodes the physiologically appropriate multiplicative structure of autonomic modulation. Autonomic tone acts multiplicatively on the depolarization drift of the SA node [@berger1990]; a unit increase in sympathetic tone does not add a fixed increment to heart rate but scales it by a constant factor. The log link captures this precisely: $\mu(t) = \mu_0 e^{-\Delta(t)}$, so each unit of $\Delta(t)$ scales the mean interval by $e^{-1} \approx 0.37$.
+
+Third, the log link renders $\log\mu(t) = \log\mu_0 - \Delta(t)$ a linear function of the latent state. This is the observation equation for a Gaussian state-space model, which simplifies the linearization step in the extended Kalman filter (Phase 4) and makes the connection to existing state-space HRV methods transparent.
 
 ```{r}
-#| label: fig-first-passage
-#| fig-cap: "Biophysical Model of the Sinoatrial Node. The grey lines represent individual trajectories of membrane potential (Wiener process with drift). The red dashed line is the firing threshold. The histogram on top shows the resulting Inverse Gaussian distribution of crossing times."
+#| label: fig-log-link
+#| fig-cap: "Comparison of the log link and the linear link for a simulated net drive $\\Delta(t) = s(t) - p(t)$. **Left:** The linear link $\\mu(t) = 1/(\\rho_0 + \\Delta(t))$ becomes undefined and negative when $\\Delta(t)$ crosses below $-\\rho_0$, requiring clipping. **Right:** The log link $\\mu(t) = \\mu_0 \\exp(-\\Delta(t))$ is always positive and smooth. The shaded region on the left marks the invalid domain."
 
-sim_brownian_drift <- function(n_paths=50, mu=0.8, lambda=20, threshold=1) {
-  dt <- 0.001
-  t_max <- 2.0
-  steps <- t_max / dt
-  time <- seq(0, t_max, length.out=steps)
-  
-  # Drift velocity v = threshold / mu
-  v <- threshold / mu
-  # Diffusion coefficient D (related to lambda)
-  # Var = mu^3/lambda. In Brownian motion, Variance ~ sigma^2 * t
-  sigma <- sqrt(threshold^2 / (lambda * mu)) 
-  
-  plot(0, 0, xlim=c(0, t_max), ylim=c(0, threshold*1.2), type="n",
-       xlab="Time (s)", ylab="Membrane Potential (Normalized)", frame.plot=FALSE)
-  abline(h=threshold, col="#D55E00", lty=2, lwd=2)
-  text(0.1, threshold*1.05, "Firing Threshold", col="#D55E00", adj=0)
-  
-  crossing_times <- numeric(n_paths)
-  
-  for(i in 1:n_paths) {
-    # Generate path: dX = v*dt + sigma*dW
-    dW <- rnorm(steps, mean=0, sd=sqrt(dt))
-    path <- cumsum(v*dt + sigma*dW)
-    
-    # Find first passage time
-    cross_idx <- which(path >= threshold)[1]
-    if(!is.na(cross_idx)) {
-      crossing_times[i] <- time[cross_idx]
-      # Plot only up to crossing
-      lines(time[1:cross_idx], path[1:cross_idx], col=rgb(0,0,0,0.2))
-    }
-  }
-}
+set.seed(123)
+tt <- seq(0, 20, by = 0.02)
+# Simulate a net drive with large excursions to stress-test positivity
+del <- cumsum(rnorm(length(tt), 0, 0.06))
+del <- del - mean(del)
 
-sim_brownian_drift()
+rho0  <- 1.0 / 0.85   # baseline rate ~70 BPM
+mu_ln <- 0.85 * exp(-del)
+mu_li <- ifelse((rho0 + del) > 0.1, 1 / (rho0 + del), NA)
+
+par(mfrow = c(1, 2), mar = c(4.5, 4.5, 2.5, 1))
+
+# Left: linear link — show where it fails
+ylm <- c(-0.5, max(mu_li, na.rm = TRUE) * 1.1)
+plot(tt, mu_li, type = "l", col = "#D55E00", lwd = 2,
+     xlab = "Time (s)", ylab = expression(mu(t) ~ "[s]"),
+     main = "Linear Link", frame.plot = FALSE, ylim = ylm, na.action = na.omit)
+rect(xleft = 0, xright = max(tt), ybottom = -0.6, ytop = 0,
+     col = rgb(0.8, 0, 0, 0.12), border = NA)
+abline(h = 0, lty = 2, col = "gray50")
+text(10, -0.25, "Invalid domain\n(clipping required)",
+     col = "firebrick", cex = 0.8, adj = 0.5)
+grid(col = "lightgray", lty = 1)
+
+# Right: log link — always positive
+plot(tt, mu_ln, type = "l", col = "#0072B2", lwd = 2,
+     xlab = "Time (s)", ylab = expression(mu(t) ~ "[s]"),
+     main = "Log Link (this model)", frame.plot = FALSE)
+abline(h = 0.85, lty = 2, col = "gray50")
+text(1, 0.87, expression(mu[0] == 0.85 ~ s), adj = 0, col = "gray40", cex = 0.8)
+grid(col = "lightgray", lty = 1)
 ```
 
-## The Time-Varying Mean Interval
+###  The Probability Density Function
 
-The critical innovation in this framework is the relaxation of the stationarity assumption. In standard survival analysis, the parameters of the time-to-event distribution are fixed. Here, we treat the drift rate of the membrane potential, and consequently the mean time to threshold, as a dynamic quantity modulated instantaneously by the autonomic states.
-
-We define the instantaneous target heart rate, $\rho(t)$, as a linear combination of a baseline intrinsic pacing rate and the time-varying outputs of the sympathetic and parasympathetic branches. Consistent with the established physiological roles where sympathetic stimulation accelerates depolarization (increasing the drift) and parasympathetic stimulation hyperpolarizes the cell (decreasing the drift), we formulate the rate as:
+Given that the previous beat occurred at time $u_k$, the density of the next beat time $t > u_k$ is
 
 $$
-\rho(t) = \rho_0 + k_{sym}s(t) - k_{par}p(t)
+f(t \mid u_k,\, \mathbf{x}(t)) \;=\;
+\left[\frac{\kappa}{2\pi(t - u_k)^3}\right]^{1/2}
+\exp\!\left\{
+  -\frac{\kappa\bigl[(t-u_k) - \mu(t)\bigr]^2}{2\,\mu(t)^2\,(t-u_k)}
+\right\},
 $$
 
-The instantaneous mean R-R interval, denoted $\mu(t)$, serves as the location parameter for the Inverse Gaussian density. It is related to the rate by the reciprocal relationship $\mu(t) = 1 / \rho(t)$. This mapping ensures that as the autonomic balance shifts toward sympathetic dominance (increasing $s(t)$), $\mu(t)$ decreases, shifting the probability mass of the next heartbeat to earlier times. Conversely, vagal dominance (increasing $p(t)$) extends $\mu(t)$, delaying the expected time of the next beat.
+where $\tau = t - u_k$ is the elapsed time since the last beat and $\kappa > 0$ is the shape parameter controlling the variance of the distribution for a given mean. In the first-passage interpretation, $\kappa$ is proportional to the squared threshold-to-noise ratio of the SA node membrane: high $\kappa$ corresponds to a near-deterministic, metronome-like rhythm; low $\kappa$ corresponds to a highly variable, noise-dominated rhythm.
 
-## The Probability Density Function
+A distinctive property of the IG distribution is its **heteroscedastic variance**: $\text{Var}(\tau) = \mu(t)^3/\kappa$. The cubic dependence on the mean implies that as heart rate increases (and $\mu$ decreases), beat-to-beat variability decreases automatically, even when $\kappa$ is held constant. This provides a mechanistic account of the empirically well-documented reduction in HRV during exercise and stress, without requiring any model-specific adjustments.
 
-The probability density function (PDF) $f(t \mid u_k, \mathbf{x}(t))$ describes the likelihood of the next beat occurring at time $t$, given that the previous beat occurred at $u_k$ and the current autonomic state is $\mathbf{x}(t)$. For the Inverse Gaussian distribution, this density is given by:
+###  Log-Space Hazard Computation
+
+For the conditional intensity function — the instantaneous probability of a beat at time $t$ given survival to time $t$ — we require the hazard rate $\lambda(t \mid \mathcal{H}_t) = f(\tau)/S(\tau)$, where $S(\tau) = 1 - F(\tau)$ is the survival function. The IG CDF is
 
 $$
-f(t \mid u_k, \mathbf{x}(t)) = \left[ \frac{\kappa}{2\pi(t-u_k)^3} \right]^{1/2} \exp \left\{ -\frac{\kappa [ (t-u_k) - \mu(t) ]^2 }{ 2 \mu(t)^2 (t-u_k) } \right\}
+F(\tau;\mu,\kappa) \;=\;
+\Phi\!\left(\sqrt{\tfrac{\kappa}{\tau}}\Bigl(\tfrac{\tau}{\mu}-1\Bigr)\right)
++
+\exp\!\left(\tfrac{2\kappa}{\mu}\right)
+\Phi\!\left(-\sqrt{\tfrac{\kappa}{\tau}}\Bigl(\tfrac{\tau}{\mu}+1\Bigr)\right).
 $$
 
-Here, $t - u_k$ represents the waiting time or current interval duration. The parameter $\kappa$ (often referred to as the shape or scaling parameter) determines the variance and skewness of the distribution for a given mean. In the context of the first-passage time model, $\kappa$ is related to the squared distance to the threshold divided by the variance of the diffusion noise. A high value of $\kappa$ implies a highly regular, metronome-like rhythm with low variance (drift dominates noise), while a low $\kappa$ implies a highly erratic rhythm (noise dominates drift).
+The term $\exp(2\kappa/\mu)$ grows rapidly: at $\kappa = 15$, $\mu = 0.5$ s, its value is $e^{60} \approx 10^{26}$. Although this is within IEEE 754 double-precision range, the numerical product $\exp(2\kappa/\mu) \cdot \Phi(-z_2)$ involves multiplying a huge number by a tiny one, causing catastrophic cancellation that propagates into both the survival function and the hazard. More critically, any gradient-based optimization of the likelihood will encounter numerical instability at precisely the parameter values of greatest interest — those where heart rate is elevated.
 
-The flexibility of the Inverse Gaussian distribution allows it to capture a wide range of interval shapes. As shown below, shifting the mean $\mu$ moves the center of the distribution, while the shape parameter $\lambda$ (or $\kappa$) controls the "peakedness" and tail weight. This adaptability is essential for modeling the transition from the tight clustering of exercise heart rates to the broader dispersion of resting variability.
+The resolution is to compute the log-survival entirely in log space. Defining
+
+$$
+\log A \;=\; \log\Phi(-z_1), \qquad
+\log B \;=\; \tfrac{2\kappa}{\mu} + \log\Phi(-z_2),
+$$
+
+the log-survival is
+
+$$
+\log S(\tau) \;=\; \log A + \log\!\bigl(1 - e^{\,\log B - \log A}\bigr)
+              \;=\; \log A + \texttt{log1mexp}(d),
+$$
+
+where $d = \log B - \log A < 0$ in the physiological range and `log1mexp` is the numerically stable evaluation of $\log(1 - e^x)$ for $x < 0$ [@machler2012]:
+
+$$
+\texttt{log1mexp}(x) \;=\;
+\begin{cases}
+\log(-\text{expm1}(x)) & x \geq \log(0.5) \\
+\text{log1p}(-\exp(x)) & x < \log(0.5)
+\end{cases}
+$$
+
+The two branches use the most numerically stable form for each range, avoiding catastrophic cancellation uniformly. The log-hazard is then simply $\log\lambda(\tau) = \log f(\tau) - \log S(\tau)$, computed entirely in log space with no intermediate overflow.
 
 ```{r}
 #| label: fig-ig-shapes
-#| fig-cap: "The Inverse Gaussian Probability Density Function. Left: Varying the Mean Interval mu while keeping shape constant. Right: Varying the Shape parameter lambda while keeping mean constant."
+#| fig-cap: "The Inverse Gaussian probability density. **Left:** Effect of the mean interval $\\mu$ (shape fixed at $\\kappa = 15$). As $\\mu$ decreases (sympathetic dominance), the distribution shifts to earlier times. **Right:** Effect of the shape parameter $\\kappa$ (mean fixed at $\\mu = 0.85$ s). Higher $\\kappa$ corresponds to lower variance — a more regular rhythm. The heteroscedastic property $\\text{Var}(\\tau) = \\mu^3/\\kappa$ links both panels: reducing $\\mu$ reduces the variance even at fixed $\\kappa$."
+#| fig-height: 4
 
-par(mfrow=c(1,2), mar=c(4,4,2,1))
-t_seq <- seq(0.01, 2.0, length.out=300)
-mu_vals <- c(0.5, 0.8, 1.2)
-cols <- c("#D55E00", "black", "#0072B2")
+t_sq  <- seq(0.01, 2.2, length.out = 400)
+dig_v <- function(t, mu, k) exp(log_ig_pdf(t, mu, k))
 
-# Function for IG PDF
-dig <- function(t, mu, lambda) {
-  sqrt(lambda/(2*pi*t^3)) * exp(-lambda*(t-mu)^2 / (2*mu^2*t))
-}
+mu_v  <- c(0.5, 0.85, 1.2)
+k_v   <- c(5, 15, 50)
+cols  <- c("#D55E00", "black", "#0072B2")
 
-# Plot 1: Varying Mu
-plot(t_seq, dig(t_seq, 0.8, 20), type="n", ylim=c(0, 6), 
-     xlab="Interval (s)", ylab="Density", main="Effect of Mean (mu)", frame.plot=FALSE)
-for(i in 1:3) lines(t_seq, dig(t_seq, mu_vals[i], 20), col=cols[i], lwd=2)
-legend("topright", legend=paste("mu =", mu_vals), col=cols, lwd=2, bty="n")
+par(mfrow = c(1, 2), mar = c(4.5, 4.5, 2.5, 1))
 
-# Plot 2: Varying Lambda
-lam_vals <- c(5, 20, 50)
-plot(t_seq, dig(t_seq, 0.8, 20), type="n", ylim=c(0, 6), 
-     xlab="Interval (s)", ylab="Density", main="Effect of Shape (lambda)", frame.plot=FALSE)
-for(i in 1:3) lines(t_seq, dig(t_seq, 0.8, lam_vals[i]), col=cols[i], lwd=2)
-legend("topright", legend=paste("lambda =", lam_vals), col=cols, lwd=2, bty="n")
+# Left: varying mu
+plot(NA, xlim = c(0, 2.2), ylim = c(0, 6),
+     xlab = "Interval (s)", ylab = "Density",
+     main = "Effect of mean interval \u03bc", frame.plot = FALSE)
+for (i in 1:3) lines(t_sq, dig_v(t_sq, mu_v[i], 15), col = cols[i], lwd = 2)
+legend("topright",
+       legend = paste("\u03bc =", mu_v, "s"),
+       col = cols, lwd = 2, bty = "n", cex = 0.85)
+grid(col = "lightgray", lty = 1)
+
+# Right: varying kappa
+plot(NA, xlim = c(0, 2.2), ylim = c(0, 6),
+     xlab = "Interval (s)", ylab = "Density",
+     main = "Effect of shape \u03ba", frame.plot = FALSE)
+for (i in 1:3) lines(t_sq, dig_v(t_sq, 0.85, k_v[i]), col = cols[i], lwd = 2)
+legend("topright",
+       legend = paste("\u03ba =", k_v),
+       col = cols, lwd = 2, bty = "n", cex = 0.85)
+grid(col = "lightgray", lty = 1)
 ```
 
-## Derivation of the Hazard Function
+###  The Hazard Function and Its Physiological Significance
 
-For the simulation of point processes and the calculation of likelihoods in a dynamic setting, the PDF alone is insufficient. We require the conditional intensity function, $\lambda(t \mid \mathcal{H}_t)$, also known as the hazard rate. This function represents the instantaneous probability of a beat occurring at time $t$, given that it has not yet occurred since $u_k$.
-
-The hazard rate is derived from the ratio of the probability density function $f(t)$ to the survival function $S(t)$:
-
-$$
-\lambda(t \mid \mathcal{H}_t) = \frac{f(t \mid u_k, \mathbf{x}(t))}{S(t \mid u_k, \mathbf{x}(t))} = \frac{f(t \mid u_k, \mathbf{x}(t))}{1 - F(t \mid u_k, \mathbf{x}(t))}
-$$
-
-where $F(t)$ is the cumulative distribution function (CDF) of the Inverse Gaussian distribution. Deriving the CDF for the Inverse Gaussian is non-trivial compared to exponential families, as it involves the standard normal cumulative distribution function, $\Phi(\cdot)$. The closed-form expression for the CDF is:
-
-$$
-F(t \mid u_k, \mathbf{x}(t)) = \Phi\left( \sqrt{\frac{\kappa}{t-u_k}} \left( \frac{t-u_k}{\mu(t)} - 1 \right) \right) + \exp\left( \frac{2\kappa}{\mu(t)} \right) \Phi\left( - \sqrt{\frac{\kappa}{t-u_k}} \left( \frac{t-u_k}{\mu(t)} + 1 \right) \right)
-$$
-
-Substituting this CDF and the PDF into the hazard definition yields the full conditional intensity function used in our simulation algorithm.
-
-### Biophysical Significance of the Hazard Shape
-
-The resulting hazard function $\lambda(t)$ exhibits a specific shape that is crucial for modeling cardiac physiology. Unlike the constant hazard of a Poisson process (flat line) or the monotonic hazard of a Gamma process, the Inverse Gaussian hazard is non-monotonic.
-
-For small values of $t - u_k$ (immediately after a beat), the hazard is effectively zero. This correctly models the absolute refractory period of the cardiac tissue, during which no new action potential can be generated regardless of the input. As the time approaches the target mean $\mu(t)$, the hazard rises steeply. This represents the "integrative" phase where the membrane potential approaches the firing threshold, making the event increasingly probable. The hazard eventually peaks and can slightly decrease in the extreme tail, though in the physiological range of heart rates, we primarily operate on the rising slope.
-
-This dynamic structure means that the "risk" of a heartbeat evolves as time passes. When the SDEs modulate $\mu(t)$, they effectively compress or stretch this hazard profile in real-time. A surge in sympathetic tone decreases $\mu(t)$, shifting the steep rising phase of the intensity to the left. This dramatically increases the probability of an earlier beat, reproducing the physiological acceleration of heart rate while preserving the underlying integrate-and-fire statistics of the node.
-
-The code below visualizes this hazard function, demonstrating how a shift in the autonomic state (changing $\mu(t)$) alters the probability profile of the next beat.
+The resulting hazard function $\lambda(\tau)$ is non-monotonic. At $\tau = 0$, the hazard is zero, correctly modeling the absolute refractory period of cardiac tissue. It rises steeply as $\tau$ approaches $\mu(t)$ — the membrane potential nears threshold — then peaks and gradually decreases in the tail. Under the log link, a shift in $\Delta(t)$ compresses or stretches this profile continuously, modulating the probability of an earlier or later beat without discontinuity.
 
 ```{r}
 #| label: fig-hazard-function
-#| fig-cap: "The Inverse Gaussian Hazard Function. The solid line represents the conditional intensity under baseline conditions. The dashed line shows the effect of sympathetic activation, which shortens the mean interval mu(t) and shifts the steep rising phase of the intensity to the left, increasing the probability of an earlier beat."
+#| fig-cap: "The Inverse Gaussian hazard function $\\lambda(\\tau \\mid \\mathcal{H}_t)$, computed using the fully log-space algorithm. **Left:** Effect of sympathetic activation: reducing $\\mu(t)$ shifts the hazard peak to the left, increasing the probability of an earlier beat. **Right:** The hazard surface as a function of both elapsed time and the current mean interval. Brighter colors indicate higher instantaneous firing probability."
 
-plot_ig_hazard <- function() {
-  # Define time axis (time since last beat)
-  tau <- seq(0.01, 3.0, length.out = 500)
-  
-  # Helper to compute Hazard
-  calc_hazard <- function(tau_vec, mu_val, lambda_scale) {
-    pdf_val <- numeric(length(tau_vec))
-    cdf_val <- numeric(length(tau_vec))
-    
-    # Calculate PDF and CDF for Inverse Gaussian
-    for(i in seq_along(tau_vec)) {
-      t <- tau_vec[i]
-      # PDF
-      term1 <- sqrt(lambda_scale / (2 * pi * t^3))
-      term2 <- exp(-lambda_scale * (t - mu_val)^2 / (2 * mu_val^2 * t))
-      pdf_val[i] <- term1 * term2
-      
-      # CDF
-      z1 <- sqrt(lambda_scale/t) * (t/mu_val - 1)
-      z2 <- -sqrt(lambda_scale/t) * (t/mu_val + 1)
-      cdf_val[i] <- pnorm(z1) + exp(2*lambda_scale/mu_val) * pnorm(z2)
+tau_v  <- seq(0.01, 2.5, length.out = 500)
+h_base <- vapply(tau_v, ig_hazard, numeric(1), mu = 0.85, kappa = 12)
+h_sym  <- vapply(tau_v, ig_hazard, numeric(1), mu = 0.50, kappa = 12)
+h_para <- vapply(tau_v, ig_hazard, numeric(1), mu = 1.20, kappa = 12)
+
+mu_ax  <- seq(0.4, 1.3, length.out = 60)
+tau_ax <- seq(0.02, 1.8, length.out = 60)
+hgrid  <- outer(tau_ax, mu_ax, Vectorize(function(ta, mu)
+  ig_hazard(ta, mu, 12)))
+
+par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
+
+plot(tau_v, h_base, type = "l", lwd = 2.5, col = "black",
+     ylim = c(0, max(c(h_base, h_sym, h_para)) * 1.08),
+     xlab = "Time since last beat (s)",
+     ylab = expression(lambda(tau ~ "|" ~ H[t])),
+     main = "Hazard Function", frame.plot = FALSE)
+lines(tau_v, h_sym,  lwd = 2.5, col = "#D55E00", lty = 2)
+lines(tau_v, h_para, lwd = 2.5, col = "#0072B2", lty = 3)
+legend("topright",
+       legend = c(expression(mu == 0.85 ~ s ~ "(baseline)"),
+                  expression(mu == 0.50 ~ s ~ "(sympathetic \u2191)"),
+                  expression(mu == 1.20 ~ s ~ "(vagal \u2191)")),
+       col = c("black", "#D55E00", "#0072B2"),
+       lwd = 2.5, lty = c(1, 2, 3), bty = "n", cex = 0.85)
+grid(col = "lightgray", lty = 1)
+
+image(tau_ax, mu_ax, hgrid,
+      col  = hcl.colors(100, "YlOrRd", rev = TRUE),
+      xlab = "Time since last beat (s)",
+      ylab = expression("Mean interval" ~ mu(t) ~ "[s]"),
+      main = "Hazard Surface", axes = FALSE)
+axis(1); axis(2)
+contour(tau_ax, mu_ax, hgrid, add = TRUE,
+        col = "black", nlevels = 5, lwd = 0.8)
+```
+
+
+## Numerical Simulation Algorithm
+
+The computational implementation of the framework requires a hybrid scheme that bridges continuous-time latent dynamics and discrete event generation. Three structural improvements over naive implementations are incorporated: an exact discretization of the OU transition, a fully log-space intensity evaluation, and a survival-ratio event generation procedure that avoids the systematic bias of the Bernoulli approximation.
+
+###  Exact Ornstein-Uhlenbeck Transition Kernel
+
+The OU process $dx = (-ax + cu)\,dt + \sigma\,dW$ has an exact Gaussian transition density. Because the drift is linear in the state, the Itô solution can be computed in closed form: for any $\Delta t > 0$,
+
+$$
+x(t + \Delta t) \mid x(t) \;\sim\;
+\mathcal{N}\!\left(
+  x(t)\,e^{-a\Delta t} + \tfrac{cu}{a}(1 - e^{-a\Delta t}),\quad
+  \tfrac{\sigma^2}{2a}\,(1 - e^{-2a\Delta t})
+\right).
+$$
+
+This transition is exact at any step size. The Euler-Maruyama scheme approximates $e^{-a\Delta t} \approx 1 - a\Delta t$, which is equivalent to treating the OU process as an AR(1) with coefficient $\phi = 1 - a\Delta t$. The resulting stationary variance is $\sigma^2/(2a - a^2\Delta t)$, inflated by a factor of $(1 - a\Delta t/2)^{-1}$ relative to the true value $\sigma^2/(2a)$. For the vagal branch ($a_p = 2.0$, $\Delta t = 0.005$ s) this is a $0.5\%$ bias per step, and at coarser grid spacings used in preliminary analysis ($\Delta t = 0.05$ s) the bias reaches $5\%$ — sufficient to materially distort spectral power estimates.
+
+Two care points arise in implementing the exact formula. The variance term $1 - e^{-2a\Delta t}$ suffers catastrophic cancellation for tiny $a\Delta t$, where both terms round to the same floating-point value. We evaluate it as $-\text{expm1}(-2a\Delta t)$, which remains accurate to full machine precision for all $a\Delta t$. Similarly, the mean shift $1 - e^{-a\Delta t}$ is evaluated as $-\text{expm1}(-a\Delta t)$.
+
+```{r}
+#| label: fig-ou-exact
+#| fig-cap: "Stationary variance bias of Euler-Maruyama (EM) versus the exact OU kernel, shown for the vagal branch ($a_p = 2.0$ Hz, $\\sigma_p = 0.25$). **Left:** Empirical stationary variance from 300 replicate trajectories ($N = 5000$ steps each); the exact kernel achieves the true value $\\sigma^2/(2a) = 0.0156$ at every step size. **Right:** Relative bias (%) as a function of step size, confirming the theoretical prediction $\\approx a\\Delta t/2$."
+#| fig-height: 4
+
+set.seed(321)
+a_p  <- 2.0;  sig_p <- 0.25
+true_var <- sig_p^2 / (2 * a_p)
+dt_vals  <- c(0.005, 0.01, 0.025, 0.05, 0.1)
+nrep     <- 300;  nstep <- 5000;  burn <- 1000
+
+em_var <- exact_var <- numeric(length(dt_vals))
+
+for (j in seq_along(dt_vals)) {
+  dt <- dt_vals[j]
+  em_v <- exact_v <- numeric(nrep)
+  for (r in seq_len(nrep)) {
+    xe <- xex <- 0
+    for (i in seq_len(nstep)) {
+      xe  <- xe  + (-a_p * xe  * dt + sig_p * sqrt(dt) * rnorm(1))
+      xex <- ou_exact_step(xex, a_p, sig_p, dt = dt)
     }
-    
-    # Hazard = PDF / Survival
-    survival <- 1 - cdf_val
-    survival[survival < 1e-6] <- 1e-6 # Numerical floor
-    return(pdf_val / survival)
-  }
-  
-  # Scenario 1: Baseline (Mean Interval = 0.8s, approx 75 BPM)
-  h_base <- calc_hazard(tau, mu_val = 0.8, lambda_scale = 15)
-  
-  # Scenario 2: Sympathetic Activation (Mean Interval = 0.5s, 120 BPM)
-  h_sym <- calc_hazard(tau, mu_val = 0.5, lambda_scale = 15)
-  
-  par(mar = c(5, 5, 2, 2))
-  plot(tau, h_base, type = 'l', lwd = 3, col = "black", ylim = c(0, 40),
-       xlab = "Time since last beat (s)", ylab = expression(lambda(t * "|" * H[t])),
-       main = "Conditional Intensity Dynamics", frame.plot = FALSE)
-  lines(tau, h_sym, lwd = 3, col = "#D55E00", lty = 2)
-  
-  legend("topleft", legend = c("Baseline State", "Sympathetic State"),
-         col = c("black", "#D55E00"), lty = c(1, 2), lwd = 3, bty = "n")
-  grid(col = "lightgray")
-}
-
-plot_ig_hazard()
-
-```
-
-The conditional intensity is a dynamic surface that shifts with the physiological state. The following visualization maps the Hazard Rate as a function of both the time since the last beat ($\tau$) and the instantaneous mean interval ($\mu$). This "hazard landscape" illustrates how the system transitions from a low-probability firing state to a high-probability one.
-
-```{r}
-#| label: fig-hazard-surface
-#| fig-cap: "The Hazard Landscape. Brighter colors indicate a higher instantaneous probability of firing. As the Mean Interval mu decreases (y-axis moving down), the high-probability ridge shifts to earlier times (x-axis moving left)."
-
-tau <- seq(0.05, 1.5, length.out=100)
-mu_vals <- seq(0.4, 1.2, length.out=100)
-hazard_grid <- matrix(0, nrow=100, ncol=100)
-lambda_scale <- 15
-
-# Compute grid
-for(i in 1:100) {
-  for(j in 1:100) {
-    t_val <- tau[i]
-    m_val <- mu_vals[j]
-    
-    pdf_val <- sqrt(lambda_scale/(2*pi*t_val^3)) * exp(-lambda_scale*(t_val-m_val)^2 / (2*m_val^2*t_val))
-    
-    cdf_val <- pnorm(sqrt(lambda_scale/t_val)*(t_val/m_val - 1)) + 
-               exp(2*lambda_scale/m_val) * pnorm(-sqrt(lambda_scale/t_val)*(t_val/m_val + 1))
-    
-    surv <- max(1 - cdf_val, 1e-6)
-    hazard_grid[i,j] <- pdf_val / surv
-  }
-}
-
-image(tau, mu_vals, hazard_grid, col=hcl.colors(100, "YlOrRd", rev=TRUE),
-      xlab="Time since last beat (s)", ylab="Current Mean Interval mu(t)",
-      main="Conditional Intensity Surface", axes = FALSE)
-axis(1);axis(2)
-contour(tau, mu_vals, hazard_grid, add=TRUE, col="black", nlevels=5)
-```
-
-
-# Numerical Simulation Algorithm
-
-The computational implementation of the proposed framework necessitates a hybrid numerical scheme capable of bridging two distinct mathematical domains: the continuous-time evolution of the autonomic state vector and the discrete-time generation of heartbeat events. The challenge lies in accurately preserving the statistical properties of the Inverse Gaussian renewal process while simultaneously modulating its parameters via the stochastic trajectories of the coupled SDEs.
-
-To address this, we employ a time-discretized simulation approach that integrates the system dynamics over a fine temporal grid. This method synthesizes the Euler-Maruyama approximation for stochastic integration with a localized Bernoulli trial mechanism for point process generation.
-
-## Stochastic Integration via Euler-Maruyama
-
-The evolution of the latent autonomic states $p(t)$ and $s(t)$ is governed by a system of linear SDEs. Unlike ordinary differential equations, which can be solved using standard Runge-Kutta methods, SDEs require numerical schemes that explicitly account for the non-differentiable nature of the Wiener process path. We utilize the Euler-Maruyama method, the simplest strong Taylor approximation for SDEs.
-
-For the general vector SDE $d\mathbf{x}(t) = \mathbf{f}(\mathbf{x}(t), t)dt + \mathbf{G}(\mathbf{x}(t), t)d\mathbf{W}(t)$, the discretization over a time step $\Delta t$ is given by:
-
-$$
-\mathbf{x}(t_{i+1}) = \mathbf{x}(t_i) + \mathbf{f}(\mathbf{x}(t_i), t_i)\Delta t + \mathbf{G}(\mathbf{x}(t_i), t_i) \Delta \mathbf{W}_i
-$$
-
-In the specific context of our coupled autonomic model, the update rules for the parasympathetic and sympathetic states at each step $t_i$ are:
-
-$$
-\begin{aligned}
-p(t_{i+1}) &= p(t_i) + \left[ -a_p p(t_i) + b_{ps} s(t_i) + c_p u(t_i) \right] \Delta t + \sigma_p \sqrt{\Delta t} \cdot \mathcal{N}_p(0,1) \\
-s(t_{i+1}) &= s(t_i) + \left[ -a_s s(t_i) + b_{sp} p(t_i) + c_s u(t_i) \right] \Delta t + \sigma_s \sqrt{\Delta t} \cdot \mathcal{N}_s(0,1)
-\end{aligned}
-$$
-
-The stochastic increments $\Delta W_p(t_i)$ and $\Delta W_s(t_i)$ are simulated as independent draws from a Gaussian distribution with mean zero and variance $\Delta t$. This ensures that the variance of the driving noise scales correctly with the time step, preserving the diffusive properties of the Brownian motion. The deterministic drift component (comprising the decay terms, cross-coupling, and exogenous input) is evaluated at the current state, consistent with the Itô interpretation of the stochastic integral.
-
-## Dynamic Intensity Evaluation
-
-Once the state vector $\mathbf{x}(t_{i+1})$ is updated, it must be mapped to the observational domain. This process involves converting the dimensionless autonomic potentials into the instantaneous parameters of the heart rate distribution.
-
-First, the instantaneous target heart rate $\rho(t_{i+1})$ is computed using the linear transfer function defined in the observation model. This rate is immediately inverted to yield the instantaneous mean R-R interval, $\mu(t_{i+1})$. This step effectively projects the continuous autonomic dynamics onto the parameter space of the Inverse Gaussian distribution.
-
-Crucially, the conditional intensity function $\lambda(t \mid \mathcal{H}_t)$ depends not only on the current parameter $\mu(t)$ but also on the history of the process, specifically, the time elapsed since the last heartbeat, $\tau = t_{i+1} - u_{last}$. At each simulation step, we evaluate the Inverse Gaussian hazard rate:
-
-$$
-\lambda(t_{i+1}) = \frac{f(\tau \mid \mu(t_{i+1}), \kappa)}{S(\tau \mid \mu(t_{i+1}), \kappa)}
-$$
-
-This evaluation captures the interplay between the "clock" (the time since the last beat) and the "driver" (the current autonomic tone). As $\tau$ increases, the hazard rate naturally rises due to the properties of the first-passage time distribution. Simultaneously, fluctuations in $\mu(t_{i+1})$ driven by the SDEs continuously modulate this rising probability, accelerating or decelerating the approach to the firing threshold.
-
-## Discrete-Time Event Generation
-
-The final stage of the algorithm determines whether a heartbeat occurs within the current time interval $[t_i, t_{i+1})$. We approximate the continuous-time point process using a localized Bernoulli trial. The probability of an event occurring in an infinitesimal interval $dt$ is defined by $\lambda(t)dt$. For a sufficiently small finite step $\Delta t$, this probability is approximated as:
-
-$$
-P(\text{event} \in [t_i, t_{i+1})) \approx \lambda(t_{i+1}) \Delta t
-$$
-
-A uniform random number $r \sim U[0, 1]$ is generated. If $r < \lambda(t_{i+1}) \Delta t$, a heartbeat is recorded at time $t_{i+1}$, and the variable $u_{last}$ is reset to $t_{i+1}$.
-
-This approach, while computationally efficient, requires that $\Delta t$ be chosen small enough such that $\lambda(t) \Delta t \ll 1$ to minimize discretization error and the probability of multiple events occurring within a single bin (which the Bernoulli approximation ignores). In our implementation, a time step of $\Delta t = 5$ ms or smaller is sufficient to capture the fast dynamics of vagal control and the steep rise of the Inverse Gaussian hazard function.
-
-The "thinning" process effectively carves the point process out of the continuous probability mass. The snippet below visualizes a single simulation step: the blue line represents the fluctuating conditional intensity $\lambda(t)$. The red dots represent the generated spikes, which occur only when the intensity crosses a probabilistic threshold in the Bernoulli trial.
-
-```{r}
-#| label: fig-thinning-demo
-#| fig-cap: "Event Generation via Thinning. The blue curve is the conditional intensity lambda(t). Spikes (red dots) are generated probabilistically. Note how the intensity drops to zero immediately after a spike (refractory period) and then rises again."
-
-set.seed(1234)
-
-# Mock simulation for visualization
-steps <- 200
-lambda_trace <- numeric(steps)
-spikes <- numeric(steps)
-last_t <- 0
-mu <- 0.8
-lambda_param <- 20
-current_t <- 0
-dt <- 0.01
-
-for(i in 1:steps) {
-  tau <- current_t - last_t
-  if(tau < 0.01) { val <- 0 } else {
-     # Simplified hazard calc for viz
-     val <- (tau/mu)^2 * 5 # Dummy rising function for visual clarity
-  }
-  lambda_trace[i] <- val
-  
-  # Bernoulli
-  if(runif(1) < val * dt) {
-    spikes[i] <- 1
-    last_t <- current_t
-  }
-  current_t <- current_t + dt
-}
-
-plot(1:steps, lambda_trace, type='l', col="#0072B2", lwd=2, ylim=c(0, max(lambda_trace)*1.2),
-     xlab="Simulation Steps", ylab="Intensity / Event", main="Bernoulli Thinning Process", frame.plot=FALSE)
-# Overlay spikes
-spike_indices <- which(spikes == 1)
-points(spike_indices, lambda_trace[spike_indices], col="#D55E00", pch=19, cex=1.5)
-abline(v=spike_indices, col="#D55E00", lty=3)
-```
-
-
-The complete algorithm is implemented in the R function below. This function encapsulates the entire generative process, allowing for the exploration of how different autonomic coupling parameters influence the resulting heart rate variability.
-
-```{r}
-#| label: full-simulation-code
-
-#' Simulate SDE-Driven Inverse Gaussian Point Process
-#'
-#' @param duration Total simulation time (s)
-#' @param dt Integration time step (s)
-#' @param params List of model parameters
-#' @param input_fn Function u(t) for exogenous input
-sim_sde_ig_process <- function(duration, dt, params, input_fn) {
-  
-  n_steps <- ceiling(duration / dt)
-  time_grid <- seq(0, by = dt, length.out = n_steps)
-  
-  # State Vectors
-  p <- numeric(n_steps)
-  s <- numeric(n_steps)
-  lambda <- numeric(n_steps)
-  mu_vec <- numeric(n_steps)
-  
-  # Event Storage
-  spikes <- numeric(0)
-  last_spike_t <- -1.0 # Initialize before start
-  
-  # Pre-compute noise for efficiency
-  dW_p <- rnorm(n_steps, 0, sqrt(dt))
-  dW_s <- rnorm(n_steps, 0, sqrt(dt))
-  
-  # Parameter Unpacking
-  a_p <- params$a_p; a_s <- params$a_s
-  b_ps <- params$b_ps; b_sp <- params$b_sp
-  c_p <- params$c_p; c_s <- params$c_s
-  sig_p <- params$sig_p; sig_s <- params$sig_s
-  
-  rho_0 <- params$rho_0
-  k_sym <- params$k_sym
-  k_par <- params$k_par
-  lambda_scale <- params$lambda_scale
-  
-  for(i in 1:(n_steps-1)) {
-    t <- time_grid[i]
-    
-    # 1. Evaluate Input
-    u_val <- input_fn(t)
-    
-    # 2. Update SDE States (Euler-Maruyama)
-    # p(t+dt) = p(t) + (-a_p*p + b_ps*s + c_p*u)*dt + sig*dW
-    dp <- (-a_p * p[i] + b_ps * s[i] + c_p * u_val) * dt + sig_p * dW_p[i]
-    ds <- (-a_s * s[i] + b_sp * p[i] + c_s * u_val) * dt + sig_s * dW_s[i]
-    
-    p[i+1] <- p[i] + dp
-    s[i+1] <- s[i] + ds
-    
-    # 3. Map to Mean Interval mu(t)
-    # Rate rho(t) = Base + Sym - Par
-    current_rate <- rho_0 + k_sym * s[i+1] - k_par * p[i+1]
-    # Safety: Rate must be positive
-    if(current_rate < 0.5) current_rate <- 0.5
-    
-    current_mu <- 1 / current_rate
-    mu_vec[i+1] <- current_mu
-    
-    # 4. Calculate Conditional Intensity (Hazard)
-    tau <- t - last_spike_t
-    
-    # Safety: Avoid singularity at tau=0
-    if (tau < 1e-3) {
-      lambda_val <- 0
-    } else {
-      # Inverse Gaussian PDF
-      term1 <- sqrt(lambda_scale / (2 * pi * tau^3))
-      term2 <- exp(-lambda_scale * (tau - current_mu)^2 / (2 * current_mu^2 * tau))
-      pdf_val <- term1 * term2
-      
-      # Inverse Gaussian CDF
-      z1 <- sqrt(lambda_scale/tau) * (tau/current_mu - 1)
-      z2 <- -sqrt(lambda_scale/tau) * (tau/current_mu + 1)
-      cdf_val <- pnorm(z1) + exp(2 * lambda_scale / current_mu) * pnorm(z2)
-      
-      survival <- 1 - cdf_val
-      if(survival < 1e-8) survival <- 1e-8
-      
-      lambda_val <- pdf_val / survival
+    # Use last half of trajectory to estimate stationary variance
+    xe_traj  <- numeric(nstep)
+    xex_traj <- numeric(nstep)
+    xe2  <- 0; xex2 <- 0
+    for (i in seq_len(nstep)) {
+      xe2  <- xe2  + (-a_p * xe2  * dt + sig_p * sqrt(dt) * rnorm(1))
+      xex2 <- ou_exact_step(xex2, a_p, sig_p, dt = dt)
+      xe_traj[i] <- xe2; xex_traj[i] <- xex2
     }
-    
-    lambda[i+1] <- lambda_val
-    
-    # 5. Event Generation (Bernoulli)
-    prob_fire <- lambda_val * dt
-    # Safety: Probability cannot exceed 1
-    if(prob_fire > 1) prob_fire <- 1
-    
-    if(runif(1) < prob_fire) {
-      spikes <- c(spikes, t)
-      last_spike_t <- t
-    }
+    em_v[r]    <- var(xe_traj[(burn+1):nstep])
+    exact_v[r] <- var(xex_traj[(burn+1):nstep])
   }
-  
-  return(list(time = time_grid, p = p, s = s, mu = mu_vec, spikes = spikes))
+  em_var[j]    <- mean(em_v)
+  exact_var[j] <- mean(exact_v)
 }
 
+par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
+
+# Left: absolute variance
+plot(dt_vals * 1000, em_var,    type = "b", pch = 19, lwd = 2,
+     col = "#D55E00", ylim = c(true_var * 0.95, max(em_var) * 1.02),
+     xlab = "Step size (ms)", ylab = "Stationary variance",
+     main = "OU Stationary Variance", frame.plot = FALSE)
+lines(dt_vals * 1000, exact_var, type = "b", pch = 17, lwd = 2, col = "#0072B2")
+abline(h = true_var, lty = 2, col = "gray50")
+text(dt_vals[4] * 1000, true_var * 1.003,
+     expression(sigma^2 / (2*a) == 0.0156), adj = 0, cex = 0.75, col = "gray40")
+legend("topleft",
+       legend = c("Euler-Maruyama", "Exact OU"),
+       col = c("#D55E00", "#0072B2"), pch = c(19, 17), lwd = 2,
+       bty = "n", cex = 0.85)
+grid(col = "lightgray", lty = 1)
+
+# Right: relative bias
+em_bias    <- 100 * (em_var    / true_var - 1)
+exact_bias <- 100 * (exact_var / true_var - 1)
+plot(dt_vals * 1000, em_bias, type = "b", pch = 19, lwd = 2, col = "#D55E00",
+     xlab = "Step size (ms)", ylab = "Relative bias (%)",
+     main = "Discretization Bias", frame.plot = FALSE,
+     ylim = range(c(em_bias, exact_bias)))
+lines(dt_vals * 1000, exact_bias, type = "b", pch = 17, lwd = 2, col = "#0072B2")
+abline(h = 0, lty = 2, col = "gray50")
+grid(col = "lightgray", lty = 1)
 ```
 
-# Simulation Results and Discussion
+###  Log-Space Intensity Evaluation
 
-To validate the theoretical architecture of the SDE-Inverse Gaussian framework, we implemented an *in silico* physiological stress test. The primary objective of this simulation is to interrogate the dynamic coupling between the continuous latent drivers and the discrete observable events. By controlling the ground truth, the exogenous input and the internal autonomic parameters, we can rigorously evaluate whether the model reproduces the complex, non-linear phenomenologies observed in clinical heart rate variability (HRV) data, specifically the frequency-dependent kinetics of autonomic regulation and the heteroscedastic nature of cardiac interval statistics.
+At each simulation step, the current OU state is mapped to the mean interval via $\mu(t) = \mu_0 \exp(p(t) - s(t))$, and the conditional intensity is evaluated as $\log\lambda(\tau) = \log f(\tau;\mu,\kappa) - \log S(\tau;\mu,\kappa)$, following the log-space derivation in Section 4.4. Evaluating and storing the log-intensity avoids exponentiation until the final event-generation step, maintaining numerical precision throughout.
+
+###  Survival-Ratio Event Generation
+
+The Bernoulli approximation $P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t$ introduces a systematic positive bias equal to $\lambda\Delta t/2$ per step. Near the hazard peak, where $\lambda \approx 15$–$25$ Hz and $\Delta t = 0.005$ s, this corresponds to a 3.75–6.25% overestimate of the firing probability per step — a directional error that inflates event counts and compresses estimated inter-beat intervals.
+
+The exact within-step firing probability, under the assumption that $\mu(t)$ is constant within the interval $[t_i, t_{i+1}]$, is obtained directly from the survival function ratio:
+
+$$
+P\!\bigl(\text{event in } [t_i, t_{i+1})\bigr)
+\;=\; 1 - \frac{S(\tau + \Delta t;\,\mu_i,\,\kappa)}{S(\tau;\,\mu_i,\,\kappa)}.
+$$
+
+In log space:
+
+$$
+P \;=\; -\text{expm1}\!\bigl(\log S(\tau + \Delta t) - \log S(\tau)\bigr),
+$$
+
+using the identity $1 - e^x = -\text{expm1}(x)$, which is numerically stable for all $x \leq 0$. The piecewise-constant assumption on $\mu$ introduces an error of order $\mathcal{O}(|\dot\mu|\,\Delta t^2/\mu)$, which is negligible for $\Delta t \leq 0.005$ s given the smooth OU dynamics.
 
 ```{r}
-#| label: fig-results
-#| fig-cap: "Simulation of Autonomic Response to Stress. Top: The exogenous input u(t) (black) drives the system. Middle: The autonomic states diverge; Sympathetic (red) rises slowly, Parasympathetic (blue) is suppressed. Bottom: The resulting tachogram (R-R intervals). Note the immediate shortening of intervals at onset and the gradual recovery at offset, driven by the SDE dynamics."
-#| fig-height: 8
+#| label: fig-bernoulli-vs-survival
+#| fig-cap: "Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. **Left:** The IG hazard function for the baseline parameter set, with the hazard peak at $\\tau \\approx 0.72$ s. **Right:** Relative error $(P_\\text{Bernoulli} - P_\\text{exact})/P_\\text{exact} \\times 100\\%$ as a function of elapsed time $\\tau$. The error is everywhere positive (the Bernoulli approximation overestimates firing probability), peaking near the hazard maximum and reaching approximately 3.5% at the nominal step size of $\\Delta t = 5$ ms."
 
-# Define Input: Stress ON between t=300 and t=420
-input_boxcar <- function(t) {
-  if(t >= 300 && t <= 420) return(1) else return(0)
+fs <- study_firing_bias(mu = 0.85, kappa = 12, dt = 0.005)
+
+par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
+
+plot(fs$tau, fs$lambda, type = "l", lwd = 2.5, col = "#0072B2",
+     xlab = "Time since last beat (s)",
+     ylab = expression(lambda(tau) ~ "[Hz]"),
+     main = "IG Hazard (baseline)", frame.plot = FALSE)
+pk  <- fs$tau[which.max(fs$lambda)]
+lmx <- max(fs$lambda)
+abline(v = pk, lty = 2, col = "gray50")
+text(pk + 0.04, lmx * 0.95, sprintf("\u03c4* = %.2f s", pk),
+     adj = 0, cex = 0.8, col = "gray40")
+grid(col = "lightgray", lty = 1)
+
+plot(fs$tau, fs$rel_error_pct, type = "l", lwd = 2.5, col = "#D55E00",
+     xlab = "Time since last beat (s)",
+     ylab = "Relative error (%)",
+     main = "Bernoulli vs Survival Ratio", frame.plot = FALSE)
+abline(h = 0, lty = 1, col = "gray60")
+abline(v = pk, lty = 2, col = "gray50")
+pk_err <- fs$rel_error_pct[which.max(abs(fs$rel_error_pct))]
+pk_tau <- fs$tau[which.max(abs(fs$rel_error_pct))]
+points(pk_tau, pk_err, pch = 19, col = "#D55E00", cex = 1.5)
+text(pk_tau + 0.06, pk_err,
+     sprintf("Peak: %.2f%%", pk_err), adj = 0, cex = 0.8, col = "#D55E00")
+grid(col = "lightgray", lty = 1)
+```
+
+###  Complete Simulation Algorithm
+
+The full simulation integrates the three components above into a single time-indexed loop. At each step $i$:
+
+1. **State update**: draw $p_{i+1}$ and $s_{i+1}$ from the exact OU transition densities with decay rates $a_p$, $a_s$ and diffusion amplitudes $\sigma_p$, $\sigma_s$.
+2. **Link**: compute $\mu_{i+1} = \mu_0\exp(p_{i+1} - s_{i+1})$ and $\Delta_{i+1} = s_{i+1} - p_{i+1}$.
+3. **Intensity**: evaluate $\log\lambda_{i+1} = \log f(\tau;\mu_{i+1},\kappa) - \log S(\tau;\mu_{i+1},\kappa)$ in full log space.
+4. **Event**: compute $P = -\text{expm1}(\log S(\tau + \Delta t) - \log S(\tau))$; draw $U \sim \text{Uniform}(0,1)$; if $U < P$, record a spike and reset $\tau \leftarrow 0$.
+
+```{r}
+#| label: code-sim
+#| eval: false
+#| echo: true
+
+sim_sde_ig <- function(duration, dt, params,
+                       input_fn   = function(t) 0,
+                       obs_models = list(make_rr_obs_model()),
+                       seed       = NULL) {
+  if (!is.null(seed)) set.seed(seed)
+  sp <- params$structural; fp <- params$free
+  n  <- ceiling(duration / dt)
+  tg <- seq(0, by = dt, length.out = n)
+  p  <- numeric(n); s <- numeric(n)
+  mu_v <- numeric(n); dlt <- numeric(n); loglam <- numeric(n)
+  spikes <- numeric(0); last_t <- 0
+
+  for (i in seq_len(n - 1)) {
+    u <- input_fn(tg[i])
+    # Step 1: exact OU transition
+    p[i+1] <- ou_exact_step(p[i], sp$a_p, fp$sigma_p, fp$c_p, u, dt)
+    s[i+1] <- ou_exact_step(s[i], sp$a_s, fp$sigma_s, fp$c_s, u, dt)
+    # Step 2: log link
+    mu_v[i+1] <- compute_mu(p[i+1], s[i+1], fp$mu_0)
+    dlt[i+1]  <- compute_delta(p[i+1], s[i+1])
+    # Step 3: log-space intensity
+    tau <- tg[i+1] - last_t
+    loglam[i+1] <- log_ig_hazard(tau, mu_v[i+1], fp$kappa)
+    # Step 4: survival-ratio firing
+    pf <- p_fire_survival_ratio(tau, mu_v[i+1], fp$kappa, dt)
+    if (runif(1) < pf) { spikes <- c(spikes, tg[i+1]); last_t <- tg[i+1] }
+  }
+  list(time = tg, p = p, s = s, delta = dlt,
+       mu = mu_v, lambda = exp(loglam), log_lambda = loglam,
+       spikes = spikes, params = params)
+}
+```
+
+#  Simulation Results and Discussion
+
+##  The Virtual Stress Protocol
+
+We validate the framework using the same protocol established in earlier sections: a deterministic boxcar forcing $u(t) = \mathbf{1}_{[300, 420]}(t)$, representing a sustained period of physical stress followed by recovery, applied to a 720-second simulation. The input sensitivity coefficients $c_p = -0.8$ (vagal withdrawal) and $c_s = 0.5$ (sympathetic activation) encode the canonical exercise autonomic response.
+
+```{r}
+#| label: code-sim-run
+#| include: false
+
+# RES is already computed in the setup chunk above
+rr       <- diff(RES$spikes)
+beat_t   <- RES$spikes[-1]
+mu_beats <- approx(RES$time, RES$mu, xout = beat_t)$y
+```
+
+##  Autonomic State Dynamics and the Identifiable Net Drive
+
+```{r}
+#| label: fig-results-main
+#| fig-cap: "Simulation of the autonomic response to a sustained stress protocol under the revised model. **Row 1:** Exogenous input $u(t)$. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$ — the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
+#| fig-height: 9
+
+layout(matrix(1:4, 4, 1), heights = c(0.6, 0.9, 0.9, 1.4))
+par(mar = c(1.2, 5.5, 1.2, 2), oma = c(3.5, 0, 2, 0))
+
+# Row 1: Input
+plot(RES$time, sapply(RES$time, INPUT_FN), type = "l", lwd = 2,
+     ylab = "u(t)", xaxt = "n", frame.plot = FALSE,
+     col = "black", ylim = c(-0.1, 1.3))
+mtext("Stress Protocol — Phase 1 + 2 Revised Model",
+      outer = TRUE, cex = 1.05, font = 2)
+grid(col = "lightgray", lty = 1)
+
+# Row 2: Net drive Delta(t) — identifiable quantity
+plot(RES$time, RES$delta, type = "l", col = "#2C5F2E", lwd = 1.5,
+     ylab = expression(Delta(t) == s(t) - p(t)), xaxt = "n",
+     frame.plot = FALSE)
+abline(h = 0, lty = 2, col = "gray50")
+legend("topleft",
+       legend = c("Net drive (identified from RR data)",
+                  "Sympathetic dominant \u2191  |  Vagal dominant \u2193"),
+       col = c("#2C5F2E", NA), lwd = c(2, NA), bty = "n", cex = 0.8)
+grid(col = "lightgray", lty = 1)
+
+# Row 3: Individual states (mechanistic interpretation)
+ylims <- range(c(RES$p, RES$s))
+plot(RES$time, RES$s, type = "l", col = "#D55E00", lwd = 2,
+     ylim = ylims, ylab = "Latent states", xaxt = "n", frame.plot = FALSE)
+lines(RES$time, RES$p, col = "#0072B2", lwd = 1.5)
+legend("topleft",
+       legend = c("Sympathetic s(t)  [LF, not individually identified]",
+                  "Parasympathetic p(t)  [HF, not individually identified]"),
+       col = c("#D55E00", "#0072B2"), lwd = c(2, 1.5), bty = "n", cex = 0.8)
+grid(col = "lightgray", lty = 1)
+
+# Row 4: Tachogram
+plot(beat_t, rr, type = "o", pch = 20, cex = 0.45, col = "darkgray",
+     ylab = "R-R interval (s)", xlab = "Time (s)", frame.plot = FALSE)
+lines(beat_t, mu_beats, col = "black", lwd = 2.5)
+legend("bottomleft",
+       legend = c("Observed R-R intervals",
+                  expression(mu(t) == mu[0] %.% exp(-Delta(t)))),
+       col = c("darkgray", "black"), pch = c(20, NA),
+       lty = c(1, 1), lwd = c(1, 2.5), bty = "n", cex = 0.8)
+grid(col = "lightgray", lty = 1)
+mtext("Time (s)", side = 1, outer = TRUE, line = 2)
+```
+
+The onset of stress at $t = 300$ s produces an immediate drop in $\Delta(t)$ as vagal tone withdraws rapidly (high $a_p$), followed by a slower rise as sympathetic tone accumulates (low $a_s$). The cessation of stress at $t = 420$ s reverses this pattern asymmetrically: vagal restoration is rapid, while $\Delta(t)$ returns to baseline gradually as sympathetic tone washes out. This hysteresis, the asymmetry between onset and offset, emerges from the differing time constants and requires no special modeling beyond the structural difference $a_p \gg a_s$.
+
+##  Heteroscedasticity and Variance Scaling
+
+A distinctive property of the IG point process is the dependence of interval variance on the mean: $\text{Var}(\tau) = \mu^3/\kappa$. As heart rate increases ($\mu$ decreases), variability is suppressed cubically, independently of any changes in the underlying noise process. This property is intrinsic to the first-passage time framework.
+
+```{r}
+#| label: fig-heteroscedasticity
+#| fig-cap: "Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction $\\text{Var}(\\tau) = \\mu^3/\\kappa$ with the true $\\kappa = 12$. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment."
+#| fig-height: 4.5
+
+if (requireNamespace("zoo", quietly = TRUE)) {
+  rr_wn  <- 12
+  rmean  <- zoo::rollmean(rr, rr_wn)
+  rvar   <- zoo::rollapply(rr, rr_wn, var)
+} else {
+  # Base R fallback
+  rmean <- vapply(seq_len(length(rr) - 11) + 5,
+                  function(i) mean(rr[max(1,i-5):min(length(rr),i+5)]), numeric(1))
+  rvar  <- vapply(seq_len(length(rr) - 11) + 5,
+                  function(i) var(rr[max(1,i-5):min(length(rr),i+5)]), numeric(1))
 }
 
-# Parameter Set
-params <- list(
-  a_p = 2.0, b_ps = 0.0, c_p = -1.0, sig_p = 0.2, # Vagal Withdrawal
-  a_s = 0.2, b_sp = 0.0, c_s = 0.5,  sig_s = 0.2, # Sympathetic Activation
-  rho_0 = 1.0,  # 60 BPM baseline
-  k_sym = 0.5,
-  k_par = 0.5,
-  lambda_scale = 10
+mu_seq  <- seq(min(rmean, na.rm=TRUE), max(rmean, na.rm=TRUE), length.out = 200)
+var_th  <- mu_seq^3 / PARAMS$free$kappa
+
+par(mar = c(4.5, 5, 2.5, 1))
+plot(rmean, rvar, pch = 20, cex = 0.5, col = rgb(0, 0, 0, 0.3),
+     xlab = "Local mean R-R interval (s)",
+     ylab = expression("Local variance (s"^2~")"),
+     main = "Heteroscedasticity: Empirical vs Theoretical",
+     frame.plot = FALSE)
+lines(mu_seq, var_th, col = "#D55E00", lwd = 3)
+legend("topleft",
+       legend = c("Rolling windows (n=10)",
+                  expression(Var(tau) == mu^3 / kappa ~ "(theoretical)")),
+       col = c("black", "#D55E00"), pch = c(20, NA),
+       lty = c(NA, 1), lwd = c(NA, 3), bty = "n", cex = 0.85)
+grid(col = "lightgray", lty = 1)
+```
+
+##  Time-Rescaling Goodness-of-Fit
+
+The time-rescaling theorem [@brown2002] provides the principled diagnostic for point process models. If the conditional intensity $\lambda(t \mid \mathcal{H}_t)$ correctly characterizes the probability structure of the event times, the integrated intensity
+
+$$
+\Lambda_k = \int_{t_{k-1}}^{t_k} \lambda(s \mid \mathcal{H}_s)\,ds
+$$
+
+forms an i.i.d. $\text{Exp}(1)$ sequence. The transformation $u_k = 1 - e^{-\Lambda_k}$ then produces i.i.d. $\text{Uniform}(0,1)$ residuals, whose departure from uniformity quantifies model misspecification.
+
+The $\Lambda_k$ values are computed by numerical integration of the stored intensity trace using the trapezoidal rule. For each inter-beat interval $[t_{k-1}, t_k]$, we accumulate the discrete approximation $\Lambda_k \approx \sum_i (\lambda_i + \lambda_{i+1})/2 \cdot \Delta t$ over the grid points spanning that interval. This is the direct, genuine computation of the theoretical quantity — it is not a simulation from the assumed distributional form, which would constitute a circular assessment.
+
+```{r}
+#| label: fig-time-rescaling
+#| fig-cap: "Time-rescaling goodness-of-fit diagnostics for the revised model, implementing the full Brown et al. (2002) diagnostic suite. **Top-left:** Uniform Q-Q plot of $u_k = 1 - \\exp(-\\Lambda_k)$ against theoretical $\\text{Uniform}(0,1)$ quantiles, with 95\\% Kolmogorov-Smirnov confidence bands (dashed). **Top-right:** Normal-score Q-Q plot of $v_k = \\Phi^{-1}(u_k)$, testing normality of the transformed residuals. **Bottom-left:** Autocorrelation function of $u_k$; no significant lags indicate that residuals are independent, as required. **Bottom-right:** Empirical CDF of $\\Lambda_k$ (points) against $\\text{Exp}(1)$ (red line), confirming that rescaled inter-beat intervals follow a unit-rate Poisson process."
+#| fig-height: 6.5
+
+Lk <- compute_time_rescaling(RES)
+uk <- 1 - exp(-Lk)
+vk <- qnorm(uk)
+n  <- length(Lk)
+
+vk_f <- vk[is.finite(vk)]
+ks   <- ks.test(uk, "punif")
+band <- 1.36 / sqrt(n)
+
+layout(matrix(c(1,2,3,4), 2, 2, byrow = TRUE))
+par(mar = c(4.5, 4.5, 2.8, 1.2))
+
+# --- Uniform QQ ---
+u_s <- sort(uk)
+theo <- ppoints(n)
+plot(theo, u_s, pch = 20, cex = 0.4, col = rgb(0,0,0,0.4),
+     xlab = "Theoretical [Uniform(0,1)]",
+     ylab = expression(u[k] == 1 - e^{-Lambda[k]}),
+     main = "Uniform Q-Q Plot", frame.plot = FALSE,
+     xlim = c(0,1), ylim = c(0,1))
+abline(0, 1, col = "#D55E00", lwd = 2)
+lines(theo, theo + band, lty = 2, col = "#D55E00")
+lines(theo, theo - band, lty = 2, col = "#D55E00")
+legend("topleft",
+       legend = sprintf("KS p = %.3f", ks$p.value),
+       bty = "n", cex = 0.85)
+grid(col = "lightgray", lty = 1)
+
+# --- Normal-score QQ ---
+qqnorm(vk_f, pch = 20, cex = 0.4, col = rgb(0,0,0,0.4),
+       main = "Normal-Score Q-Q",
+       xlab = "Theoretical N(0,1)",
+       ylab = expression(v[k] == Phi^{-1}(u[k])),
+       frame.plot = FALSE)
+qqline(vk_f, col = "#D55E00", lwd = 2)
+grid(col = "lightgray", lty = 1)
+
+# --- ACF of uk ---
+acf(uk, lag.max = 25, col = "#0072B2", lwd = 2,
+    ci.col = "#D55E00",
+    main = "Residual Autocorrelation",
+    xlab = "Lag", frame.plot = FALSE)
+grid(col = "lightgray", lty = 1)
+
+# --- Lambda_k vs Exp(1) ECDF ---
+lk_s  <- sort(Lk)
+ecdf_v <- seq_along(lk_s) / (n + 1)
+exp1_c <- 1 - exp(-lk_s)
+plot(lk_s, ecdf_v, pch = 20, cex = 0.4, col = rgb(0,0,0,0.4),
+     xlab = expression(Lambda[k]),
+     ylab = "CDF",
+     main = expression(Lambda[k] ~ "vs Exp(1)"),
+     frame.plot = FALSE)
+lines(lk_s, exp1_c, col = "#D55E00", lwd = 2)
+legend("bottomright",
+       legend = c("Empirical", "Exp(1)"),
+       col = c("black", "#D55E00"),
+       pch = c(20, NA), lty = c(NA, 1), lwd = c(NA, 2), bty = "n", cex = 0.85)
+grid(col = "lightgray", lty = 1)
+```
+
+```{r}
+#| label: tbl-tr-summary
+#| tbl-cap: "Summary statistics for the time-rescaling residuals. A correctly specified model produces $\\text{E}[\\Lambda_k] = 1$, $\\text{Var}(\\Lambda_k) = 1$, and $\\text{E}[u_k] = 0.5$. The KS statistic and p-value assess the uniformity of $u_k$."
+#| echo: false
+
+ks_res <- ks.test(uk, "punif")
+acf_obj <- acf(uk, lag.max = 20, plot = FALSE)
+sig_lags <- sum(abs(acf_obj$acf[-1]) > 1.96 / sqrt(n))
+
+tr_tbl <- data.frame(
+  Statistic = c(
+    "$\\text{E}[\\Lambda_k]$", "$\\text{Var}(\\Lambda_k)$",
+    "$\\text{E}[u_k]$",
+    "KS statistic", "KS $p$-value",
+    "Significant ACF lags (of 20)"
+  ),
+  Theoretical = c("1.000", "1.000", "0.500", "—", "—", "0"),
+  Empirical = c(
+    sprintf("%.4f", mean(Lk)),
+    sprintf("%.4f", var(Lk)),
+    sprintf("%.4f", mean(uk)),
+    sprintf("%.4f", ks_res$statistic),
+    sprintf("%.4f", ks_res$p.value),
+    as.character(sig_lags)
+  )
 )
 
-# Run Simulation
-set.seed(2026)
-res <- sim_sde_ig_process(duration = 720, dt = 0.005, params, input_boxcar)
-
-# Visualization
-layout(matrix(c(1, 2, 3), 3, 1, byrow=TRUE), heights=c(1, 1.5, 2))
-par(mar = c(2, 5, 2, 2), oma = c(2,0,0,0))
-
-# 1. Input
-plot(res$time, sapply(res$time, input_boxcar), type='l', lwd=2, 
-     ylab="Input u(t)", xaxt='n', frame.plot=FALSE)
-grid(col="lightgray")
-
-# 2. States
-plot(res$time, res$s, type='l', col="#D55E00", lwd=2, ylim=range(c(res$s, res$p)),
-     ylab="Autonomic States", xaxt='n', frame.plot=FALSE)
-lines(res$time, res$p, col="#0072B2", lwd=1.5)
-legend("topleft", legend=c("Sympathetic", "Parasympathetic"), 
-       col=c("#D55E00", "#0072B2"), lwd=c(2, 1.5), bty="n")
-grid(col="lightgray")
-
-# 3. Tachogram (RR Intervals)
-rr_intervals <- diff(res$spikes)
-beat_times <- res$spikes[-1]
-plot(beat_times, rr_intervals, type='o', pch=20, cex=0.6, col="darkgrey",
-     ylab="R-R Interval (s)", xlab="Time (s)", frame.plot=FALSE)
-# Overlay the theoretical mean mu(t) sampled at beat times
-# We find the index in time_grid closest to each beat time
-mu_at_beats <- approx(res$time, res$mu, xout = beat_times)$y
-lines(beat_times, mu_at_beats, col="black", lwd=2)
-legend("bottomleft", legend=c("R-R Intervals", "Theoretical Mean mu(t)"),
-       col=c("darkgrey", "black"), pch=c(20, NA), lty=c(1, 1), bty="n")
-grid(col="lightgray")
-
+knitr::kable(tr_tbl, escape = FALSE,
+             col.names = c("Statistic", "Theoretical", "Empirical"),
+             align = c("l", "c", "c"))
 ```
 
-## The Virtual Stress Protocol
+##  Stochastic Integrity
 
-The validation protocol imposes a deterministic exogenous forcing function, $u(t)$, designed to mimic a period of sustained physical exertion followed by a recovery phase. We employ a rectangular "boxcar" stimulus, a standard waveform in systems engineering used to characterize the step response of a dynamical system.
+The simulated beat train is generated by a doubly stochastic process: process noise in the SDEs creates the wandering autonomic baseline, while the first-passage mechanism introduces an additional layer of interval variability at fixed $\mu$. Even without SDE noise ($\sigma_p = \sigma_s = 0$), the IG mechanism produces variance $\mu^3/\kappa$. Even with a deterministic observation model, the OU noise would produce variability in the effective rate. These two sources are distinct and identifiable from the model's spectral structure: the SDE noise determines the temporal autocorrelation of the tachogram, while $\kappa$ determines the conditional variance at each beat given the state trajectory.
 
-The input function $u(t)$ is defined as zero during the baseline period ($0 \le t < 300$ s), transitions instantaneously to unity during the stress interval ($300 \le t \le 420$ s), and returns to zero for the recovery period ($t > 420$ s). This sharp discontinuity presents a challenging test case for the model, as physiological systems rarely exhibit instantaneous state changes. The ability of the model to translate this square-wave input into smooth, biologically plausible physiological trajectories serves as a key litmus test for the validity of the underlying stochastic differential equations (SDEs).
+##  Extensibility to Multiple Observation Streams
 
-Physiologically, this protocol simulates a transition from a resting state to a moderate-to-high intensity workload, analogous to a treadmill stress test or a sustained isometric contraction, and a subsequent cessation of effort. The magnitude of the input is scaled by the sensitivity coefficients $c_p = -1.0$ and $c_s = 0.5$. These polarities are chosen to reflect the canonical autonomic response to exercise: a withdrawal of parasympathetic (vagal) tone and a concomitant activation of sympathetic tone. The disparate magnitudes of $c_p$ and $c_s$ reflect the dominance of vagal withdrawal in the initial acceleration of heart rate, a well-documented phenomenon in exercise physiology.
-
-## Transient Dynamics of Latent Autonomic States
-
-The middle panel of the simulation results elucidates the distinct temporal signatures of the two autonomic branches. The trajectories of the parasympathetic state $p(t)$ (blue trace) and the sympathetic state $s(t)$ (red trace) reveal the functional consequence of the distinct decay parameters, $a_p$ and $a_s$, embedded in the SDE formulation.
-
-### Vagal Kinetics and Rapid Adaptation
-
-The parasympathetic state $p(t)$ is governed by a decay rate of $a_p = 2.0$. In the frequency domain, this corresponds to a high cutoff frequency, allowing the system to track rapid changes in the input signal. In the time domain, as illustrated in the simulation, this results in a near-instantaneous response to the onset of the stressor. At $t=300$, $p(t)$ drops precipitously, reflecting the rapid unbinding of acetylcholine at the muscarinic receptors of the sinoatrial node. This "vagal switch" is critical for the beat-to-beat regulation of heart rate and is responsible for the immediate tachycardia observed at the very start of physical movement.
-
-Furthermore, the high decay rate influences the stochastic texture of the parasympathetic trajectory. Because the system has low inertia, it is highly sensitive to the continuous bombardment of the Wiener process noise, $\sigma_p dW_p$. The resulting trajectory is "rough", characterized by high-frequency variability. This behavior effectively models the respiratory sinus arrhythmia (RSA), where vagal tone fluctuates rapidly in phase with the respiratory cycle. Even in the absence of an explicit respiratory oscillator in this specific simulation run, the spectral color of the $p(t)$ noise is inherently "whiter" (flatter) than that of the sympathetic branch, preserving the high-frequency power distinct to vagal regulation.
-
-### Sympathetic Inertia and Low-Frequency Trends
-
-Conversely, the sympathetic state $s(t)$ is governed by a decay rate of $a_s = 0.2$. This parameter, an order of magnitude smaller than its parasympathetic counterpart, imbues the sympathetic system with significant inertia. Upon the onset of the step input at $t=300$, $s(t)$ does not jump; instead, it ramps up gradually, integrating the input over a prolonged time window. It takes approximately 15 to 20 seconds for the sympathetic tone to reach its new steady state.
-
-This sluggishness mimics the slow kinetics of the norepinephrine signaling pathway, which relies on second-messenger cascades (cAMP and PKA phosphorylation) to modulate the funny current ($I_f$) and calcium handling. In the simulation, this manifests as a smoothing effect. The sympathetic trajectory acts as a low-pass filter on the stochastic driver $\sigma_s dW_s$, attenuating high-frequency noise and passing only the slow, trending components. This emergent property naturally reproduces the Low-Frequency (LF) component of HRV (typically 0.04-0.15 Hz) without the need for ad-hoc filtering or explicit oscillatory forcing. The "smoothness" of the red trace in the results figure is thus a direct mathematical consequence of the biophysical constraints encoded in $a_s$.
-
-## The Observation Process: From States to Intervals
-
-The bottom panel of the figure displays the observable output of the model: the tachogram, or the series of R-R intervals between successive beats. This plot demonstrates the successful mapping of the continuous, multivariate latent state into a univariate, discrete point process via the time-varying Inverse Gaussian distribution.
-
-### The Mean Trajectory
-
-The solid black line superimposed on the tachogram represents the theoretical instantaneous mean interval, $\mu(t) = 1 / (\rho_0 + k_{sym}s(t) - k_{par}p(t))$. This theoretical mean tracks the net effect of the autonomic competition.
-
-At the onset of stress ($t=300$), the immediate drop in $\mu(t)$ is driven almost entirely by the rapid withdrawal of $p(t)$. As the stress phase continues, the gradual rise of $s(t)$ contributes to a further, albeit slower, shortening of the interval. This biphasic acceleration, a fast initial drop followed by a slower creep, accurately mirrors the hemodynamic response to load. The model generates a transition from a resting baseline of approximately 60 BPM ($\mu \approx 1.0$ s) to a peak stress rate of approximately 120 BPM ($\mu \approx 0.5$ s).
-
-### Heteroscedasticity and Variance Scaling
-
-A crucial feature of the simulated tachogram is the behavior of the variance. The scatter of the grey points (the actual R-R intervals) around the black mean line is not constant. During the resting phase ($t < 300$), the dispersion of intervals is wide. During the stress phase ($t \in [300, 420]$), the points cluster tightly around the mean.
-
-This heteroscedasticity is a fundamental property of the Inverse Gaussian distribution and a critical advantage of this framework over standard additive noise models. In an Inverse Gaussian process with mean $\mu$ and shape parameter $\kappa$, the variance of the intervals is given by $\mu^3 / \kappa$. This cubic dependence on the mean implies that as the heart rate increases (and $\mu$ decreases), the variability of the intervals must decrease mathematically.
-
-This scaling law reflects a physiological reality. At high heart rates, the diastolic interval is severely shortened, leaving less time for stochastic membrane fluctuations to accumulate and deviate the firing time. The model captures this phenomenon intrinsically. By fixing $\kappa = 20$, we set a baseline level of regularity, but the modulation of $\mu(t)$ by the SDEs automatically scales the observed HRV. This explains why standard time-domain metrics like SDNN (Standard Deviation of NN intervals) invariably drop during exercise, even if the "normalized" autonomic noise remains constant. The model demonstrates that a reduction in raw HRV during stress is partly a geometric consequence of the higher rate, separate from the withdrawal of vagal tone.
-
-A key statistical validation of the model is checking the scaling law between the mean heart rate and its variability. The Inverse Gaussian model predicts a cubic relationship ($Var \propto \mu^3$). The plot below compares the theoretical scaling law against the simulated data points from our stress test, confirming that the model naturally suppresses variability at higher heart rates (lower R-R intervals).
-
-```{r}
-#| label: fig-mean-variance
-#| fig-cap: "Mean-Variance Scaling. Grey points: Local mean vs Local variance calculated from the simulation output using a rolling window. Red Line: The theoretical Inverse Gaussian prediction (Variance = Mean^3 / lambda). The model captures the physiological reality that variability diminishes at higher heart rates."
-
-# Assuming 'res' object from the main simulation exists
-rr <- diff(res$spikes)
-# Calculate rolling stats
-winsize <- 10
-roll_mean <- zoo::rollmean(rr, winsize)
-roll_var <- zoo::rollapply(rr, winsize, var)
-
-plot(roll_mean, roll_var, pch=20, col=rgb(0,0,0,0.3),
-     xlab="Local Mean R-R Interval (s)", ylab="Local Variance (s^2)",
-     main="Heteroscedasticity Validation", frame.plot=FALSE)
-
-# Theoretical Curve
-mu_seq <- seq(min(roll_mean), max(roll_mean), length.out=100)
-var_theoretical <- mu_seq^3 / 10 # using lambda_scale = 10
-lines(mu_seq, var_theoretical, col="#D55E00", lwd=3)
-legend("topleft", legend=c("Simulated Windows", "Theoretical Law"), 
-       col=c("grey", "#D55E00"), pch=c(20, NA), lty=c(NA, 1), bty="n")
-```
-
-
-## Hysteresis and Recovery Asymmetry
-
-The simulation also highlights the asymmetry between the onset of stress and the recovery from it, a phenomenon known as hysteresis. Examination of the transition at $t=420$ (stress offset) reveals that the return to baseline is distinct from the departure.
-
-When the input $u(t)$ returns to zero, the parasympathetic withdrawal ceases immediately, and $p(t)$ recovers rapidly toward its baseline. However, the sympathetic state $s(t)$ decays slowly due to its low decay rate $a_s$. This results in a period where vagal tone is being restored while sympathetic tone remains elevated.
-
-In the tachogram, this manifests as a recovery curve that is slower than the onset curve. The heart rate does not snap back to 60 BPM immediately; it trails off, reflecting the "washout" of the sympathetic driver. This mirrors the physiological concept of Excess Post-exercise Oxygen Consumption (EPOC) and the lingering effects of circulating catecholamines, which are not cleared instantly from the synaptic cleft.
-
-Standard regression models or autoregressive (AR) models often struggle to capture this asymmetry without explicit non-linear terms or distinct lag parameters for rising and falling edges. In our state-space formulation, this hysteresis is an emergent property of the differing time constants ($a_p \neq a_s$) in the coupled differential equations. The system inherently possesses "memory," where the path to the stressed state differs from the path of return, validating the model's utility for analyzing recovery topologies in clinical exercise testing.
-
-## Stochastic Integrity and Lack of Determinism
-
-It is imperative to emphasize that the R-R intervals generated in this simulation are the result of a double stochastic process. The first layer of stochasticity is the "process noise" (the Brownian motion driving the SDEs), which creates the wandering baseline of the autonomic states. The second layer is the "point process noise" (the probabilistic firing of the Inverse Gaussian mechanism).
-
-Even if the autonomic states were perfectly constant (i.e., $\sigma_p = \sigma_s = 0$), the Inverse Gaussian observation model would still generate intervals with variance $\mu^3/\kappa$. Conversely, even if the observation model were deterministic (firing exactly when the integral of density equals 1), the stochastic SDEs would effectively jitter the target time.
-
-The simulation combines these sources of variance into a unified output that resists the "robotic" periodicity often seen in simpler models. The resulting beat train exhibits $1/f$ fractal scaling characteristics (long-range dependence) due to the integration of white noise by the SDEs, combined with the short-term irregularity of the renewal process. This spectral complexity is visible in the tachogram as "roughness" that persists across scales, consistent with the fractal dynamics of healthy cardiac physiology.
-
-## Conclusion of the Simulation Study
-
-The results of this stress test simulation confirm that the proposed SDE-Inverse Gaussian framework effectively captures the cardinal features of heart rate variability:
-
-1.  Frequency Separation: The model successfully segregates high-frequency vagal dynamics from low-frequency sympathetic dynamics through the structural parameters $a_p$ and $a_s$.
-2.  Dynamic Modulation: The coupling of these continuous states to the Inverse Gaussian parameters allows for seamless transitions between stationary (rest) and non-stationary (stress) conditions.
-3.  Physiological Realism: The model reproduces non-linear phenomena such as the mean-dependent reduction in variance (heteroscedasticity) and the asymmetry of onset/recovery (hysteresis) without requiring ad-hoc rules or thresholding.
-
-Finally, to formally assess if the generated spikes conform to the model's probabilistic assumptions, we employ the Time-Rescaling Theorem. If the model is correct, transforming the observed intervals by their integrated intensity should yield a unit rate Poisson process. The Quantile-Quantile (Q-Q) plot below demonstrates the alignment of the simulated data (points) with the theoretical exponential distribution (red line).
-
-```{r}
-#| label: fig-ks-plot
-#| fig-cap: "KS Plot of Rescaled Times. The proximity of the points to the 45-degree diagonal indicates that the conditional intensity function correctly characterizes the probability structure of the generated data."
-
-# Calculate integrated intensity (Lambda) for each interval
-# Approximation: Lambda_k = sum(lambda(t)*dt) between spikes
-# For demo purposes, we generate ideal exponential quantiles
-n_int <- length(rr_intervals)
-# In a real check, we would integrate the lambda vector from the simulation
-# Here we simulate the result of a good fit for visualization
-rescaled_times <- rexp(n_int, rate=1) 
-
-qqplot(qexp(ppoints(n_int)), rescaled_times, 
-       xlab="Theoretical Quantiles (Exp(1))", ylab="Sample Quantiles (Rescaled Times)",
-       main="Time-Rescaling Goodness-of-Fit", frame.plot=FALSE, pch=20)
-abline(0, 1, col="#D55E00", lwd=2)
-```
-
-
-By grounding the generative mechanism in the biophysics of the integrate-and-fire node and the kinetics of neurotransmission, the simulation demonstrates that complex HRV patterns can be synthesized from first principles. This provides a robust forward model that can subsequently be inverted (using filtering techniques like the Kalman filter or Point Process filters) to estimate the unobserved autonomic states from clinical R-R interval data.
+The modular observation model interface defined in this framework supports the addition of further physiological streams without altering the state equation. Each new stream registers as an observation model with a `$log_intensity` method — for example, a Gaussian linear observation of $p(t)$ through respiratory sinus arrhythmia amplitude, or of $s(t)$ through blood pressure. When such a stream is available, the scale aliasing between $k_\text{sym}$ and $\sigma_s$ is broken: the additional observation provides an independent measurement of an individual state, making $p(t)$ and $s(t)$ separately identified and enabling the coupling terms $b_{ps}$ and $b_{sp}$ to be estimated. The two-branch full model is thus a strict generalization of the identifiable single-stream model defined here.

@@ -7,7 +7,9 @@ website:
     left:
       - href: index.qmd
         text: Home
-      - about.qmd
+    right:
+      - icon: github
+        href: https://github.com/matcasti/2026-XX-SDE-R-R
 
 format:
   html:
@@ -16,6 +18,4 @@ format:
       - brand
     css: styles.css
     toc: true
-
-editor: visual
 
