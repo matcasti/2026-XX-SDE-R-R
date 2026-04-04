@@ -4,7 +4,7 @@ subtitle: "The SDE-Inverse Gaussian Model"
 author: 
   - name: "Matías Castillo-Aguilar"
     affiliation: "Escuela de Medicina, Universidad de Magallanes"
-    orcid: "https://orcid.org/0000-0001-7291-247X"
+    orcid: "0000-0001-7291-247X"
 bibliography: references.bib
 date: today
 title-block-style: manuscript
@@ -264,7 +264,7 @@ The resulting net drive $\Delta(t) = s(t) - p(t)$ is, under the constraints impo
 
 ###  Structural and Free Parameter Decomposition
 
-A critical distinction governs inference. The **spectral pole locations** — the frequencies of the LF and HF oscillations — are determined by the decay rates $a_p$ and $a_s$. These quantities are not learned from RR data: the vagal time constant ($\tau_p = 1/a_p \approx 0.3$–$0.7$ s) is set by the kinetics of acetylcholine binding at muscarinic receptors [@berger1989], and the sympathetic time constant ($\tau_s = 1/a_s \approx 5$–$20$ s) is set by the second-messenger cascade underlying norepinephrine action [@malliani1991]. Treating them as free parameters would introduce a second, empirically unresolvable aliasing: the RR series identifies only the product $\sigma_p^2/(2a_p)$ (the vagal spectral area), not $\sigma_p$ and $a_p$ individually.
+A critical distinction governs inference. The **spectral pole locations** — the frequencies of the LF and HF oscillations — are determined by the decay rates $a_p$ and $a_s$. These quantities are not learned from RR data: the vagal time constant ($\tau_p = 1/a_p \approx 0.3$–$0.7$ s) is set by the kinetics of acetylcholine binding at muscarinic receptors [@udgaonkar1986acetylcholine], and the sympathetic time constant ($\tau_s = 1/a_s \approx 5$–$20$ s) is set by the second-messenger cascade underlying norepinephrine action [@eisenhofer1991neuronal]. Treating them as free parameters would introduce a second, empirically unresolvable aliasing: the RR series identifies only the product $\sigma_p^2/(2a_p)$ (the vagal spectral area), not $\sigma_p$ and $a_p$ individually.
 
 The parameter set is therefore partitioned as follows.
 
@@ -338,7 +338,7 @@ where $W_p$ and $W_s$ are independent standard Wiener processes. Each branch is 
 
 ###  Vagal Kinetics and the HF Band
 
-The parasympathetic state $p(t)$, governed by $a_p = 2.0$ Hz (time constant $\tau_p = 0.5$ s), acts as a high-pass filter on the Wiener process noise. Its impulse response decays within approximately $2$–$3$ s. This rapid recovery allows beat-to-beat vagal modulation and is responsible for the spectral power in the HF band ($0.15$–$0.4$ Hz), classically associated with respiratory sinus arrhythmia [@task1996].
+The parasympathetic state $p(t)$, governed by $a_p = 2.0$ Hz (time constant $\tau_p = 0.5$ s), acts as a high-pass filter on the Wiener process noise. Its impulse response decays within approximately $2$–$3$ s. This rapid recovery allows beat-to-beat vagal modulation and is responsible for the spectral power in the HF band ($0.15$–$0.4$ Hz), classically associated with respiratory sinus arrhythmia [@malik1996heart].
 
 ```{r}
 #| label: fig-impulse-response
@@ -405,7 +405,7 @@ mtext("Time (s)", side = 1, outer = TRUE, line = 1.5)
 
 ###  Biophysical Rationale: The Integrate-and-Fire Mechanism
 
-The mapping from continuous latent autonomic states to discrete heartbeat times is grounded in the biophysics of the sinoatrial node. During diastole, the pacemaker membrane potential rises from a hyperpolarized resting level under the influence of a net inward depolarizing current. If this potential trajectory is idealized as a Wiener process with positive drift, the time to reach the firing threshold follows an Inverse Gaussian (IG) distribution — the canonical first-passage time distribution for Brownian motion with drift [@chhikara1988]. This provides a direct structural link between statistical modeling of inter-beat intervals and cardiac cellular electrophysiology, distinguishing the present framework from Poisson or Gaussian observation models that lack this mechanistic grounding.
+The mapping from continuous latent autonomic states to discrete heartbeat times is grounded in the biophysics of the sinoatrial node. During diastole, the pacemaker membrane potential rises from a hyperpolarized resting level under the influence of a net inward depolarizing current. If this potential trajectory is idealized as a Wiener process with positive drift, the time to reach the firing threshold follows an Inverse Gaussian (IG) distribution, the canonical first-passage time distribution for Brownian motion with drift [@chhikara1976optimum]. This provides a direct structural link between statistical modeling of inter-beat intervals and cardiac cellular electrophysiology, distinguishing the present framework from Poisson or Gaussian observation models that lack this mechanistic grounding.
 
 ### The Log-Link Mean Interval
 
