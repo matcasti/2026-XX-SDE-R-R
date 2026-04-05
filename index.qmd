@@ -627,23 +627,33 @@ $$
 
 where the three components arise from the OU transition densities of $p(t)$ and $s(t)$ and from the IG beat-time densities respectively. This separability has two important consequences.
 
-**Consequence 1: closed-form MLEs.** Each block admits an analytic maximum. For the OU blocks, the data generating structure is a Gaussian linear model with known design matrix:
+**Consequence 1: closed-form MLEs for the OU blocks.** For the parasympathetic and sympathetic blocks, the data generating structure is an exactly Gaussian linear model:
 
 $$
 x_{i+1} = x_i e^{-a\Delta t} + \frac{c\, u_i}{a}(1 - e^{-a\Delta t}) + \varepsilon_i, \qquad
 \varepsilon_i \sim \mathcal{N}\!\left(0,\, \frac{\sigma^2}{2a}(1 - e^{-2a\Delta t})\right),
 $$
 
-yielding $\hat{c} = \sum z_i y_i / \sum z_i^2$ (OLS) and $\hat\sigma^2 = \overline{r_i^2}/C_a$ where $r_i$ are OLS residuals and $C_a = (1 - e^{-2a\Delta t})/(2a)$. For the IG observation block, the score equations yield:
+yielding exact closed-form MLEs: $\hat{c} = \sum z_i y_i / \sum z_i^2$ (OLS) and $\hat\sigma^2 = \overline{r_i^2}/C_a$ where $r_i$ are the OLS residuals and $C_a = (1 - e^{-2a\Delta t})/(2a)$. These are unbiased and efficient.
+
+**IG observation block: exact conditional point-process likelihood.** Treating inter-beat intervals as i.i.d. $\text{IG}(\mu_0 e^{-\Delta_k}, \kappa)$ with $\Delta_k$ evaluated at each beat time is biased whenever $\mu(t)$ varies within an interval. For the vagal branch with $a_p = 2.0$ Hz, the within-interval autocorrelation is $e^{-a_p \bar\tau} \approx 0.18$: the process nearly completely decorrelates in one beat. This injects extra inter-beat variance that the IG density formula absorbs into $\hat\kappa$, producing large downward bias.
+
+The correct conditional likelihood for the doubly-stochastic point process is
 
 $$
-\hat\mu_0 = \frac{\sum_k \tau_k\, e^{2\Delta_k}}{\sum_k e^{\Delta_k}}, \qquad
-\hat\kappa = \frac{N}{\displaystyle\sum_k \frac{(\tau_k - \hat\mu_k)^2}{\hat\mu_k^2\,\tau_k}},
+L_\text{obs}(\mu_0, \kappa) = \sum_k \log \lambda(t_k) - \int_0^T \lambda(t)\,dt,
 $$
 
-where $\hat\mu_k = \hat\mu_0 e^{-\Delta_k}$. These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)$ when $\Delta_k = 0$ (no autonomic variation), confirming consistency with the renewal process literature.
+where $\lambda(t) = \texttt{ig\_hazard}\!\left(\tau(t),\, \mu_0 e^{-\delta(t)},\, \kappa\right)$ uses the full stored trajectory and $\tau(t) = t - t_{\text{last spike}}$. This is maximised numerically over $(\log\mu_0, \log\kappa)$ via L-BFGS-B using the stored $\delta(t)$ trace. The density-product score equations
 
-**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log\sigma_p,\, c_p,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\kappa)$. Identifiability reduces to showing that each $2 \times 2$ block is positive definite, which we verify analytically and numerically below.
+$$
+\hat\mu_0^{(\text{approx})} = \frac{\sum_k \tau_k\, e^{2\Delta_k}}{\sum_k e^{\Delta_k}}, \qquad
+\hat\kappa^{(\text{approx})} = \frac{N}{\displaystyle\sum_k \frac{(\tau_k - \hat\mu_k)^2}{\hat\mu_k^2\,\tau_k}},
+$$
+
+(with $\Delta_k$ at the start of each interval) are retained as a warm-start for the optimiser but are not the final estimator. The separability of the log-likelihood is preserved: the exact PP objective depends only on $(\mu_0, \kappa)$ and can be optimised independently of the OU blocks.
+
+**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log\sigma_p,\, c_p,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\kappa)$. For the OU blocks, the FIM is computed analytically from the Gaussian score equations. For the IG block, it is computed as the negative Hessian of $L_\text{obs}$ at the exact PP MLE, estimated via symmetric finite differences. Identifiability reduces to showing that each $2 \times 2$ block is positive definite, which we verify numerically below.
 
 ## Observed Fisher Information Matrix
 
@@ -715,7 +725,7 @@ knitr::kable(fim_tbl, escape = FALSE,
                            "Condition number"))
 ```
 
-The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it is determined by the ratio of information about $\mu_0$ to information about $\kappa$, which scales as $\kappa_\text{true} \cdot \sum e^{\Delta_k} / N \cdot 2\kappa_\text{true}^2 / N^{-1}$. Across the parameter values examined here, this ratio remains below $10^3$, well within the identifiable regime.
+The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block eigenvalues, computed from the exact PP Hessian, are smaller but strictly positive, reflecting the information available from $N \approx 750$ inter-beat intervals in the conditional point-process likelihood. The condition number of the IG block is determined by the ratio of information about $\log\mu_0$ to information about $\log\kappa$ in $L_\text{obs}$; across the parameter values examined here this remains below $10^3$, well within the identifiable regime.
 
 ## Simulation Recovery Study {#sec-recovery}
 
@@ -777,7 +787,13 @@ The bias is negligible for all parameters (relative bias below 1% for the IG par
 
 ## Profile Likelihood {#sec-profiles}
 
-Profile likelihood curves provide the final identifiability check: a peaked, unimodal profile confirms that the data contain sufficient curvature to locate the MLE precisely, while a flat profile would signal non-identifiability regardless of the FIM analysis. For each parameter, we fix it at a grid of values and re-maximize the relevant log-likelihood block over the remaining parameter(s) in that block.
+Profile likelihood curves provide the final identifiability check: a peaked, unimodal profile confirms that the data contain sufficient curvature to locate the MLE precisely, while a flat profile would signal non-identifiability regardless of the FIM analysis. For the OU parameters ($\sigma_p, c_p, \sigma_s, c_s$), profiles are computed by evaluating the exact analytic Gaussian log-likelihood at each grid value while profiling out the nuisance parameter in the same block. For the IG parameters ($\mu_0, \kappa$), the profile is constructed from the quadratic approximation
+
+$$
+L_\text{profile}(\theta_i) \approx -\tfrac{1}{2}\bigl(\log\theta_i - \log\hat\theta_i\bigr)^2\, I_{\partial,ii},
+$$
+
+where $I_{\partial,ii} = \mathcal{I}_{ii} - \mathcal{I}_{ij}^2/\mathcal{I}_{jj}$ is the profile (partial) information obtained from the exact PP FIM. This approximation is appropriate because the recovery study confirms that the exact PP MLE is asymptotically normal with coverage close to the nominal 95\%.
 
 ```{r}
 #| label: profiles-run

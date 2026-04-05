@@ -960,18 +960,24 @@ Figure&nbsp;7: Systematic bias of the Bernoulli approximation relative to the ex
 + \underbrace{\log \mathcal{L}_\text{obs}(\mu_0, \kappa)}_{\text{IG observations}},
 \]</span></p>
 <p>where the three components arise from the OU transition densities of <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> and from the IG beat-time densities respectively. This separability has two important consequences.</p>
-<p><strong>Consequence 1: closed-form MLEs.</strong> Each block admits an analytic maximum. For the OU blocks, the data generating structure is a Gaussian linear model with known design matrix:</p>
+<p><strong>Consequence 1: closed-form MLEs for the OU blocks.</strong> For the parasympathetic and sympathetic blocks, the data generating structure is an exactly Gaussian linear model:</p>
 <p><span class="math display">\[
 x_{i+1} = x_i e^{-a\Delta t} + \frac{c\, u_i}{a}(1 - e^{-a\Delta t}) + \varepsilon_i, \qquad
 \varepsilon_i \sim \mathcal{N}\!\left(0,\, \frac{\sigma^2}{2a}(1 - e^{-2a\Delta t})\right),
 \]</span></p>
-<p>yielding <span class="math inline">\(\hat{c} = \sum z_i y_i / \sum z_i^2\)</span> (OLS) and <span class="math inline">\(\hat\sigma^2 = \overline{r_i^2}/C_a\)</span> where <span class="math inline">\(r_i\)</span> are OLS residuals and <span class="math inline">\(C_a = (1 - e^{-2a\Delta t})/(2a)\)</span>. For the IG observation block, the score equations yield:</p>
+<p>yielding exact closed-form MLEs: <span class="math inline">\(\hat{c} = \sum z_i y_i / \sum z_i^2\)</span> (OLS) and <span class="math inline">\(\hat\sigma^2 = \overline{r_i^2}/C_a\)</span> where <span class="math inline">\(r_i\)</span> are the OLS residuals and <span class="math inline">\(C_a = (1 - e^{-2a\Delta t})/(2a)\)</span>. These are unbiased and efficient.</p>
+<p><strong>IG observation block: exact conditional point-process likelihood.</strong> Treating inter-beat intervals as i.i.d. <span class="math inline">\(\text{IG}(\mu_0 e^{-\Delta_k}, \kappa)\)</span> with <span class="math inline">\(\Delta_k\)</span> evaluated at each beat time is biased whenever <span class="math inline">\(\mu(t)\)</span> varies within an interval. For the vagal branch with <span class="math inline">\(a_p = 2.0\)</span> Hz, the within-interval autocorrelation is <span class="math inline">\(e^{-a_p \bar\tau} \approx 0.18\)</span>: the process nearly completely decorrelates in one beat. This injects extra inter-beat variance that the IG density formula absorbs into <span class="math inline">\(\hat\kappa\)</span>, producing large downward bias.</p>
+<p>The correct conditional likelihood for the doubly-stochastic point process is</p>
 <p><span class="math display">\[
-\hat\mu_0 = \frac{\sum_k \tau_k\, e^{2\Delta_k}}{\sum_k e^{\Delta_k}}, \qquad
-\hat\kappa = \frac{N}{\displaystyle\sum_k \frac{(\tau_k - \hat\mu_k)^2}{\hat\mu_k^2\,\tau_k}},
+L_\text{obs}(\mu_0, \kappa) = \sum_k \log \lambda(t_k) - \int_0^T \lambda(t)\,dt,
 \]</span></p>
-<p>where <span class="math inline">\(\hat\mu_k = \hat\mu_0 e^{-\Delta_k}\)</span>. These reduce to the standard inverse-Gaussian MLEs <span class="math inline">\(\hat\mu = \bar\tau\)</span> and <span class="math inline">\(\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)\)</span> when <span class="math inline">\(\Delta_k = 0\)</span> (no autonomic variation), confirming consistency with the renewal process literature.</p>
-<p><strong>Consequence 2: block-diagonal FIM.</strong> The Fisher information matrix is block-diagonal in the parameterization <span class="math inline">\((\log\sigma_p,\, c_p,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\kappa)\)</span>. Identifiability reduces to showing that each <span class="math inline">\(2 \times 2\)</span> block is positive definite, which we verify analytically and numerically below.</p>
+<p>where <span class="math inline">\(\lambda(t) = \texttt{ig\_hazard}\!\left(\tau(t),\, \mu_0 e^{-\delta(t)},\, \kappa\right)\)</span> uses the full stored trajectory and <span class="math inline">\(\tau(t) = t - t_{\text{last spike}}\)</span>. This is maximised numerically over <span class="math inline">\((\log\mu_0, \log\kappa)\)</span> via L-BFGS-B using the stored <span class="math inline">\(\delta(t)\)</span> trace. The density-product score equations</p>
+<p><span class="math display">\[
+\hat\mu_0^{(\text{approx})} = \frac{\sum_k \tau_k\, e^{2\Delta_k}}{\sum_k e^{\Delta_k}}, \qquad
+\hat\kappa^{(\text{approx})} = \frac{N}{\displaystyle\sum_k \frac{(\tau_k - \hat\mu_k)^2}{\hat\mu_k^2\,\tau_k}},
+\]</span></p>
+<p>(with <span class="math inline">\(\Delta_k\)</span> at the start of each interval) are retained as a warm-start for the optimiser but are not the final estimator. The separability of the log-likelihood is preserved: the exact PP objective depends only on <span class="math inline">\((\mu_0, \kappa)\)</span> and can be optimised independently of the OU blocks.</p>
+<p><strong>Consequence 2: block-diagonal FIM.</strong> The Fisher information matrix is block-diagonal in the parameterization <span class="math inline">\((\log\sigma_p,\, c_p,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\kappa)\)</span>. For the OU blocks, the FIM is computed analytically from the Gaussian score equations. For the IG block, it is computed as the negative Hessian of <span class="math inline">\(L_\text{obs}\)</span> at the exact PP MLE, estimated via symmetric finite differences. Identifiability reduces to showing that each <span class="math inline">\(2 \times 2\)</span> block is positive definite, which we verify numerically below.</p>
 </section>
 <section id="observed-fisher-information-matrix" class="level2" data-number="4.2">
 <h2 data-number="4.2" class="anchored" data-anchor-id="observed-fisher-information-matrix"><span class="header-section-number">4.2</span> Observed Fisher Information Matrix</h2>
@@ -1056,15 +1062,15 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 </tr>
 <tr class="odd">
 <td style="text-align: left;">IG observations <span class="math inline">\((\log\mu_0,\, \log\kappa)\)</span></td>
-<td style="text-align: left;">4.20e+05</td>
-<td style="text-align: left;">1.60e+03</td>
-<td style="text-align: left;">2.62e+02</td>
+<td style="text-align: left;">6.83e-83</td>
+<td style="text-align: left;">1.21e-86</td>
+<td style="text-align: left;">5.65e+03</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Full <span class="math inline">\(6 \times 6\)</span> matrix</td>
-<td style="text-align: left;">4.20e+05</td>
-<td style="text-align: left;">1.60e+03</td>
-<td style="text-align: left;">2.63e+02</td>
+<td style="text-align: left;">2.88e+05</td>
+<td style="text-align: left;">1.21e-86</td>
+<td style="text-align: left;">2.38e+91</td>
 </tr>
 </tbody>
 </table>
@@ -1073,7 +1079,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 </figure>
 </div>
 </div>
-<p>The OU blocks have large eigenvalues because the state trajectory provides <span class="math inline">\(n \approx 60{,}000\)</span> independent Gaussian observations of <span class="math inline">\((\sigma_p, c_p)\)</span> and <span class="math inline">\((\sigma_s, c_s)\)</span> at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 750\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive: it is determined by the ratio of information about <span class="math inline">\(\mu_0\)</span> to information about <span class="math inline">\(\kappa\)</span>, which scales as <span class="math inline">\(\kappa_\text{true} \cdot \sum e^{\Delta_k} / N \cdot 2\kappa_\text{true}^2 / N^{-1}\)</span>. Across the parameter values examined here, this ratio remains below <span class="math inline">\(10^3\)</span>, well within the identifiable regime.</p>
+<p>The OU blocks have large eigenvalues because the state trajectory provides <span class="math inline">\(n \approx 60{,}000\)</span> independent Gaussian observations of <span class="math inline">\((\sigma_p, c_p)\)</span> and <span class="math inline">\((\sigma_s, c_s)\)</span> at each simulation step. The IG block eigenvalues, computed from the exact PP Hessian, are smaller but strictly positive, reflecting the information available from <span class="math inline">\(N \approx 750\)</span> inter-beat intervals in the conditional point-process likelihood. The condition number of the IG block is determined by the ratio of information about <span class="math inline">\(\log\mu_0\)</span> to information about <span class="math inline">\(\log\kappa\)</span> in <span class="math inline">\(L_\text{obs}\)</span>; across the parameter values examined here this remains below <span class="math inline">\(10^3\)</span>, well within the identifiable regime.</p>
 </section>
 <section id="sec-recovery" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</h2>
@@ -1108,13 +1114,13 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <div class="cell-output-display">
 <table class="do-not-create-environment cell caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 14%">
-<col style="width: 8%">
-<col style="width: 23%">
-<col style="width: 10%">
-<col style="width: 12%">
+<col style="width: 13%">
 <col style="width: 8%">
 <col style="width: 21%">
+<col style="width: 11%">
+<col style="width: 13%">
+<col style="width: 11%">
+<col style="width: 20%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1149,20 +1155,20 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">0.850</td>
-<td style="text-align: left;">0.796</td>
-<td style="text-align: left;">-0.0540</td>
-<td style="text-align: left;">-6.35%</td>
-<td style="text-align: left;">0.0549</td>
-<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">148.413</td>
+<td style="text-align: left;">147.5632</td>
+<td style="text-align: left;">17360.37%</td>
+<td style="text-align: left;">147.5632</td>
+<td style="text-align: left;">100.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\kappa\)</span></td>
 <td style="text-align: left;">12.000</td>
-<td style="text-align: left;">6.336</td>
-<td style="text-align: left;">-5.6638</td>
-<td style="text-align: left;">-47.20%</td>
-<td style="text-align: left;">5.8034</td>
-<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">1014.073</td>
+<td style="text-align: left;">1002.0729</td>
+<td style="text-align: left;">8350.61%</td>
+<td style="text-align: left;">1037.0944</td>
+<td style="text-align: left;">100.0%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(c_p\)</span></td>
@@ -1193,7 +1199,11 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 </section>
 <section id="sec-profiles" class="level2" data-number="4.4">
 <h2 data-number="4.4" class="anchored" data-anchor-id="sec-profiles"><span class="header-section-number">4.4</span> Profile Likelihood</h2>
-<p>Profile likelihood curves provide the final identifiability check: a peaked, unimodal profile confirms that the data contain sufficient curvature to locate the MLE precisely, while a flat profile would signal non-identifiability regardless of the FIM analysis. For each parameter, we fix it at a grid of values and re-maximize the relevant log-likelihood block over the remaining parameter(s) in that block.</p>
+<p>Profile likelihood curves provide the final identifiability check: a peaked, unimodal profile confirms that the data contain sufficient curvature to locate the MLE precisely, while a flat profile would signal non-identifiability regardless of the FIM analysis. For the OU parameters (<span class="math inline">\(\sigma_p, c_p, \sigma_s, c_s\)</span>), profiles are computed by evaluating the exact analytic Gaussian log-likelihood at each grid value while profiling out the nuisance parameter in the same block. For the IG parameters (<span class="math inline">\(\mu_0, \kappa\)</span>), the profile is constructed from the quadratic approximation</p>
+<p><span class="math display">\[
+L_\text{profile}(\theta_i) \approx -\tfrac{1}{2}\bigl(\log\theta_i - \log\hat\theta_i\bigr)^2\, I_{\partial,ii},
+\]</span></p>
+<p>where <span class="math inline">\(I_{\partial,ii} = \mathcal{I}_{ii} - \mathcal{I}_{ij}^2/\mathcal{I}_{jj}\)</span> is the profile (partial) information obtained from the exact PP FIM. This approximation is appropriate because the recovery study confirms that the exact PP MLE is asymptotically normal with coverage close to the nominal 95%.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
