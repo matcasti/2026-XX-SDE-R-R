@@ -2,7 +2,7 @@ project:
   type: website
 
 website:
-  title: "2026-XX SDE R-R"
+  title: "The SDE-Inverse Gaussian Model"
   navbar:
     left:
       - href: index.qmd

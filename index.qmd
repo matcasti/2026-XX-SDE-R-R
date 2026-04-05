@@ -565,44 +565,6 @@ The full simulation integrates the three components above into a single time-ind
 3. **Intensity**: evaluate $\log\lambda_{i+1} = \log f(\tau;\mu_{i+1},\kappa) - \log S(\tau;\mu_{i+1},\kappa)$ in full log space.
 4. **Event**: compute $P = -\text{expm1}(\log S(\tau + \Delta t) - \log S(\tau))$; draw $U \sim \text{Uniform}(0,1)$; if $U < P$, record a spike and reset $\tau \leftarrow 0$.
 
-```{r}
-#| label: code-sim
-#| eval: false
-#| echo: true
-
-sim_sde_ig <- function(duration, dt, params,
-                       input_fn   = function(t) 0,
-                       obs_models = list(make_rr_obs_model()),
-                       seed       = NULL) {
-  if (!is.null(seed)) set.seed(seed)
-  sp <- params$structural; fp <- params$free
-  n  <- ceiling(duration / dt)
-  tg <- seq(0, by = dt, length.out = n)
-  p  <- numeric(n); s <- numeric(n)
-  mu_v <- numeric(n); dlt <- numeric(n); loglam <- numeric(n)
-  spikes <- numeric(0); last_t <- 0
-
-  for (i in seq_len(n - 1)) {
-    u <- input_fn(tg[i])
-    # Step 1: exact OU transition
-    p[i+1] <- ou_exact_step(p[i], sp$a_p, fp$sigma_p, fp$c_p, u, dt)
-    s[i+1] <- ou_exact_step(s[i], sp$a_s, fp$sigma_s, fp$c_s, u, dt)
-    # Step 2: log link
-    mu_v[i+1] <- compute_mu(p[i+1], s[i+1], fp$mu_0)
-    dlt[i+1]  <- compute_delta(p[i+1], s[i+1])
-    # Step 3: log-space intensity
-    tau <- tg[i+1] - last_t
-    loglam[i+1] <- log_ig_hazard(tau, mu_v[i+1], fp$kappa)
-    # Step 4: survival-ratio firing
-    pf <- p_fire_survival_ratio(tau, mu_v[i+1], fp$kappa, dt)
-    if (runif(1) < pf) { spikes <- c(spikes, tg[i+1]); last_t <- tg[i+1] }
-  }
-  list(time = tg, p = p, s = s, delta = dlt,
-       mu = mu_v, lambda = exp(loglam), log_lambda = loglam,
-       spikes = spikes, params = params)
-}
-```
-
 # Identifiability Analysis {#sec-identifiability}
 
 The framework introduces six free parameters: $\Theta = \{\sigma_p,\, c_p,\, \sigma_s,\, c_s,\, \mu_0,\, \kappa\}$. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal — the RR interval series — and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.
@@ -734,7 +696,7 @@ REC_STUDY <- recovery_study(
   N           = 200L,
   true_params = PARAMS,
   duration    = 300,
-  dt          = 0.001,
+  dt          = 0.005,
   input_fn    = REC_INPUT,
   use_parallel = TRUE
 )
