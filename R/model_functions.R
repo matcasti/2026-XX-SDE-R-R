@@ -51,7 +51,12 @@ ou_log_transition_density <- function(x_next, x_now, a, sigma,
 # ---- Log-space IG computations (Machler 2012) ----
 
 log1mexp <- function(x) {
-  stopifnot(all(x < 0))
+  # log(1 - exp(x)) is defined only for x < 0.
+  # Values >= 0 indicate numerical overflow upstream; return -Inf defensively.
+  if (any(x >= 0, na.rm = TRUE)) {
+    warning("log1mexp: received x >= 0 (likely upstream rounding); returning -Inf")
+    x <- pmin(x, -.Machine$double.eps)
+  }
   ifelse(x >= log(0.5), log(-expm1(x)), log1p(-exp(x)))
 }
 
@@ -164,7 +169,11 @@ sim_sde_ig <- function(duration, dt, params,
 
   loglam[1L] <- -Inf   # hazard at tau=0 is zero by IG first-passage construction
 
-  spikes <- numeric(0); last_t <- 0
+  max_spikes <- n
+  spikes     <- numeric(max_spikes)
+  n_spikes   <- 0L
+  last_t     <- 0
+
   for (i in seq_len(n - 1)) {
     u <- input_fn(tg[i])
     p[i+1] <- ou_exact_step(p[i], sp$a_p, fp$sigma_p, fp$c_p, u, dt)
@@ -178,8 +187,13 @@ sim_sde_ig <- function(duration, dt, params,
     loglam[i+1] <- obs_models[[1]]$log_intensity(tau_end, p[i+1], s[i+1], fp)
 
     pf <- p_fire_survival_ratio(tau_start, tau_end, mu_v[i+1], fp$kappa)
-    if (runif(1) < pf) { spikes <- c(spikes, tg[i+1]); last_t <- tg[i+1] }
+    if (runif(1) < pf) {
+      n_spikes <- n_spikes + 1L
+      spikes[n_spikes] <- tg[i+1]
+      last_t <- tg[i+1]
+    }
   }
+  spikes <- spikes[seq_len(n_spikes)]
   # NOTE: input_fn is stored in the result to enable downstream MLE and
   # identifiability functions to reconstruct the input signal.
   list(time = tg, p = p, s = s, delta = dlt,
@@ -201,7 +215,10 @@ compute_time_rescaling <- function(res) {
   vapply(seq_len(n - 1L), function(k) {
     i0 <- which.min(abs(tg - sp[k]))
     i1 <- which.min(abs(tg - sp[k + 1L]))
-    if (i1 <= i0) return(0)
+    if (i1 <= i0) {
+      warning(sprintf("compute_time_rescaling: spike pair %d-%d maps to same grid index; interval skipped", k, k+1L))
+      return(NA_real_)
+    }
 
     # Grid points strictly inside (sp[k], sp[k+1]], i.e. the END of each dt step
     idx      <- (i0 + 1L):i1

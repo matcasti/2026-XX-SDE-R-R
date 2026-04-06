@@ -85,6 +85,11 @@ ou_mle <- function(x_vec, u_vec, a, dt) {
 ig_obs_mle <- function(tau_vec, delta_vec) {
   stopifnot(length(tau_vec) == length(delta_vec), length(tau_vec) > 1L)
 
+  if (any(tau_vec <= 0))
+    stop("ig_obs_mle: tau_vec contains non-positive intervals — check spike times")
+  if (any(!is.finite(delta_vec)))
+    stop("ig_obs_mle: delta_vec contains non-finite values — check state trajectory")
+
   g       <- exp(-delta_vec)         # g_k = mu_k / mu_0  (=1 when delta=0)
   w       <- exp(delta_vec)          # w_k = 1/g_k
 
@@ -275,10 +280,12 @@ full_conditional_fim <- function(sim_res) {
 # this reduces to a 1-D optimization in each case.
 
 ou_log_lik_at <- function(x_vec, u_vec, a, sigma, c_gain, dt) {
-  n <- length(x_vec) - 1L
-  sum(vapply(seq_len(n), function(i)
-    ou_log_transition_density(x_vec[i+1L], x_vec[i], a, sigma, c_gain, u_vec[i], dt),
-    numeric(1L)))
+  n       <- length(x_vec) - 1L
+  idx     <- seq_len(n)
+  e_adt   <- exp(-a * dt)
+  means   <- x_vec[idx] * e_adt + (c_gain * u_vec[idx] / a) * (-expm1(-a * dt))
+  var_v   <- (sigma^2 / (2 * a)) * (-expm1(-2 * a * dt))
+  sum(dnorm(x_vec[idx + 1L], mean = means, sd = sqrt(var_v), log = TRUE))
 }
 
 profile_lik_one <- function(param, grid, sim_res) {
