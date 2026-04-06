@@ -198,7 +198,7 @@ ig_obs_fim <- function(mu0, kappa_val, tau_vec, delta_vec, eps = 1e-5) {
 # The cross-term is exactly zero at the MLE (by the score equation),
 # so the matrix is diagonal.
 
-ou_fim <- function(sigma_val, c_gain_val, x_vec, u_vec, a, dt) {
+ou_fim <- function(sigma_val, x_vec, u_vec, a, dt) {
   n    <- length(x_vec) - 1L
   z    <- u_vec[seq_len(n)] / a * (-expm1(-a * dt))
   C_a  <- (-expm1(-2 * a * dt)) / (2 * a)
@@ -234,8 +234,8 @@ full_conditional_fim <- function(sim_res) {
 
   mle <- full_conditional_mle(sim_res)
 
-  fim_p   <- ou_fim(mle$sigma_p, mle$c_p, sim_res$p, u_vec, sp$a_p, dt)
-  fim_s   <- ou_fim(mle$sigma_s, mle$c_s, sim_res$s, u_vec, sp$a_s, dt)
+  fim_p   <- ou_fim(mle$sigma_p, sim_res$p, u_vec, sp$a_p, dt)
+  fim_s   <- ou_fim(mle$sigma_s, sim_res$s, u_vec, sp$a_s, dt)
 
   spk      <- sim_res$spikes
   tau_vec  <- diff(spk)
@@ -289,48 +289,78 @@ profile_lik_one <- function(param, grid, sim_res) {
     vapply(sim_res$time, sim_res$input_fn, numeric(1L))
   else rep(0, n_t)
 
-  spk      <- sim_res$spikes
-  tau_vec  <- diff(spk)
-  beat_idx <- vapply(spk[-1L],
-                     function(t) which.min(abs(sim_res$time - t)), integer(1L))
+  spk     <- sim_res$spikes
+  tau_vec <- diff(spk)
   delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
 
+  # --- Pre-compute nuisance MLEs once (they do not depend on the grid value) ---
+  # OU blocks: c_hat does not depend on sigma; sigma_hat DOES depend on c.
+  # IG block:  mu0_hat does not depend on kappa; kappa_hat depends on mu0.
+
+  # Parasympathetic block
+  n_p  <- length(sim_res$p) - 1L
+  e_p  <- exp(-sp$a_p * dt)
+  z_p  <- u_vec[seq_len(n_p)] / sp$a_p * (-expm1(-sp$a_p * dt))
+  y_p  <- sim_res$p[-1L] - sim_res$p[seq_len(n_p)] * e_p
+  C_ap <- (-expm1(-2 * sp$a_p * dt)) / (2 * sp$a_p)
+  c_p_hat <- if (sum(z_p^2) > 1e-14) sum(y_p * z_p) / sum(z_p^2) else 0
+  # sigma_hat at joint MLE (used for sigma_p profile; c_hat is nuisance there)
+  r_p_joint  <- y_p - c_p_hat * z_p
+  sig_p_hat  <- sqrt(max(mean(r_p_joint^2) / C_ap, 1e-14))
+
+  # Sympathetic block
+  n_s  <- length(sim_res$s) - 1L
+  e_s  <- exp(-sp$a_s * dt)
+  z_s  <- u_vec[seq_len(n_s)] / sp$a_s * (-expm1(-sp$a_s * dt))
+  y_s  <- sim_res$s[-1L] - sim_res$s[seq_len(n_s)] * e_s
+  C_as <- (-expm1(-2 * sp$a_s * dt)) / (2 * sp$a_s)
+  c_s_hat <- if (sum(z_s^2) > 1e-14) sum(y_s * z_s) / sum(z_s^2) else 0
+  r_s_joint  <- y_s - c_s_hat * z_s
+  sig_s_hat  <- sqrt(max(mean(r_s_joint^2) / C_as, 1e-14))
+
+  # IG block: mu0_hat is independent of kappa
+  g       <- exp(-delta_v)
+  w       <- exp(delta_v)
+  mu0_hat <- sum(tau_vec * w^2) / sum(w)
+  mu_k_at_mu0hat <- mu0_hat * g
+
   vapply(grid, function(v) {
-    if (!is.finite(v) || v <= 0 && param %in% c("mu0","kappa","sigma_p","sigma_s"))
-      return(-Inf)
+    if (!is.finite(v)) return(-Inf)
     switch(param,
-      mu0 = {
-        # Profile over kappa: kappa_hat(mu0) has closed form
-        g    <- exp(-delta_v)
-        mu_k <- v * g
-        psi  <- sum((tau_vec - mu_k)^2 / (mu_k^2 * tau_vec))
-        k    <- length(tau_vec) / max(psi, 1e-10)
-        sum(log_ig_pdf(tau_vec, mu_k, k))
-      },
-      kappa = {
-        # Profile over mu0: use the analytic mu0_hat
-        mle_mu <- ig_obs_mle(tau_vec, delta_v)
-        mu_k   <- mle_mu$mu0 * exp(-delta_v)
-        sum(log_ig_pdf(tau_vec, mu_k, v))
-      },
-      sigma_p = {
-        # Profile over c_p: use analytic c_hat
-        mle_c <- ou_mle(sim_res$p, u_vec, sp$a_p, dt)
-        ou_log_lik_at(sim_res$p, u_vec, sp$a_p, v, mle_c$c_gain, dt)
-      },
-      sigma_s = {
-        mle_c <- ou_mle(sim_res$s, u_vec, sp$a_s, dt)
-        ou_log_lik_at(sim_res$s, u_vec, sp$a_s, v, mle_c$c_gain, dt)
-      },
-      c_p = {
-        mle_s2 <- ou_mle(sim_res$p, u_vec, sp$a_p, dt)
-        ou_log_lik_at(sim_res$p, u_vec, sp$a_p, mle_s2$sigma, v, dt)
-      },
-      c_s = {
-        mle_s2 <- ou_mle(sim_res$s, u_vec, sp$a_s, dt)
-        ou_log_lik_at(sim_res$s, u_vec, sp$a_s, mle_s2$sigma, v, dt)
-      },
-      -Inf
+           mu0 = {
+             # Profile kappa over fixed mu0 = v (closed form)
+             if (v <= 0) return(-Inf)
+             mu_k <- v * g
+             psi  <- sum((tau_vec - mu_k)^2 / (mu_k^2 * tau_vec))
+             k    <- length(tau_vec) / max(psi, 1e-10)
+             sum(log_ig_pdf(tau_vec, mu_k, k))
+           },
+           kappa = {
+             # Profile mu0 over fixed kappa = v (mu0_hat is kappa-independent)
+             if (v <= 0) return(-Inf)
+             sum(log_ig_pdf(tau_vec, mu_k_at_mu0hat, v))
+           },
+           sigma_p = {
+             # Profile c_p over fixed sigma_p = v (c_hat is sigma-independent)
+             if (v <= 0) return(-Inf)
+             ou_log_lik_at(sim_res$p, u_vec, sp$a_p, v, c_p_hat, dt)
+           },
+           sigma_s = {
+             if (v <= 0) return(-Inf)
+             ou_log_lik_at(sim_res$s, u_vec, sp$a_s, v, c_s_hat, dt)
+           },
+           c_p = {
+             # Profile sigma_p over fixed c_p = v (sigma_hat DOES depend on v)
+             r_v   <- y_p - v * z_p
+             sig_v <- sqrt(max(mean(r_v^2) / C_ap, 1e-14))
+             ou_log_lik_at(sim_res$p, u_vec, sp$a_p, sig_v, v, dt)
+           },
+           c_s = {
+             r_v   <- y_s - v * z_s
+             sig_v <- sqrt(max(mean(r_v^2) / C_as, 1e-14))
+             ou_log_lik_at(sim_res$s, u_vec, sp$a_s, sig_v, v, dt)
+           },
+           -Inf   # unknown parameter name
     )
   }, numeric(1L))
 }

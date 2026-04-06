@@ -754,7 +754,7 @@ PROFILES <- all_profile_likelihoods(RES, n_grid = 80, width = 3.0)
 
 ```{r}
 #| label: fig-profiles
-#| fig-cap: "Profile log-likelihoods for all six free parameters, normalized to zero at the MLE. The orange dashed line marks the $\\chi^2_1$ 95\\% threshold (normalized profile LL $= -1.92$); tick marks on the horizontal axis indicate the implied 95\\% profile confidence interval. The green vertical line shows the true parameter value used in the simulation (which equals the MLE here, since the conditional MLE is unbiased). All profiles are unimodal and sharply peaked, confirming that each parameter is precisely identified."
+#| fig-cap: "Profile log-likelihoods for all six free parameters, normalized to zero at the MLE. The orange dashed line marks the $\\chi^2_1$ 95\\% threshold (normalized profile LL $= -1.92$); tick marks on the horizontal axis indicate the implied 95\\% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All profiles are unimodal and sharply peaked, confirming that each parameter is precisely identified."
 #| fig-height: 5.5
 
 fp <- PARAMS$free

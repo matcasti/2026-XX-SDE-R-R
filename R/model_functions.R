@@ -66,10 +66,18 @@ log_ig_survival <- function(tau, mu, kappa) {
   z2   <- sq * (tau / mu + 1)
 
   if (tau < mu) {
-    logF1 <- pnorm(z1, log.p = TRUE)
-    logF2 <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)
-    F_tau <- exp(logF1) + exp(logF2)
-    return(log1p(-F_tau))
+    logF1 <- pnorm( z1, log.p = TRUE)           # log Φ(z1),  z1 < 0
+    logF2 <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)  # log[exp(2κ/μ)Φ(−z2)]
+    # log F(τ) = log[exp(logF1) + exp(logF2)] via log-sum-exp
+    log_F  <- if (logF1 >= logF2)
+                logF1 + log1p(exp(logF2 - logF1))
+              else
+                logF2 + log1p(exp(logF1 - logF2))
+    # log S(τ) = log(1 − F(τ))
+
+    if (log_F >= 0) return(-Inf)   # numerical edge case: F ≥ 1
+
+    return(log1mexp(log_F))    # log1mexp(x) = log(1−eˣ), x < 0 required
   } else {
     logA <- pnorm(-z1, log.p = TRUE)
     logB <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)
@@ -99,8 +107,11 @@ ig_hazard_bound <- function(mu_min, kappa, safety_factor = 1.1)
 
 p_fire_survival_ratio <- function(tau_start, tau_end, mu, kappa) {
   ls0 <- log_ig_survival(tau_start, mu, kappa)
+  # S(tau_start) ≈ 0: event is overdue, fire with certainty
+  if (!is.finite(ls0)) return(1)
   ls1 <- log_ig_survival(tau_end, mu, kappa)
-  if (!is.finite(ls0)) return(0)
+  # S(tau_end) ≈ 0 but S(tau_start) > 0: certain fire in this step
+  if (!is.finite(ls1)) return(1)
   min(max(-expm1(ls1 - ls0), 0), 1)
 }
 
@@ -150,6 +161,9 @@ sim_sde_ig <- function(duration, dt, params,
   tg <- seq(0, by = dt, length.out = n)
   p  <- numeric(n); s <- numeric(n)
   mu_v <- numeric(n); dlt <- numeric(n); loglam <- numeric(n)
+
+  loglam[1L] <- -Inf   # hazard at tau=0 is zero by IG first-passage construction
+
   spikes <- numeric(0); last_t <- 0
   for (i in seq_len(n - 1)) {
     u <- input_fn(tg[i])
@@ -176,17 +190,34 @@ sim_sde_ig <- function(duration, dt, params,
 # ---- Time-rescaling diagnostics ----
 
 compute_time_rescaling <- function(res) {
-  lam <- res$lambda; tg <- res$time; sp <- res$spikes
-  dt  <- tg[2] - tg[1]
-  lm  <- (lam[-1] + lam[-length(lam)]) / 2
-  cml <- c(0, cumsum(lm * dt))
-  n   <- length(sp)
-  if (n < 2) return(numeric(0))
-  vapply(seq_len(n - 1), function(k) {
+  sp    <- res$spikes
+  tg    <- res$time
+  dt    <- tg[2L] - tg[1L]
+  mu_v  <- res$mu
+  kappa <- res$params$free$kappa
+  n     <- length(sp)
+  if (n < 2L) return(numeric(0L))
+
+  vapply(seq_len(n - 1L), function(k) {
     i0 <- which.min(abs(tg - sp[k]))
-    i1 <- which.min(abs(tg - sp[k + 1]))
-    if (i1 <= i0) 0 else cml[i1] - cml[i0]
-  }, numeric(1))
+    i1 <- which.min(abs(tg - sp[k + 1L]))
+    if (i1 <= i0) return(0)
+
+    # Grid points strictly inside (sp[k], sp[k+1]], i.e. the END of each dt step
+    idx      <- (i0 + 1L):i1
+    tau_ends <- tg[idx] - sp[k]    # elapsed time at end of each step
+
+    # ΔΛ_j = log S(τ_start; μ_j, κ) − log S(τ_end; μ_j, κ)  ≥ 0
+    # Mirrors exactly: P_j = 1 − S(τ_end)/S(τ_start) used in sim_sde_ig().
+    # At j=1: τ_start = 0, log_ig_survival(0, ...) = 0 (S(0) = 1) ✓
+    sum(vapply(seq_along(idx), function(j) {
+      tau_end   <- tau_ends[j]
+      tau_start <- max(tau_end - dt, 0)
+      mu_j      <- mu_v[idx[j]]
+      log_ig_survival(tau_start, mu_j, kappa) -
+        log_ig_survival(tau_end,   mu_j, kappa)
+    }, numeric(1L)))
+  }, numeric(1L))
 }
 
 # ---- Numerical comparison utilities ----
