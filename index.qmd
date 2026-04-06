@@ -47,7 +47,7 @@ In doing so, this work contributes to an ongoing effort to move HRV modeling bey
 
 ```{r}
 #| label: setup
-#| include: false
+# #| include: false
 
 
 source("R/model_functions.R")
@@ -55,16 +55,20 @@ source("R/model_functions.R")
 # ---- Shared simulation parameters ----
 
 PARAMS <- make_model_params(
-  a_p = 2.0, a_s = 0.2,
-  sigma_p = 0.25, sigma_s = 0.20,
-  mu_0 = 0.85, kappa = 12.0,
-  c_p = -0.8, c_s = 0.5
+  a_p = 0.4, a_s = 0.1,
+  sigma_p = 0.1, sigma_s = 0.05,
+  mu_0 = 1.0, kappa = 12.0,
+  c_p = -0.2, c_s = 0.1
 )
+
 
 INPUT_FN <- function(t) as.numeric(t >= 300 & t <= 420)
 
-set.seed(2026)
+set.seed(123)
 RES <- sim_sde_ig(720, 0.005, PARAMS, INPUT_FN)
+plot(RES$time, RES$mu, type = "l")
+plot(RES$time, RES$p, type = "l")
+plot(RES$time, RES$s, type = "l")
 ```
 
 ## Latent Autonomic Dynamics
@@ -165,8 +169,8 @@ The parasympathetic state $p(t)$, governed by $a_p = 2.0$ Hz (time constant $\ta
 #| fig-height: 3.8
 
 t_imp <- seq(0, 40, by = 0.05)
-imp_p <- ifelse(t_imp >= 1, exp(-2.0 * (t_imp - 1)), 0)
-imp_s <- ifelse(t_imp >= 1, exp(-0.2 * (t_imp - 1)), 0)
+imp_p <- ifelse(t_imp >= 1, exp(-0.4 * (t_imp - 1)), 0)
+imp_s <- ifelse(t_imp >= 1, exp(-0.1 * (t_imp - 1)), 0)
 
 par(mar = c(4, 4.5, 1.5, 1))
 plot(t_imp, imp_p, type = "l", col = "#0072B2", lwd = 2.5,
@@ -176,8 +180,8 @@ lines(t_imp, imp_s, col = "#D55E00", lwd = 2.5)
 abline(v = 1, lty = 2, col = "gray60")
 legend("topright",
        legend = c(
-         expression("Parasympathetic" ~~ (a[p] == 2.0 ~ Hz ~ ", " ~ tau[p] == 0.5 ~ s)),
-         expression("Sympathetic"     ~~ (a[s] == 0.2 ~ Hz ~ ", " ~ tau[s] == 5.0 ~ s))
+         expression("Parasympathetic" ~~ (a[p] == 0.4 ~ Hz ~ ", " ~ tau[p] == 2.5 ~ s)),
+         expression("Sympathetic"     ~~ (a[s] == 0.1 ~ Hz ~ ", " ~ tau[s] == 10.0 ~ s))
        ),
        col = c("#0072B2", "#D55E00"), lwd = 2.5, bty = "n", cex = 0.85)
 grid(col = "lightgray", lty = 1)
@@ -196,10 +200,8 @@ The following simulation illustrates the distinct spectral signatures of the two
 #| fig-cap: "Simulated trajectories of the latent autonomic states under baseline conditions ($u(t) = 0$, all free parameters at their reference values). **Top:** Parasympathetic state $p(t)$ — high-frequency texture driven by the fast decay rate. **Middle:** Sympathetic state $s(t)$ — smooth, slow-trending trajectory. **Bottom:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$ — the quantity directly identified by the RR interval series. Positive values indicate sympathetic dominance; negative values indicate vagal dominance."
 #| fig-height: 6
 
-p0 <- make_model_params(a_p = 2.0, a_s = 0.2, sigma_p = 0.25,
-                        sigma_s = 0.20, mu_0 = 0.85, kappa = 12)
 set.seed(101)
-r0 <- sim_sde_ig(120, 0.005, p0)
+r0 <- sim_sde_ig(300, 0.005, PARAMS)
 
 layout(matrix(1:3, 3, 1))
 par(mar = c(1.5, 5, 1, 1.5), oma = c(3, 0, 0, 0))
@@ -537,7 +539,8 @@ par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
 plot(fs$tau, fs$lambda, type = "l", lwd = 2.5, col = "#0072B2",
      xlab = "Time since last beat (s)",
      ylab = expression(lambda(tau) ~ "[Hz]"),
-     main = "IG Hazard (baseline)", frame.plot = FALSE)
+     main = "IG Hazard (baseline)", frame.plot = FALSE,
+     xlim = c(0, 2.5))
 pk  <- fs$tau[which.max(fs$lambda)]
 lmx <- max(fs$lambda)
 abline(v = pk, lty = 2, col = "gray50")
@@ -548,7 +551,8 @@ grid(col = "lightgray", lty = 1)
 plot(fs$tau, fs$rel_error_pct, type = "l", lwd = 2.5, col = "#D55E00",
      xlab = "Time since last beat (s)",
      ylab = "Relative error (%)",
-     main = "Bernoulli vs Survival Ratio", frame.plot = FALSE)
+     main = "Bernoulli vs Survival Ratio", frame.plot = FALSE,
+     xlim = c(0, 2.5))
 abline(h = 0, lty = 1, col = "gray60")
 abline(v = pk, lty = 2, col = "gray50")
 pk_err <- fs$rel_error_pct[which.max((fs$rel_error_pct))]
