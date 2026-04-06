@@ -51,11 +51,12 @@ ou_log_transition_density <- function(x_next, x_now, a, sigma,
 # ---- Log-space IG computations (Machler 2012) ----
 
 log1mexp <- function(x) {
-  # log(1 - exp(x)) is defined only for x < 0.
-  # Values >= 0 indicate numerical overflow upstream; return -Inf defensively.
-  if (any(x >= 0, na.rm = TRUE)) {
-    warning("log1mexp: received x >= 0 (likely upstream rounding); returning -Inf")
-    x <- pmin(x, -.Machine$double.eps)
+  # log(1 - exp(x)), numerically stable for x < 0.
+  # Values >= 0 indicate upstream overflow; clamp element-wise and warn.
+  bad <- is.finite(x) & x >= 0
+  if (any(bad, na.rm = TRUE)) {
+    warning("log1mexp: ", sum(bad), " value(s) >= 0; clamping to -eps.")
+    x <- ifelse(bad, -.Machine$double.eps, x)
   }
   ifelse(x >= log(0.5), log(-expm1(x)), log1p(-exp(x)))
 }
@@ -164,7 +165,17 @@ sim_sde_ig <- function(duration, dt, params,
   sp <- params$structural; fp <- params$free
   n  <- ceiling(duration / dt)
   tg <- seq(0, by = dt, length.out = n)
-  p  <- numeric(n); s <- numeric(n)
+
+  # Initialize at the stationary mean of each OU process.
+  # When input is non-zero at t=0 the equilibrium differs, but the
+  # stationary variance is sigma^2/(2a) regardless of input.
+  # Drawing from the marginal N(0, sigma^2/(2a)) avoids a systematic
+  # transient that would bias short simulations.
+  p  <- numeric(n)
+  s  <- numeric(n)
+  p[1L] <- rnorm(1, 0, sqrt(fp$sigma_p^2 / (2 * sp$a_p)))
+  s[1L] <- rnorm(1, 0, sqrt(fp$sigma_s^2 / (2 * sp$a_s)))
+
   mu_v <- numeric(n); dlt <- numeric(n); loglam <- numeric(n)
 
   loglam[1L] <- -Inf   # hazard at tau=0 is zero by IG first-passage construction
@@ -216,7 +227,12 @@ compute_time_rescaling <- function(res) {
     i0 <- which.min(abs(tg - sp[k]))
     i1 <- which.min(abs(tg - sp[k + 1L]))
     if (i1 <= i0) {
-      warning(sprintf("compute_time_rescaling: spike pair %d-%d maps to same grid index; interval skipped", k, k+1L))
+      # This can only happen if two spikes fall in the same dt bin.
+      # At dt = 0.005 s this requires IBI < 5 ms — physiologically impossible.
+      # Flag clearly so the caller knows to investigate.
+      message(sprintf(
+        "compute_time_rescaling: spikes %d and %d map to the same grid index (IBI < dt). Returning NA.",
+        k, k + 1L))
       return(NA_real_)
     }
 

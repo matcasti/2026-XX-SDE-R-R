@@ -62,7 +62,7 @@ PARAMS <- make_model_params(
 )
 
 
-INPUT_FN <- function(t) as.numeric(t >= 300 & t <= 420)
+INPUT_FN <- function(t) as.numeric(t >= 300 & t < 420)
 
 set.seed(1234)
 RES <- sim_sde_ig(720, 0.005, PARAMS, INPUT_FN)
@@ -388,14 +388,17 @@ The resulting hazard function $\lambda(\tau)$ is non-monotonic. At $\tau = 0$, t
 #| fig-cap: "The Inverse Gaussian hazard function $\\lambda(\\tau \\mid \\mathcal{H}_t)$, computed using the fully log-space algorithm. **Left:** Effect of sympathetic activation: reducing $\\mu(t)$ shifts the hazard peak to the left, increasing the probability of an earlier beat. **Right:** The hazard surface as a function of both elapsed time and the current mean interval. Brighter colors indicate higher instantaneous firing probability."
 
 tau_v  <- seq(0.01, 2.5, length.out = 500)
-h_base <- vapply(tau_v, ig_hazard, numeric(1), mu = 0.85, kappa = 12)
-h_sym  <- vapply(tau_v, ig_hazard, numeric(1), mu = 0.50, kappa = 12)
-h_para <- vapply(tau_v, ig_hazard, numeric(1), mu = 1.20, kappa = 12)
 
-mu_ax  <- seq(0.4, 1.3, length.out = 60)
+kap_fig <- PARAMS$free$kappa
+mu_base <- PARAMS$free$mu_0
+
+h_base  <- vapply(tau_v, ig_hazard, numeric(1), mu = mu_base,        kappa = kap_fig)
+h_sym   <- vapply(tau_v, ig_hazard, numeric(1), mu = mu_base * 0.60, kappa = kap_fig)
+h_para  <- vapply(tau_v, ig_hazard, numeric(1), mu = mu_base * 1.40, kappa = kap_fig)
+
+mu_ax  <- seq(mu_base * 0.4, mu_base * 1.5, length.out = 60)
 tau_ax <- seq(0.02, 1.8, length.out = 60)
-hgrid  <- outer(tau_ax, mu_ax, Vectorize(function(ta, mu)
-  ig_hazard(ta, mu, 12)))
+hgrid  <- outer(tau_ax, mu_ax, Vectorize(function(ta, mu) ig_hazard(ta, mu, kap_fig)))
 
 par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
 
@@ -533,7 +536,8 @@ using the identity $1 - e^x = -\text{expm1}(x)$, which is numerically stable for
 #| label: fig-bernoulli-vs-survival
 #| fig-cap: "Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. **Left:** The IG hazard function for the baseline parameter set, with the hazard peak at $\\tau \\approx 0.72$ s. **Right:** Relative error $(P_\\text{Bernoulli} - P_\\text{exact})/P_\\text{exact} \\times 100\\%$ as a function of elapsed time $\\tau$. The error is negative for $\\tau < \\tau^*$ (rising hazard: $\\lambda(\\tau_i)$ underestimates the step-average) and positive for $\\tau > \\tau^*$ (falling hazard: $\\lambda(\\tau_i)$ overestimates). The maximum positive overestimate, annotated on the right panel, occurs just past the hazard peak where $\\lambda$ is largest and the surplus $\\lambda(\\tau_i)\\Delta t - P_{\\text{exact}}$ peaks. Because most beats are generated in this post-peak regime, the net bias across a full simulation is a systematic overestimate of event counts."
 
-fs <- study_firing_bias(mu = 1.00, kappa = 12, dt = 0.005, tau_range = c(0.5,3))
+fs <- study_firing_bias(mu = PARAMS$free$mu_0, kappa = PARAMS$free$kappa,
+                        dt = 0.005, tau_range = c(0.3, 3 * PARAMS$free$mu_0))
 
 par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
 
@@ -683,7 +687,7 @@ knitr::kable(fim_tbl, escape = FALSE,
                            "Condition number"))
 ```
 
-The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]$. Substituting the analytic expressions gives a ratio of $2\kappa\sum_k e^{\Delta_k}/(N\mu_0)$; for the reference parameters this is approximately $2 \cdot 12 \cdot 750 / (750 \cdot 1.0) \approx 24$, well within the identifiable regime and far below $10^3$.
+The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]$. Substituting the analytic expressions gives a ratio of $2\kappa\sum_k e^{\Delta_k}/(N\mu_0)$; for the reference parameters (with $\kappa = 20$, $N \approx 750$ beats, $\bar{w} \approx 1$) this is approximately $2 \cdot 20 \cdot 750 / (750 \cdot 1.0) \approx 40$, well within the identifiable regime and far below $10^3$.
 
 ## Simulation Recovery Study {#sec-recovery}
 
@@ -741,7 +745,7 @@ knitr::kable(rec_tbl, escape = FALSE,
                            "RMSE", "95\\% CI coverage"))
 ```
 
-The bias is negligible for all parameters (relative bias below 1% for the IG parameters; sub-0.1% for the OU parameters), confirming that the closed-form estimators are consistent. RMSE scales with the inverse square root of the number of observations in each block, as predicted by the Cramér-Rao bound. Coverage is close to the nominal 95% for all parameters, validating the asymptotic standard error expressions derived analytically.
+The bias is below 0.1% for the OU parameters, reflecting the large number of state observations. For the IG block ($\mu_0$, $\kappa$), bias is assessed in the table above; both should fall below 1\% if the interval-averaged $\bar\Delta_k$ estimator is correctly specified (see Section~\ref{sec-recovery}). RMSE scales with the inverse square root of the number of observations in each block, as predicted by the Cramér-Rao bound. Coverage is close to the nominal 95% for all parameters, validating the asymptotic standard error expressions derived analytically.
 
 ## Profile Likelihood {#sec-profiles}
 

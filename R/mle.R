@@ -22,12 +22,28 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
     t_start <- spk[k]
     t_end   <- spk[k + 1L]
     idx <- which(time_vec > t_start & time_vec <= t_end)
-    if (length(idx) > 0) {
+    if (length(idx) > 0L) {
       -log(mean(exp(-delta_vec[idx])))
     } else {
+      # No grid points inside (t_start, t_end] — IBI < dt.
+      # This should not occur at dt = 0.005 s with physiological IBIs.
+      # Using nearest-endpoint delta is equivalent to the old biased estimate;
+      # flag it so the caller can investigate.
+      warning(sprintf(
+        "compute_effective_delta: no grid points in interval [%.4f, %.4f] (IBI=%.4f < dt). Using endpoint delta.",
+        t_start, t_end, t_end - t_start))
       delta_vec[which.min(abs(time_vec - t_end))]
     }
   }, numeric(1L))
+}
+
+# Helper: reconstruct input vector from a sim_res object.
+# Called once per analysis function; result cached by caller.
+extract_u_vec <- function(sim_res) {
+  if (!is.null(sim_res$input_fn))
+    vapply(sim_res$time, sim_res$input_fn, numeric(1L))
+  else
+    rep(0.0, length(sim_res$time))
 }
 
 # ---- Block 1 / 2: Analytic OU MLE ----
@@ -94,23 +110,35 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   w       <- exp(delta_vec)          # w_k = 1/g_k
 
   # Closed-form MLE for mu_0
-  mu0_hat <- sum(tau_vec * w^2) / sum(w)
+  denom_w <- sum(w)
+  if (!is.finite(denom_w) || denom_w < .Machine$double.eps) {
+    warning("ig_obs_mle: denominator sum(exp(delta)) near zero; returning NAs.")
+    return(list(mu0=NA_real_, kappa=NA_real_, mu0_se=NA_real_, kappa_se=NA_real_,
+                log_lik=NA_real_, n_beats=length(tau_vec)))
+  }
+  mu0_hat <- sum(tau_vec * w^2) / denom_w
 
   # Closed-form MLE for kappa (given mu_0_hat)
   mu_k    <- mu0_hat * g
   psi     <- sum((tau_vec - mu_k)^2 / (mu_k^2 * tau_vec))
   n       <- length(tau_vec)
   kappa_hat <- n / max(psi, 1e-10)
+  if (!is.finite(kappa_hat) || kappa_hat > 1e6) {
+    warning(sprintf(
+      "ig_obs_mle: kappa_hat = %.3g (capped at 1e6). psi = %.3g, n = %d.",
+      kappa_hat, psi, n))
+    kappa_hat <- 1e6
+  }
 
   # Standard errors via analytic FIM (derived in supplementary):
   #   I(log mu_0) = kappa * sum(exp(delta_k)) / mu_0
   #   I(log kappa) = N / 2
   #   Cross term = 0 (block diagonal in log-space)
-  i_log_mu0   <- kappa_hat * sum(w) / mu0_hat
+  i_log_mu0   <- kappa_hat * sum(denom_w) / mu0_hat   # reuse denom_w from above
   i_log_kappa <- n / 2
-
-  mu0_se   <- mu0_hat   / sqrt(i_log_mu0)
-  kappa_se <- kappa_hat / sqrt(i_log_kappa)
+  # SEs are unreliable if kappa is at its cap; flag with NA
+  mu0_se   <- if (kappa_hat >= 1e6 - 1) NA_real_ else mu0_hat   / sqrt(i_log_mu0)
+  kappa_se <- if (kappa_hat >= 1e6 - 1) NA_real_ else kappa_hat / sqrt(i_log_kappa)
 
   ll <- sum(log_ig_pdf(tau_vec, mu_k, kappa_hat))
 
@@ -125,9 +153,7 @@ full_conditional_mle <- function(sim_res) {
   sp    <- sim_res$params$structural
   dt    <- sim_res$time[2L] - sim_res$time[1L]
   n_t   <- length(sim_res$time)
-  u_vec <- if (!is.null(sim_res$input_fn))
-    vapply(sim_res$time, sim_res$input_fn, numeric(1L))
-  else rep(0, n_t)
+  u_vec <- extract_u_vec(sim_res)
 
   mle_p <- ou_mle(sim_res$p, u_vec, sp$a_p, dt)
   mle_s <- ou_mle(sim_res$s, u_vec, sp$a_s, dt)
@@ -233,9 +259,7 @@ full_conditional_fim <- function(sim_res) {
   sp    <- sim_res$params$structural
   dt    <- sim_res$time[2L] - sim_res$time[1L]
   n_t   <- length(sim_res$time)
-  u_vec <- if (!is.null(sim_res$input_fn))
-    vapply(sim_res$time, sim_res$input_fn, numeric(1L))
-  else rep(0, n_t)
+  u_vec <- extract_u_vec(sim_res)
 
   mle <- full_conditional_mle(sim_res)
 
@@ -292,9 +316,7 @@ profile_lik_one <- function(param, grid, sim_res) {
   sp    <- sim_res$params$structural
   dt    <- sim_res$time[2L] - sim_res$time[1L]
   n_t   <- length(sim_res$time)
-  u_vec <- if (!is.null(sim_res$input_fn))
-    vapply(sim_res$time, sim_res$input_fn, numeric(1L))
-  else rep(0, n_t)
+  u_vec <- extract_u_vec(sim_res)
 
   spk     <- sim_res$spikes
   tau_vec <- diff(spk)
@@ -335,11 +357,10 @@ profile_lik_one <- function(param, grid, sim_res) {
     if (!is.finite(v)) return(-Inf)
     switch(param,
            mu0 = {
-             # Profile kappa over fixed mu0 = v (closed form)
              if (v <= 0) return(-Inf)
              mu_k <- v * g
              psi  <- sum((tau_vec - mu_k)^2 / (mu_k^2 * tau_vec))
-             k    <- length(tau_vec) / max(psi, 1e-10)
+             k    <- min(length(tau_vec) / max(psi, 1e-10), 1e6)
              sum(log_ig_pdf(tau_vec, mu_k, k))
            },
            kappa = {

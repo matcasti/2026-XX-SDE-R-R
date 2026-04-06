@@ -695,40 +695,43 @@ Figure&nbsp;4: The Inverse Gaussian probability density. <strong>Left:</strong> 
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>tau_v  <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fl">0.01</span>, <span class="fl">2.5</span>, <span class="at">length.out =</span> <span class="dv">500</span>)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>h_base <span class="ot">&lt;-</span> <span class="fu">vapply</span>(tau_v, ig_hazard, <span class="fu">numeric</span>(<span class="dv">1</span>), <span class="at">mu =</span> <span class="fl">0.85</span>, <span class="at">kappa =</span> <span class="dv">12</span>)</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>h_sym  <span class="ot">&lt;-</span> <span class="fu">vapply</span>(tau_v, ig_hazard, <span class="fu">numeric</span>(<span class="dv">1</span>), <span class="at">mu =</span> <span class="fl">0.50</span>, <span class="at">kappa =</span> <span class="dv">12</span>)</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>h_para <span class="ot">&lt;-</span> <span class="fu">vapply</span>(tau_v, ig_hazard, <span class="fu">numeric</span>(<span class="dv">1</span>), <span class="at">mu =</span> <span class="fl">1.20</span>, <span class="at">kappa =</span> <span class="dv">12</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>kap_fig <span class="ot">&lt;-</span> PARAMS<span class="sc">$</span>free<span class="sc">$</span>kappa</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>mu_base <span class="ot">&lt;-</span> PARAMS<span class="sc">$</span>free<span class="sc">$</span>mu_0</span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>mu_ax  <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="fl">1.3</span>, <span class="at">length.out =</span> <span class="dv">60</span>)</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>tau_ax <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fl">0.02</span>, <span class="fl">1.8</span>, <span class="at">length.out =</span> <span class="dv">60</span>)</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>hgrid  <span class="ot">&lt;-</span> <span class="fu">outer</span>(tau_ax, mu_ax, <span class="fu">Vectorize</span>(<span class="cf">function</span>(ta, mu)</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ig_hazard</span>(ta, mu, <span class="dv">12</span>)))</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">4.5</span>, <span class="dv">5</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(tau_v, h_base, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"black"</span>,</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fu">max</span>(<span class="fu">c</span>(h_base, h_sym, h_para)) <span class="sc">*</span> <span class="fl">1.08</span>),</span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">lambda</span>(tau <span class="sc">~</span> <span class="st">"|"</span> <span class="sc">~</span> H[t])),</span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Hazard Function"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(tau_v, h_sym,  <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
-<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(tau_v, h_para, <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lty =</span> <span class="dv">3</span>)</span>
-<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topright"</span>,</span>
-<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="fu">expression</span>(mu <span class="sc">==</span> <span class="fl">0.85</span> <span class="sc">~</span> s <span class="sc">~</span> <span class="st">"(baseline)"</span>),</span>
-<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(mu <span class="sc">==</span> <span class="fl">0.50</span> <span class="sc">~</span> s <span class="sc">~</span> <span class="st">"(sympathetic \u2191)"</span>),</span>
-<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(mu <span class="sc">==</span> <span class="fl">1.20</span> <span class="sc">~</span> s <span class="sc">~</span> <span class="st">"(vagal \u2191)"</span>)),</span>
-<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#D55E00"</span>, <span class="st">"#0072B2"</span>),</span>
-<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>       <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">lty =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
-<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(tau_ax, mu_ax, hgrid,</span>
-<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>      <span class="at">col  =</span> <span class="fu">hcl.colors</span>(<span class="dv">100</span>, <span class="st">"YlOrRd"</span>, <span class="at">rev =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>      <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
-<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>      <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="st">"Mean interval"</span> <span class="sc">~</span> <span class="fu">mu</span>(t) <span class="sc">~</span> <span class="st">"[s]"</span>),</span>
-<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Hazard Surface"</span>, <span class="at">axes =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a><span class="fu">axis</span>(<span class="dv">1</span>); <span class="fu">axis</span>(<span class="dv">2</span>)</span>
-<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a><span class="fu">contour</span>(tau_ax, mu_ax, hgrid, <span class="at">add =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">nlevels =</span> <span class="dv">5</span>, <span class="at">lwd =</span> <span class="fl">0.8</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>h_base  <span class="ot">&lt;-</span> <span class="fu">vapply</span>(tau_v, ig_hazard, <span class="fu">numeric</span>(<span class="dv">1</span>), <span class="at">mu =</span> mu_base,        <span class="at">kappa =</span> kap_fig)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>h_sym   <span class="ot">&lt;-</span> <span class="fu">vapply</span>(tau_v, ig_hazard, <span class="fu">numeric</span>(<span class="dv">1</span>), <span class="at">mu =</span> mu_base <span class="sc">*</span> <span class="fl">0.60</span>, <span class="at">kappa =</span> kap_fig)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>h_para  <span class="ot">&lt;-</span> <span class="fu">vapply</span>(tau_v, ig_hazard, <span class="fu">numeric</span>(<span class="dv">1</span>), <span class="at">mu =</span> mu_base <span class="sc">*</span> <span class="fl">1.40</span>, <span class="at">kappa =</span> kap_fig)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>mu_ax  <span class="ot">&lt;-</span> <span class="fu">seq</span>(mu_base <span class="sc">*</span> <span class="fl">0.4</span>, mu_base <span class="sc">*</span> <span class="fl">1.5</span>, <span class="at">length.out =</span> <span class="dv">60</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>tau_ax <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fl">0.02</span>, <span class="fl">1.8</span>, <span class="at">length.out =</span> <span class="dv">60</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>hgrid  <span class="ot">&lt;-</span> <span class="fu">outer</span>(tau_ax, mu_ax, <span class="fu">Vectorize</span>(<span class="cf">function</span>(ta, mu) <span class="fu">ig_hazard</span>(ta, mu, kap_fig)))</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">4.5</span>, <span class="dv">5</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(tau_v, h_base, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"black"</span>,</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fu">max</span>(<span class="fu">c</span>(h_base, h_sym, h_para)) <span class="sc">*</span> <span class="fl">1.08</span>),</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">lambda</span>(tau <span class="sc">~</span> <span class="st">"|"</span> <span class="sc">~</span> H[t])),</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Hazard Function"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(tau_v, h_sym,  <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(tau_v, h_para, <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lty =</span> <span class="dv">3</span>)</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topright"</span>,</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="fu">expression</span>(mu <span class="sc">==</span> <span class="fl">0.85</span> <span class="sc">~</span> s <span class="sc">~</span> <span class="st">"(baseline)"</span>),</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(mu <span class="sc">==</span> <span class="fl">0.50</span> <span class="sc">~</span> s <span class="sc">~</span> <span class="st">"(sympathetic \u2191)"</span>),</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(mu <span class="sc">==</span> <span class="fl">1.20</span> <span class="sc">~</span> s <span class="sc">~</span> <span class="st">"(vagal \u2191)"</span>)),</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#D55E00"</span>, <span class="st">"#0072B2"</span>),</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>       <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">lty =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(tau_ax, mu_ax, hgrid,</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>      <span class="at">col  =</span> <span class="fu">hcl.colors</span>(<span class="dv">100</span>, <span class="st">"YlOrRd"</span>, <span class="at">rev =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>      <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>      <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="st">"Mean interval"</span> <span class="sc">~</span> <span class="fu">mu</span>(t) <span class="sc">~</span> <span class="st">"[s]"</span>),</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Hazard Surface"</span>, <span class="at">axes =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a><span class="fu">axis</span>(<span class="dv">1</span>); <span class="fu">axis</span>(<span class="dv">2</span>)</span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a><span class="fu">contour</span>(tau_ax, mu_ax, hgrid, <span class="at">add =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">nlevels =</span> <span class="dv">5</span>, <span class="at">lwd =</span> <span class="fl">0.8</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-hazard-function" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -852,33 +855,34 @@ P \;=\; -\text{expm1}\!\bigl(\log S(\tau + \Delta t) - \log S(\tau)\bigr),
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>fs <span class="ot">&lt;-</span> <span class="fu">study_firing_bias</span>(<span class="at">mu =</span> <span class="fl">1.00</span>, <span class="at">kappa =</span> <span class="dv">12</span>, <span class="at">dt =</span> <span class="fl">0.005</span>, <span class="at">tau_range =</span> <span class="fu">c</span>(<span class="fl">0.5</span>,<span class="dv">3</span>))</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">4.5</span>, <span class="dv">5</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(fs<span class="sc">$</span>tau, fs<span class="sc">$</span>lambda, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>,</span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">lambda</span>(tau) <span class="sc">~</span> <span class="st">"[Hz]"</span>),</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"IG Hazard (baseline)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>pk  <span class="ot">&lt;-</span> fs<span class="sc">$</span>tau[<span class="fu">which.max</span>(fs<span class="sc">$</span>lambda)]</span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>lmx <span class="ot">&lt;-</span> <span class="fu">max</span>(fs<span class="sc">$</span>lambda)</span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> pk, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(pk <span class="sc">+</span> <span class="fl">0.04</span>, lmx <span class="sc">*</span> <span class="fl">0.95</span>, <span class="fu">sprintf</span>(<span class="st">"\u03c4* = %.2f s"</span>, pk),</span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">adj =</span> <span class="dv">0</span>, <span class="at">cex =</span> <span class="fl">0.8</span>, <span class="at">col =</span> <span class="st">"gray40"</span>)</span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(fs<span class="sc">$</span>tau, fs<span class="sc">$</span>rel_error_pct, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>,</span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
-<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Relative error (%)"</span>,</span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Bernoulli vs Survival Ratio"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
-<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> pk, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
-<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>pk_err <span class="ot">&lt;-</span> fs<span class="sc">$</span>rel_error_pct[<span class="fu">which.max</span>((fs<span class="sc">$</span>rel_error_pct))]</span>
-<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>pk_tau <span class="ot">&lt;-</span> fs<span class="sc">$</span>tau[<span class="fu">which.max</span>((fs<span class="sc">$</span>rel_error_pct))]</span>
-<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(pk_tau, pk_err, <span class="at">pch =</span> <span class="dv">19</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">cex =</span> <span class="fl">1.5</span>)</span>
-<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(pk_tau <span class="sc">+</span> <span class="fl">0.06</span>, pk_err,</span>
-<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>     <span class="fu">sprintf</span>(<span class="st">"Peak overestimate: +%.2f%%"</span>, pk_err), <span class="at">adj =</span> <span class="dv">0</span>, <span class="at">cex =</span> <span class="fl">0.8</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>)</span>
-<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>fs <span class="ot">&lt;-</span> <span class="fu">study_firing_bias</span>(<span class="at">mu =</span> PARAMS<span class="sc">$</span>free<span class="sc">$</span>mu_0, <span class="at">kappa =</span> PARAMS<span class="sc">$</span>free<span class="sc">$</span>kappa,</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">dt =</span> <span class="fl">0.005</span>, <span class="at">tau_range =</span> <span class="fu">c</span>(<span class="fl">0.3</span>, <span class="dv">3</span> <span class="sc">*</span> PARAMS<span class="sc">$</span>free<span class="sc">$</span>mu_0))</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">4.5</span>, <span class="dv">5</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(fs<span class="sc">$</span>tau, fs<span class="sc">$</span>lambda, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">lambda</span>(tau) <span class="sc">~</span> <span class="st">"[Hz]"</span>),</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"IG Hazard (baseline)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>pk  <span class="ot">&lt;-</span> fs<span class="sc">$</span>tau[<span class="fu">which.max</span>(fs<span class="sc">$</span>lambda)]</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>lmx <span class="ot">&lt;-</span> <span class="fu">max</span>(fs<span class="sc">$</span>lambda)</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> pk, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(pk <span class="sc">+</span> <span class="fl">0.04</span>, lmx <span class="sc">*</span> <span class="fl">0.95</span>, <span class="fu">sprintf</span>(<span class="st">"\u03c4* = %.2f s"</span>, pk),</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>     <span class="at">adj =</span> <span class="dv">0</span>, <span class="at">cex =</span> <span class="fl">0.8</span>, <span class="at">col =</span> <span class="st">"gray40"</span>)</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(fs<span class="sc">$</span>tau, fs<span class="sc">$</span>rel_error_pct, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>,</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Relative error (%)"</span>,</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Bernoulli vs Survival Ratio"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> pk, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>pk_err <span class="ot">&lt;-</span> fs<span class="sc">$</span>rel_error_pct[<span class="fu">which.max</span>((fs<span class="sc">$</span>rel_error_pct))]</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>pk_tau <span class="ot">&lt;-</span> fs<span class="sc">$</span>tau[<span class="fu">which.max</span>((fs<span class="sc">$</span>rel_error_pct))]</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(pk_tau, pk_err, <span class="at">pch =</span> <span class="dv">19</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">cex =</span> <span class="fl">1.5</span>)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(pk_tau <span class="sc">+</span> <span class="fl">0.06</span>, pk_err,</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>     <span class="fu">sprintf</span>(<span class="st">"Peak overestimate: +%.2f%%"</span>, pk_err), <span class="at">adj =</span> <span class="dv">0</span>, <span class="at">cex =</span> <span class="fl">0.8</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>)</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-bernoulli-vs-survival" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1004,8 +1008,8 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 <tr class="odd">
 <td style="text-align: left;">Parasympathetic OU <span class="math inline">\((\log\sigma_p,\, c_p)\)</span></td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">3.00e+03</td>
-<td style="text-align: left;">9.59e+01</td>
+<td style="text-align: left;">2.99e+03</td>
+<td style="text-align: left;">9.62e+01</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Sympathetic OU <span class="math inline">\((\log\sigma_s,\, c_s)\)</span></td>
@@ -1015,15 +1019,15 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 </tr>
 <tr class="odd">
 <td style="text-align: left;">IG observations <span class="math inline">\((\log\mu_0,\, \log\kappa)\)</span></td>
-<td style="text-align: left;">6.39e+04</td>
-<td style="text-align: left;">4.63e+02</td>
-<td style="text-align: left;">1.37e+02</td>
+<td style="text-align: left;">2.75e+04</td>
+<td style="text-align: left;">4.72e+02</td>
+<td style="text-align: left;">5.71e+01</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Full <span class="math inline">\(6 \times 6\)</span> matrix</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">4.63e+02</td>
-<td style="text-align: left;">6.22e+02</td>
+<td style="text-align: left;">4.72e+02</td>
+<td style="text-align: left;">6.10e+02</td>
 </tr>
 </tbody>
 </table>
@@ -1032,7 +1036,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 </figure>
 </div>
 </div>
-<p>The OU blocks have large eigenvalues because the state trajectory provides <span class="math inline">\(n \approx 60{,}000\)</span> independent Gaussian observations of <span class="math inline">\((\sigma_p, c_p)\)</span> and <span class="math inline">\((\sigma_s, c_s)\)</span> at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 750\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive: it equals <span class="math inline">\(\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]\)</span>. Substituting the analytic expressions gives a ratio of <span class="math inline">\(2\kappa\sum_k e^{\Delta_k}/(N\mu_0)\)</span>; for the reference parameters this is approximately <span class="math inline">\(2 \cdot 12 \cdot 750 / (750 \cdot 1.0) \approx 24\)</span>, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>.</p>
+<p>The OU blocks have large eigenvalues because the state trajectory provides <span class="math inline">\(n \approx 60{,}000\)</span> independent Gaussian observations of <span class="math inline">\((\sigma_p, c_p)\)</span> and <span class="math inline">\((\sigma_s, c_s)\)</span> at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 750\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive: it equals <span class="math inline">\(\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]\)</span>. Substituting the analytic expressions gives a ratio of <span class="math inline">\(2\kappa\sum_k e^{\Delta_k}/(N\mu_0)\)</span>; for the reference parameters (with <span class="math inline">\(\kappa = 20\)</span>, <span class="math inline">\(N \approx 750\)</span> beats, <span class="math inline">\(\bar{w} \approx 1\)</span>) this is approximately <span class="math inline">\(2 \cdot 20 \cdot 750 / (750 \cdot 1.0) \approx 40\)</span>, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>.</p>
 </section>
 <section id="sec-recovery" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</h2>
@@ -1067,12 +1071,12 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <div class="cell-output-display">
 <table class="do-not-create-environment cell caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 13%">
+<col style="width: 14%">
 <col style="width: 8%">
-<col style="width: 22%">
-<col style="width: 11%">
-<col style="width: 12%">
+<col style="width: 23%">
 <col style="width: 10%">
+<col style="width: 12%">
+<col style="width: 8%">
 <col style="width: 21%">
 </colgroup>
 <thead>
@@ -1091,55 +1095,55 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <td style="text-align: left;"><span class="math inline">\(\sigma_p\)</span></td>
 <td style="text-align: left;">0.200</td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">-0.0000</td>
-<td style="text-align: left;">-0.00%</td>
+<td style="text-align: left;">0.0000</td>
+<td style="text-align: left;">0.01%</td>
 <td style="text-align: left;">0.0006</td>
-<td style="text-align: left;">95.4%</td>
+<td style="text-align: left;">94.4%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\sigma_s\)</span></td>
 <td style="text-align: left;">0.070</td>
 <td style="text-align: left;">0.070</td>
 <td style="text-align: left;">-0.0000</td>
-<td style="text-align: left;">-0.00%</td>
+<td style="text-align: left;">-0.04%</td>
 <td style="text-align: left;">0.0002</td>
-<td style="text-align: left;">94.4%</td>
+<td style="text-align: left;">96.4%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">1.000</td>
 <td style="text-align: left;">1.002</td>
-<td style="text-align: left;">0.0020</td>
-<td style="text-align: left;">0.20%</td>
-<td style="text-align: left;">0.0059</td>
-<td style="text-align: left;">96.0%</td>
+<td style="text-align: left;">0.0022</td>
+<td style="text-align: left;">0.22%</td>
+<td style="text-align: left;">0.0082</td>
+<td style="text-align: left;">96.4%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\kappa\)</span></td>
-<td style="text-align: left;">50.000</td>
-<td style="text-align: left;">39.321</td>
-<td style="text-align: left;">-10.6793</td>
-<td style="text-align: left;">-21.36%</td>
-<td style="text-align: left;">11.0236</td>
-<td style="text-align: left;">4.8%</td>
+<td style="text-align: left;">20.000</td>
+<td style="text-align: left;">18.738</td>
+<td style="text-align: left;">-1.2623</td>
+<td style="text-align: left;">-6.31%</td>
+<td style="text-align: left;">1.8645</td>
+<td style="text-align: left;">79.6%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(c_p\)</span></td>
 <td style="text-align: left;">-1.000</td>
-<td style="text-align: left;">-1.000</td>
-<td style="text-align: left;">-0.0003</td>
-<td style="text-align: left;">-0.03%</td>
-<td style="text-align: left;">0.0258</td>
-<td style="text-align: left;">94.4%</td>
+<td style="text-align: left;">-1.001</td>
+<td style="text-align: left;">-0.0012</td>
+<td style="text-align: left;">-0.12%</td>
+<td style="text-align: left;">0.0266</td>
+<td style="text-align: left;">93.2%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(c_s\)</span></td>
 <td style="text-align: left;">0.100</td>
 <td style="text-align: left;">0.100</td>
-<td style="text-align: left;">-0.0001</td>
-<td style="text-align: left;">-0.12%</td>
-<td style="text-align: left;">0.0089</td>
-<td style="text-align: left;">95.6%</td>
+<td style="text-align: left;">-0.0000</td>
+<td style="text-align: left;">-0.04%</td>
+<td style="text-align: left;">0.0093</td>
+<td style="text-align: left;">94.6%</td>
 </tr>
 </tbody>
 </table>
@@ -1148,7 +1152,7 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 </figure>
 </div>
 </div>
-<p>The bias is negligible for all parameters (relative bias below 1% for the IG parameters; sub-0.1% for the OU parameters), confirming that the closed-form estimators are consistent. RMSE scales with the inverse square root of the number of observations in each block, as predicted by the Cramér-Rao bound. Coverage is close to the nominal 95% for all parameters, validating the asymptotic standard error expressions derived analytically.</p>
+<p>The bias is below 0.1% for the OU parameters, reflecting the large number of state observations. For the IG block (<span class="math inline">\(\mu_0\)</span>, <span class="math inline">\(\kappa\)</span>), bias is assessed in the table above; both should fall below 1% if the interval-averaged <span class="math inline">\(\bar\Delta_k\)</span> estimator is correctly specified (see Section~<span class="math inline">\(\ref{sec-recovery}\)</span>). RMSE scales with the inverse square root of the number of observations in each block, as predicted by the Cramér-Rao bound. Coverage is close to the nominal 95% for all parameters, validating the asymptotic standard error expressions derived analytically.</p>
 </section>
 <section id="sec-profiles" class="level2" data-number="4.4">
 <h2 data-number="4.4" class="anchored" data-anchor-id="sec-profiles"><span class="header-section-number">4.4</span> Profile Likelihood</h2>
@@ -1285,7 +1289,7 @@ Figure&nbsp;11: Simulation of the autonomic response to a sustained stress proto
 <img src="index_files/figure-html/fig-heteroscedasticity-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-heteroscedasticity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> with the true <span class="math inline">\(\kappa = 50\)</span>. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
+Figure&nbsp;12: Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> with the true <span class="math inline">\(\kappa = 20\)</span>. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
 </figcaption>
 </figure>
 </div>
@@ -1397,32 +1401,32 @@ Table&nbsp;4: Summary statistics for the time-rescaling residuals. A correctly s
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\text{E}[\Lambda_k]\)</span></td>
 <td style="text-align: center;">1.000</td>
-<td style="text-align: center;">1.0073</td>
+<td style="text-align: center;">1.0110</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\text{Var}(\Lambda_k)\)</span></td>
 <td style="text-align: center;">1.000</td>
-<td style="text-align: center;">1.0111</td>
+<td style="text-align: center;">1.0601</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\text{E}[u_k]\)</span></td>
 <td style="text-align: center;">0.500</td>
-<td style="text-align: center;">0.5033</td>
+<td style="text-align: center;">0.4990</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">KS statistic</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">0.0212</td>
+<td style="text-align: center;">0.0226</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">KS <span class="math inline">\(p\)</span>-value</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">0.8009</td>
+<td style="text-align: center;">0.7210</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Significant ACF lags (of 20)</td>
 <td style="text-align: center;">0</td>
-<td style="text-align: center;">3</td>
+<td style="text-align: center;">1</td>
 </tr>
 </tbody>
 </table>

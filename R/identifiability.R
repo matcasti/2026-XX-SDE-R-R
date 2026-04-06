@@ -164,9 +164,11 @@ plot_recovery <- function(rec_summary,
              df$rel_bias_pct[i] + df$rmse_rel_pct[i], i,
              col = cols[i], lwd = 2)
   }
-  axis(2, at = seq_len(np),
-       labels = sapply(df$parameter, function(p) par_labels[[p]]),
-       las = 2, cex.axis = 1.1)
+  axis_labels <- sapply(df$parameter, function(p) {
+    lbl <- par_labels[[p]]
+    if (is.null(lbl)) as.expression(p) else lbl   # fall back to raw name
+  })
+  axis(2, at = seq_len(np), labels = axis_labels, las = 2, cex.axis = 1.1)
 
   # Coverage annotation on right margin
   mtext(sprintf("%.0f%%", df$coverage_95), side = 4,
