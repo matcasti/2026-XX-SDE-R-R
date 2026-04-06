@@ -1,0 +1,197 @@
+# ============================================================
+# R/sensitivity.R
+#
+# A3.3 — Structural parameter sensitivity analysis.
+# Tests whether conclusions about identifiability and filter
+# performance are stable across physiologically plausible
+# variation in the fixed structural parameters a_p and a_s.
+#
+# Design: a_p and a_s are each varied independently over a
+# ±50% grid around their reference values. For each grid point
+# we (1) re-run the conditional MLE recovery study (N = 50
+# replications, shorter than the main study for speed) and
+# record bias and RMSE for sigma_p, sigma_s, mu_0, kappa;
+# (2) re-run the filter on the reference simulation and record
+# filter RMSE on Delta(t) and total log-likelihood.
+#
+# Requires: model_functions.R, mle.R, identifiability.R,
+#           filter.R sourced first.
+# ============================================================
+
+SENSITIVITY_SEED <- 9999L
+
+# ---- Grid of structural parameter values ----
+# Reference: a_p = 2.0 Hz, a_s = 0.2 Hz.
+# Range: ±50% in multiplicative steps.
+
+sensitivity_grid <- function(ref_ap = 2.0,
+                             ref_as = 0.2,
+                             multipliers = c(0.5, 0.75, 1.0, 1.25, 1.5)) {
+  expand.grid(
+    ap_mult = multipliers,
+    as_mult = multipliers
+  ) |>
+    transform(
+      a_p = ref_ap * ap_mult,
+      a_s = ref_as * as_mult
+    ) |>
+    subset(a_p > a_s)   # structural constraint: vagal must be faster
+}
+
+# ---- Single grid-point evaluation ----
+# Returns a one-row data.frame of summary statistics.
+
+sensitivity_one <- function(a_p_val, a_s_val,
+                            base_params,
+                            sim_res_ref,    # reference simulation (fixed seed)
+                            N_rep   = 50L,
+                            duration = 300,
+                            dt       = 0.005,
+                            input_fn = function(t) as.numeric(t >= 120 & t < 180)) {
+
+  # Build modified parameter object — only structural rates change
+  params_mod <- base_params
+  params_mod$structural$a_p <- a_p_val
+  params_mod$structural$a_s <- a_s_val
+
+  # (1) Conditional MLE recovery — N_rep short replications
+  set.seed(SENSITIVITY_SEED)
+  seeds <- sample.int(1e6L, N_rep)
+
+  results <- lapply(seq_len(N_rep), function(i) {
+    tryCatch(
+      single_recovery(params_mod, duration, dt, input_fn, seed = seeds[i]),
+      error = function(e) NULL
+    )
+  })
+  results <- Filter(Negate(is.null), results)
+
+  # Aggregate bias and RMSE for the four IG + OU-amplitude parameters
+  agg <- lapply(c("sigma_p", "sigma_s", "mu0", "kappa"), function(p) {
+    hat_v  <- sapply(results, function(r) r$hat[p])
+    true_v <- sapply(results, function(r) r$true[p])
+    ok     <- is.finite(hat_v)
+    bias   <- mean(hat_v[ok] - true_v[ok])
+    rmse   <- sqrt(mean((hat_v[ok] - true_v[ok])^2))
+    rel_rmse <- 100 * rmse / abs(mean(true_v[ok]))
+    c(bias = bias, rmse = rmse, rel_rmse_pct = rel_rmse)
+  })
+  names(agg) <- c("sigma_p", "sigma_s", "mu0", "kappa")
+
+  # (2) Filter RMSE on the reference simulation at modified structural params
+  flt <- tryCatch({
+    params_for_filter        <- base_params
+    params_for_filter$structural$a_p <- a_p_val
+    params_for_filter$structural$a_s <- a_s_val
+    pp_ukf(sim_res_ref$spikes, params_for_filter,
+           input_fn = sim_res_ref$input_fn)
+  }, error = function(e) NULL)
+
+  flt_rmse <- NA_real_
+  flt_ll   <- NA_real_
+  if (!is.null(flt)) {
+    flt_grid <- filter_to_grid(flt, sim_res_ref$time)
+    delta_err <- flt_grid$delta - sim_res_ref$delta
+    flt_rmse  <- sqrt(mean(delta_err^2, na.rm = TRUE))
+    flt_ll    <- flt$ll
+  }
+
+  data.frame(
+    a_p           = a_p_val,
+    a_s           = a_s_val,
+    rel_rmse_sigma_p = agg$sigma_p["rel_rmse_pct"],
+    rel_rmse_sigma_s = agg$sigma_s["rel_rmse_pct"],
+    rel_rmse_mu0     = agg$mu0["rel_rmse_pct"],
+    rel_rmse_kappa   = agg$kappa["rel_rmse_pct"],
+    filter_rmse_delta = flt_rmse,
+    filter_ll        = flt_ll,
+    n_valid          = length(results),
+    stringsAsFactors = FALSE
+  )
+}
+
+# ---- Full sensitivity study ----
+
+run_sensitivity <- function(base_params,
+                            sim_res_ref,
+                            multipliers   = c(0.5, 0.75, 1.0, 1.25, 1.5),
+                            N_rep         = 50L,
+                            use_parallel  = TRUE) {
+  grid <- sensitivity_grid(
+    ref_ap       = base_params$structural$a_p,
+    ref_as       = base_params$structural$a_s,
+    multipliers  = multipliers
+  )
+
+  run_row <- function(i) {
+    sensitivity_one(grid$a_p[i], grid$a_s[i],
+                    base_params, sim_res_ref,
+                    N_rep = N_rep)
+  }
+
+  if (use_parallel && .Platform$OS.type == "unix" &&
+      requireNamespace("parallel", quietly = TRUE)) {
+    n_cores <- max(1L, parallel::detectCores() - 1L)
+    rows    <- parallel::mclapply(seq_len(nrow(grid)), run_row,
+                                  mc.cores = n_cores, mc.set.seed = FALSE)
+  } else {
+    rows <- lapply(seq_len(nrow(grid)), run_row)
+  }
+
+  do.call(rbind, Filter(Negate(is.null), rows))
+}
+
+# ---- Heatmap plot ----
+# One panel per summary statistic, x = a_p, y = a_s.
+# The reference cell (multiplier = 1.0, 1.0) is outlined in black.
+
+plot_sensitivity <- function(sens_df,
+                             ref_ap = 2.0,
+                             ref_as = 0.2) {
+  metrics <- c("rel_rmse_sigma_p", "rel_rmse_sigma_s",
+               "rel_rmse_mu0",     "rel_rmse_kappa",
+               "filter_rmse_delta")
+  labels  <- c(expression("Rel. RMSE" ~ sigma[p] ~ "(%)"),
+               expression("Rel. RMSE" ~ sigma[s] ~ "(%)"),
+               expression("Rel. RMSE" ~ mu[0] ~ "(%)"),
+               expression("Rel. RMSE" ~ kappa ~ "(%)"),
+               expression("Filter RMSE" ~ hat(Delta)(t)))
+
+  ap_vals <- sort(unique(sens_df$a_p))
+  as_vals <- sort(unique(sens_df$a_s))
+  n_ap    <- length(ap_vals)
+  n_as    <- length(as_vals)
+
+  op <- par(mfrow = c(2, 3), mar = c(4, 4.5, 2.5, 3),
+            oma  = c(0, 0, 2.5, 0))
+
+  for (mi in seq_along(metrics)) {
+    m     <- metrics[mi]
+    vals  <- matrix(NA_real_, n_as, n_ap)
+    for (i in seq_len(nrow(sens_df))) {
+      ci <- which(ap_vals == sens_df$a_p[i])
+      ri <- which(as_vals == sens_df$a_s[i])
+      if (length(ci) == 1 && length(ri) == 1)
+        vals[ri, ci] <- sens_df[[m]][i]
+    }
+    image(ap_vals, as_vals, t(vals),
+          col  = hcl.colors(20, "YlOrRd", rev = TRUE),
+          xlab = expression(a[p] ~ "(Hz)"),
+          ylab = expression(a[s] ~ "(Hz)"),
+          main = labels[[mi]], axes = FALSE)
+    axis(1, at = ap_vals, labels = round(ap_vals, 2))
+    axis(2, at = as_vals, labels = round(as_vals, 3))
+    box()
+    # Outline reference cell
+    ref_ci <- which.min(abs(ap_vals - ref_ap))
+    ref_ri <- which.min(abs(as_vals - ref_as))
+    dap    <- diff(ap_vals)[1] / 2
+    das    <- diff(as_vals)[1] / 2
+    rect(ap_vals[ref_ci] - dap, as_vals[ref_ri] - das,
+         ap_vals[ref_ci] + dap, as_vals[ref_ri] + das,
+         border = "black", lwd = 2.5)
+  }
+  mtext("Structural Parameter Sensitivity", outer = TRUE,
+        cex = 1.05, font = 2)
+  par(op)
+}

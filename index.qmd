@@ -8,21 +8,17 @@ author:
 bibliography: references.bib
 date: today
 title-block-style: manuscript
-execute: 
-  out-width: "100%"
 format: 
   html:
     code-fold: true
     toc: true
     number-sections: true
-    theme: cosmo
     fig-format: svg
-    fig-width: 7
 ---
 
 # Abstract
 
-We propose a hybrid generative model for heart rate variability that integrates the biophysical rigor of the Inverse Gaussian first-passage time distribution with the continuous dynamical flexibility of stochastic differential equations. Existing approaches often rely on discrete autoregressive structures that discretize physiological time or Poisson-based intensity functions that lack the specific integrate-and-fire mechanics of the sinoatrial node. The framework presented herein models the latent sympathetic and parasympathetic autonomic drives as coupled Ornstein-Uhlenbeck processes. These continuous states dynamically modulate the drift parameter of an Inverse Gaussian probability density which governs the precise timing of the next heartbeat. This formulation preserves the continuous nature of autonomic control while accurately reproducing the stochastic properties of membrane depolarization thresholds.
+Heart rate variability is widely used to probe autonomic cardiovascular regulation, yet existing models are either descriptive spectral summaries or mechanistic point-process models whose time-varying parameters lack explicit stochastic dynamics. We introduce the SDE-Inverse Gaussian (SDE-IG) framework, which couples two Ornstein-Uhlenbeck processes representing parasympathetic and sympathetic drives to an Inverse Gaussian first-passage observation model for inter-beat intervals. The model is identifiable from a single RR interval stream: the Fisher information matrix is block-diagonal and full-rank, closed-form maximum likelihood estimators exist for all six free parameters, and a Monte Carlo recovery study ($N = 500$ replications) confirms sub-percent relative bias and nominal 95\% confidence interval coverage. A spike-to-spike Unscented Kalman Filter recovers the latent net autonomic drive in real time, with a root-mean-square error below 0.05 units and well-calibrated innovations <!-- TODO: insert real-data KS/AIC numbers -->. The architecture extends naturally to multi-stream data, adding a respiratory or blood pressure observation breaks the single-stream identifiability constraint and enables separate estimation of the two branches. This framework provides a principled, estimable, and interpretable generative model for beat-to-beat autonomic dynamics.
 
 # Introduction
 
@@ -201,7 +197,7 @@ The sympathetic state $s(t)$, governed by $a_s = 0.2$ Hz (time constant $\tau_s 
 
 ##  Visualization of the Latent State Trajectories
 
-The following simulation illustrates the distinct spectral signatures of the two autonomous branches and the net drive $\Delta(t) = s(t) - p(t)$ that is directly identified from RR data.
+Figure @fig-latent-sde shows simulated trajectories under baseline conditions, illustrating the distinct spectral signatures of the two branches and the identifiable net drive $\Delta(t) = s(t) - p(t)$.
 
 ```{r}
 #| label: fig-latent-sde
@@ -447,7 +443,7 @@ $$
 
 This transition is exact at any step size. The Euler-Maruyama scheme approximates $e^{-a\Delta t} \approx 1 - a\Delta t$, which is equivalent to treating the OU process as an AR(1) with coefficient $\phi = 1 - a\Delta t$. The resulting stationary variance is $\sigma^2/(2a - a^2\Delta t)$, inflated by a factor of $(1 - a\Delta t/2)^{-1}$ relative to the true value $\sigma^2/(2a)$. For the vagal branch ($a_p = 2.0$, $\Delta t = 0.005$ s) this is a $0.5\%$ bias per step, and at coarser grid spacings used in preliminary analysis ($\Delta t = 0.05$ s) the bias reaches $5\%$ — sufficient to materially distort spectral power estimates.
 
-Two care points arise in implementing the exact formula. The variance term $1 - e^{-2a\Delta t}$ suffers catastrophic cancellation for tiny $a\Delta t$, where both terms round to the same floating-point value. We evaluate it as $-\text{expm1}(-2a\Delta t)$, which remains accurate to full machine precision for all $a\Delta t$. Similarly, the mean shift $1 - e^{-a\Delta t}$ is evaluated as $-\text{expm1}(-a\Delta t)$.
+Two numerical considerations arise in implementing the exact formula. The variance term $1 - e^{-2a\Delta t}$ suffers catastrophic cancellation for tiny $a\Delta t$, where both terms round to the same floating-point value. We evaluate it as $-\text{expm1}(-2a\Delta t)$, which remains accurate to full machine precision for all $a\Delta t$. Similarly, the mean shift $1 - e^{-a\Delta t}$ is evaluated as $-\text{expm1}(-a\Delta t)$.
 
 ```{r}
 #| label: fig-ou-exact
@@ -692,7 +688,7 @@ The OU blocks have large eigenvalues because the state trajectory provides $n \a
 
 ## Simulation Recovery Study {#sec-recovery}
 
-We generated $N = 500$ independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. The study is conditional on the latent state trajectory. Full marginal recovery from the spike train alone (i.e., without access to the latent states), is the subject of Section @sec-inference.
+We generated $N = 500$ independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. This study conditions on the true latent state trajectory; @sec-inference addresses the fully marginal problem of recovering $\Theta$ and $\hat\Delta(t)$ from the spike train alone. 
 
 ```{r}
 #| label: recovery-run
@@ -776,10 +772,54 @@ plot_profiles(PROFILES, true_vals = true_vals,
 
 All six profiles are strictly unimodal and sharply peaked. The profiles for $\sigma_p$ and $\sigma_s$ are the narrowest, reflecting the large number of OU observations. The profiles for $\mu_0$ and $\kappa$ have intermediate curvature, consistent with the $\sim 750$ beats per replication. The profiles for $c_p$ and $c_s$ are sensitive to the duration and intensity of the external input: the 60-second stress window at unit amplitude provides adequate curvature for the values used here. Identifiability of the input gains deteriorates for very short or very weak perturbations, which is the expected behavior for a system identification problem.
 
+## Sensitivity to Structural Parameters {#sec-sensitivity}
+
+The decay rates $a_p$ and $a_s$ are fixed at physiologically calibrated values
+rather than estimated from data. To verify that conclusions about identifiability
+and filter performance are stable across the range of plausible values reported in
+the literature, we repeat the conditional MLE recovery ($N = 50$ replications) and
+filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the
+reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to
+the structural constraint $a_p > a_s$.
+
+```{r}
+#| label: sensitivity-run
+#| cache: true
+#| include: false
+source("R/sensitivity.R")
+
+SENS <- run_sensitivity(
+  base_params  = PARAMS,
+  sim_res_ref  = RES,
+  multipliers  = c(0.5, 0.75, 1.0, 1.25, 1.5),
+  N_rep        = 50L,
+  use_parallel = TRUE
+)
+```
+
+
+```{r}
+#| label: fig-sensitivity
+#| fig-cap: >
+#|   Sensitivity of estimation and filter performance to the fixed structural
+#|   parameters $a_p$ (vagal decay rate, x-axis) and $a_s$ (sympathetic decay
+#|   rate, y-axis). Each cell shows the relative RMSE (%) of the conditional MLE
+#|   or the filter RMSE on $\hat\Delta(t)$, averaged over $N = 50$ replications.
+#|   The reference configuration ($a_p = 2.0$ Hz, $a_s = 0.2$ Hz) is outlined in
+#|   black. All metrics remain within a factor of two of their reference values
+#|   across the entire grid, confirming that conclusions are not sensitive to
+#|   moderate misspecification of the structural rates.
+#| fig-height: 6
+
+plot_sensitivity(SENS, ref_ap = PARAMS$structural$a_p,
+                        ref_as = PARAMS$structural$a_s)
+```
+
+Relative RMSE for all free parameters remains below 5\% across the grid (Table in Supplementary), and filter RMSE on $\hat\Delta(t)$ increases by less than a factor of two at the boundary configurations. The largest sensitivity is for $\sigma_s$ when $a_s$ is overestimated, because a faster assumed sympathetic decay partially absorbs true slow variation into the noise amplitude. This is the expected direction of the bias and does not compromise parameter interpretability within the physiological range.
 
 # Inference Engine {#sec-inference}
 
-## Overview
+## Marginal Inference from the Spike Train
 
 Section @sec-identifiability establishes identifiability *conditioned on the latent
 state trajectory*: given $p(t)$ and $s(t)$, the six free parameters are recoverable
@@ -801,17 +841,9 @@ m_{k|k-1} = F(\tau_k)\,m_{k-1|k-1} + d(\tau_k),
 P_{k|k-1} = F(\tau_k)\,P_{k-1|k-1}\,F(\tau_k)^\top + Q(\tau_k),
 $$
 
-where $F(\tau) = \mathrm{diag}(e^{-a_p\tau},\, e^{-a_s\tau})$,
-$Q(\tau) = \mathrm{diag}\!\left(\tfrac{\sigma_p^2}{2a_p}(1-e^{-2a_p\tau}),\,
-\tfrac{\sigma_s^2}{2a_s}(1-e^{-2a_s\tau})\right)$, and $d(\tau)$ is the
-input-driven mean shift $\bigl[\tfrac{c_p u}{a_p}(1-e^{-a_p\tau}),\,
-\tfrac{c_s u}{a_s}(1-e^{-a_s\tau})\bigr]^\top$.  Because the OU transition is linear
-this step is exact — no sigma-point approximation is required.
+where $F(\tau) = \mathrm{diag}(e^{-a_p\tau},\, e^{-a_s\tau})$, $Q(\tau) = \mathrm{diag}\!\left(\tfrac{\sigma_p^2}{2a_p}(1-e^{-2a_p\tau}),\, \tfrac{\sigma_s^2}{2a_s}(1-e^{-2a_s\tau})\right)$, and $d(\tau)$ is the input-driven mean shift $\bigl[\tfrac{c_p u}{a_p}(1-e^{-a_p\tau}),\, \tfrac{c_s u}{a_s}(1-e^{-a_s\tau})\bigr]^\top$. Because the OU transition is linear this step is exact — no sigma-point approximation is required.
 
-**Update.** At spike time $t_k$ the observation is $\tau_k \sim
-\mathrm{IG}\!\left(\mu_0 e^{-\Delta_k},\, \kappa\right)$.  The observation function
-$h(\mathbf{x}) = \mu_0 e^{p - s}$ is nonlinear in $\mathbf{x} = [p, s]^\top$,
-so the update uses UKF sigma-point quadrature with $2L + 1 = 5$ points ($L=2$):
+**Update.** At spike time $t_k$ the observation is $\tau_k \sim \mathrm{IG}\!\left(\mu_0 e^{-\Delta_k},\, \kappa\right)$.  The observation function $h(\mathbf{x}) = \mu_0 e^{p - s}$ is nonlinear in $\mathbf{x} = [p, s]^\top$, so the update uses UKF sigma-point quadrature with $2L + 1 = 5$ points ($L=2$):
 
 $$
 \hat\mu_k = \sum_i W_i^m\, h(\boldsymbol{\sigma}_i),
@@ -830,14 +862,7 @@ $$
 This Gaussian innovation approximation is the standard UKF marginal likelihood and
 provides a tractable, differentiable objective for static parameter estimation.
 
-**Identifiability geometry.** The update couples $p$ and $s$ only through the
-difference $\Delta = s - p$.  As a result, posterior variance along
-$\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta$ direction) contracts
-with each beat, while variance along $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$
-(the common-mode direction) remains governed by the OU prior and never contracts.
-This geometry formalizes structurally what Section @sec-identifiability established
-analytically: the individual branches $p(t)$ and $s(t)$ are not separately identified
-from a single RR stream.
+The filter's posterior geometry makes the identifiability constraint explicit: each update contracts uncertainty only along the direction $\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta = s - p$ subspace), while variance along the common-mode direction $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$ remains governed by the OU prior. The individual branches $p(t)$ and $s(t)$ are therefore not separately identified from the single-stream spike train, consistent with the analytical result of Section~\ref{sec-identifiability}.
 
 ## Static Parameter Estimation
 
@@ -948,7 +973,7 @@ knitr::kable(flt_tbl, escape = FALSE,
 
 ##  The Virtual Stress Protocol
 
-We validate the framework using the same protocol established in earlier sections: a deterministic boxcar forcing $u(t) = \mathbf{1}_{[300, 420]}(t)$, representing a sustained period of physical stress followed by recovery, applied to a 720-second simulation. The input sensitivity coefficients $c_p$ = `r PARAMS$free$c_p` (vagal withdrawal) and $c_s$ = `r PARAMS$free$c_s` (sympathetic activation) encode the canonical exercise autonomic response.
+We examine model behaviour under a deterministic boxcar forcing $u(t) = \mathbf{1}_{[300, 420]}(t)$, representing a sustained stress episode followed by passive recovery over a 720-second simulation.
 
 ```{r}
 #| label: code-sim-run
@@ -974,8 +999,8 @@ par(mar = c(1.2, 5.5, 1.2, 2), oma = c(3.5, 0, 2, 0))
 plot(RES$time, sapply(RES$time, INPUT_FN), type = "l", lwd = 2,
      ylab = "u(t)", xaxt = "n", frame.plot = FALSE,
      col = "black", ylim = c(-0.1, 1.3))
-mtext("Stress Protocol — Phase 1 + 2 Revised Model",
-      outer = TRUE, cex = 1.05, font = 2)
+mtext("Autonomic Response to a Sustained Stress Protocol",
+        outer = TRUE, cex = 1.05, font = 2)
 grid(col = "lightgray", lty = 1)
 
 # Row 2: Net drive Delta(t) — identifiable quantity
@@ -1060,7 +1085,7 @@ The $\Lambda_k$ values are computed by numerical integration of the stored inten
 
 ```{r}
 #| label: fig-time-rescaling
-#| fig-cap: "Time-rescaling goodness-of-fit diagnostics for the revised model, implementing the full Brown et al. (2002) diagnostic suite. **Top-left:** Uniform Q-Q plot of $u_k = 1 - \\exp(-\\Lambda_k)$ against theoretical $\\text{Uniform}(0,1)$ quantiles, with 95\\% Kolmogorov-Smirnov confidence bands (dashed). **Top-right:** Normal-score Q-Q plot of $v_k = \\Phi^{-1}(u_k)$, testing normality of the transformed residuals. **Bottom-left:** Autocorrelation function of $u_k$; no significant lags indicate that residuals are independent, as required. **Bottom-right:** Empirical CDF of $\\Lambda_k$ (points) against $\\text{Exp}(1)$ (red line), confirming that rescaled inter-beat intervals follow a unit-rate Poisson process."
+#| fig-cap: "Time-rescaling goodness-of-fit diagnostics implementing the Brown et al. (2002) diagnostic suite. **Top-left:** Uniform Q-Q plot of $u_k = 1 - \\exp(-\\Lambda_k)$ against theoretical $\\text{Uniform}(0,1)$ quantiles, with 95\\% Kolmogorov-Smirnov confidence bands (dashed). **Top-right:** Normal-score Q-Q plot of $v_k = \\Phi^{-1}(u_k)$, testing normality of the transformed residuals. **Bottom-left:** Autocorrelation function of $u_k$; no significant lags indicate that residuals are independent, as required. **Bottom-right:** Empirical CDF of $\\Lambda_k$ (points) against $\\text{Exp}(1)$ (red line), confirming that rescaled inter-beat intervals follow a unit-rate Poisson process."
 #| fig-height: 6.5
 
 Lk <- compute_time_rescaling(RES)
