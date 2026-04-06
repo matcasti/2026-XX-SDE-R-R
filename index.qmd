@@ -527,7 +527,7 @@ using the identity $1 - e^x = -\text{expm1}(x)$, which is numerically stable for
 #| label: fig-bernoulli-vs-survival
 #| fig-cap: "Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. **Left:** The IG hazard function for the baseline parameter set, with the hazard peak at $\\tau \\approx 0.72$ s. **Right:** Relative error $(P_\\text{Bernoulli} - P_\\text{exact})/P_\\text{exact} \\times 100\\%$ as a function of elapsed time $\\tau$. The error is everywhere positive (the Bernoulli approximation overestimates firing probability), peaking near the hazard maximum and reaching approximately 3.5% at the nominal step size of $\\Delta t = 5$ ms."
 
-fs <- study_firing_bias(mu = 0.85, kappa = 12, dt = 0.005)
+fs <- study_firing_bias(mu = 0.85, kappa = 12, dt = 0.005, tau_range = c(0,2))
 
 par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
 

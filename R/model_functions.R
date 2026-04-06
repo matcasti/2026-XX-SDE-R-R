@@ -60,14 +60,23 @@ log_ig_pdf <- function(tau, mu, kappa)
   kappa * (tau - mu)^2 / (2 * mu^2 * tau)
 
 log_ig_survival <- function(tau, mu, kappa) {
+  if (tau <= 0) return(0)
   sq   <- sqrt(kappa / tau)
   z1   <- sq * (tau / mu - 1)
   z2   <- sq * (tau / mu + 1)
-  logA <- pnorm(-z1, log.p = TRUE)
-  logB <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)
-  d    <- logB - logA
-  if (is.nan(d) || d >= 0) return(-Inf)
-  logA + log1mexp(d)
+
+  if (tau < mu) {
+    logF1 <- pnorm(z1, log.p = TRUE)
+    logF2 <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)
+    F_tau <- exp(logF1) + exp(logF2)
+    return(log1p(-F_tau))
+  } else {
+    logA <- pnorm(-z1, log.p = TRUE)
+    logB <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)
+    d    <- logB - logA
+    if (is.nan(d) || d >= 0) return(-Inf)
+    return(logA + log1mexp(d))
+  }
 }
 
 log_ig_hazard <- function(tau, mu, kappa) {
@@ -88,10 +97,9 @@ ig_hazard_bound <- function(mu_min, kappa, safety_factor = 1.1)
 
 # ---- Survival-ratio event generation ----
 
-p_fire_survival_ratio <- function(tau, mu, kappa, dt) {
-  if (tau < 1e-9) return(0)
-  ls0 <- log_ig_survival(tau,      mu, kappa)
-  ls1 <- log_ig_survival(tau + dt, mu, kappa)
+p_fire_survival_ratio <- function(tau_start, tau_end, mu, kappa) {
+  ls0 <- log_ig_survival(tau_start, mu, kappa)
+  ls1 <- log_ig_survival(tau_end, mu, kappa)
   if (!is.finite(ls0)) return(0)
   min(max(-expm1(ls1 - ls0), 0), 1)
 }
@@ -149,9 +157,13 @@ sim_sde_ig <- function(duration, dt, params,
     s[i+1] <- ou_exact_step(s[i], sp$a_s, fp$sigma_s, fp$c_s, u, dt)
     mu_v[i+1] <- compute_mu(p[i+1], s[i+1], fp$mu_0)
     dlt[i+1]  <- compute_delta(p[i+1], s[i+1])
-    tau       <- tg[i+1] - last_t
-    loglam[i+1] <- obs_models[[1]]$log_intensity(tau, p[i+1], s[i+1], fp)
-    pf <- p_fire_survival_ratio(tau, mu_v[i+1], fp$kappa, dt)
+
+    tau_start <- tg[i] - last_t
+    tau_end   <- tg[i+1] - last_t
+
+    loglam[i+1] <- obs_models[[1]]$log_intensity(tau_end, p[i+1], s[i+1], fp)
+
+    pf <- p_fire_survival_ratio(tau_start, tau_end, mu_v[i+1], fp$kappa)
     if (runif(1) < pf) { spikes <- c(spikes, tg[i+1]); last_t <- tg[i+1] }
   }
   # NOTE: input_fn is stored in the result to enable downstream MLE and
@@ -182,11 +194,15 @@ compute_time_rescaling <- function(res) {
 study_firing_bias <- function(mu = 0.85, kappa = 12, dt = 0.005,
                               tau_range = c(0.05, 2.5)) {
   tau_v  <- seq(tau_range[1], tau_range[2], length.out = 600)
-  p_surv <- vapply(tau_v, p_fire_survival_ratio, numeric(1),
-                   mu = mu, kappa = kappa, dt = dt)
-  lam_v  <- vapply(tau_v, ig_hazard, numeric(1), mu = mu, kappa = kappa)
-  p_bern <- pmin(lam_v * dt, 1)
+  p_surv <- vapply(tau_v, function(t) p_fire_survival_ratio(t, t + dt, mu, kappa), numeric(1))
+
+  # Evaluate hazard at midpoint to isolate the Bernoulli truncation bias
+  lam_mid <- vapply(tau_v + dt/2, ig_hazard, numeric(1), mu = mu, kappa = kappa)
+  p_bern  <- pmin(lam_mid * dt, 1)
+
   rel_e  <- ifelse(p_surv > 1e-10, (p_bern - p_surv) / p_surv * 100, 0)
+  lam_plot <- vapply(tau_v, ig_hazard, numeric(1), mu = mu, kappa = kappa)
+
   data.frame(tau = tau_v, p_survival = p_surv, p_bernoulli = p_bern,
-             lambda = lam_v, rel_error_pct = rel_e)
+             lambda = lam_plot, rel_error_pct = rel_e)
 }

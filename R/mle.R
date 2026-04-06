@@ -15,6 +15,21 @@
 # and positive-definiteness of each block proves identifiability.
 # ============================================================
 
+
+# Helper to compute the effective integrate-and-fire drift
+compute_effective_delta <- function(spk, time_vec, delta_vec) {
+  vapply(seq_along(spk[-1L]), function(k) {
+    t_start <- spk[k]
+    t_end   <- spk[k + 1L]
+    idx <- which(time_vec > t_start & time_vec <= t_end)
+    if (length(idx) > 0) {
+      log(mean(exp(delta_vec[idx])))
+    } else {
+      delta_vec[which.min(abs(time_vec - t_end))]
+    }
+  }, numeric(1L))
+}
+
 # ---- Block 1 / 2: Analytic OU MLE ----
 #
 # Model: x[i+1] | x[i] ~ N(x[i]*exp(-a*dt) + (c*u[i]/a)*(1-exp(-a*dt)),
@@ -119,9 +134,10 @@ full_conditional_mle <- function(sim_res) {
     return(c(as.list(na6), list(n_beats = 0L)))
   }
   tau_vec  <- diff(spk)
-  beat_idx <- vapply(spk[-1L],
-                     function(t) which.min(abs(sim_res$time - t)), integer(1L))
-  delta_v  <- sim_res$delta[beat_idx]
+
+  # Compute mean delta over the actual interval instead of the endpoint
+  delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
+
   mle_obs  <- ig_obs_mle(tau_vec, delta_v)
 
   list(
@@ -225,7 +241,7 @@ full_conditional_fim <- function(sim_res) {
   tau_vec  <- diff(spk)
   beat_idx <- vapply(spk[-1L],
                      function(t) which.min(abs(sim_res$time - t)), integer(1L))
-  delta_v  <- sim_res$delta[beat_idx]
+  delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
   fim_obs  <- ig_obs_fim(mle$mu0, mle$kappa, tau_vec, delta_v)
 
   # Assemble 6x6 block-diagonal matrix
@@ -279,7 +295,7 @@ profile_lik_one <- function(param, grid, sim_res) {
   tau_vec  <- diff(spk)
   beat_idx <- vapply(spk[-1L],
                      function(t) which.min(abs(sim_res$time - t)), integer(1L))
-  delta_v  <- sim_res$delta[beat_idx]
+  delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
 
   vapply(grid, function(v) {
     if (!is.finite(v) || v <= 0 && param %in% c("mu0","kappa","sigma_p","sigma_s"))

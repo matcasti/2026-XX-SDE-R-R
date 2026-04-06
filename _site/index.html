@@ -857,7 +857,7 @@ P \;=\; -\text{expm1}\!\bigl(\log S(\tau + \Delta t) - \log S(\tau)\bigr),
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>fs <span class="ot">&lt;-</span> <span class="fu">study_firing_bias</span>(<span class="at">mu =</span> <span class="fl">0.85</span>, <span class="at">kappa =</span> <span class="dv">12</span>, <span class="at">dt =</span> <span class="fl">0.005</span>)</span>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>fs <span class="ot">&lt;-</span> <span class="fu">study_firing_bias</span>(<span class="at">mu =</span> <span class="fl">0.85</span>, <span class="at">kappa =</span> <span class="dv">12</span>, <span class="at">dt =</span> <span class="fl">0.005</span>, <span class="at">tau_range =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">2</span>))</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">4.5</span>, <span class="dv">5</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
@@ -1020,15 +1020,15 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 </tr>
 <tr class="odd">
 <td style="text-align: left;">IG observations <span class="math inline">\((\log\mu_0,\, \log\kappa)\)</span></td>
-<td style="text-align: left;">4.20e+05</td>
-<td style="text-align: left;">1.60e+03</td>
-<td style="text-align: left;">2.62e+02</td>
+<td style="text-align: left;">4.14e+05</td>
+<td style="text-align: left;">1.47e+03</td>
+<td style="text-align: left;">2.80e+02</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Full <span class="math inline">\(6 \times 6\)</span> matrix</td>
-<td style="text-align: left;">4.20e+05</td>
-<td style="text-align: left;">1.60e+03</td>
-<td style="text-align: left;">2.63e+02</td>
+<td style="text-align: left;">4.14e+05</td>
+<td style="text-align: left;">1.47e+03</td>
+<td style="text-align: left;">2.81e+02</td>
 </tr>
 </tbody>
 </table>
@@ -1113,19 +1113,19 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">0.850</td>
-<td style="text-align: left;">0.796</td>
-<td style="text-align: left;">-0.0540</td>
-<td style="text-align: left;">-6.35%</td>
-<td style="text-align: left;">0.0549</td>
+<td style="text-align: left;">0.906</td>
+<td style="text-align: left;">0.0555</td>
+<td style="text-align: left;">6.53%</td>
+<td style="text-align: left;">0.0564</td>
 <td style="text-align: left;">0.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\kappa\)</span></td>
 <td style="text-align: left;">12.000</td>
-<td style="text-align: left;">6.336</td>
-<td style="text-align: left;">-5.6638</td>
-<td style="text-align: left;">-47.20%</td>
-<td style="text-align: left;">5.8034</td>
+<td style="text-align: left;">8.265</td>
+<td style="text-align: left;">-3.7346</td>
+<td style="text-align: left;">-31.12%</td>
+<td style="text-align: left;">3.8496</td>
 <td style="text-align: left;">0.0%</td>
 </tr>
 <tr class="odd">
@@ -1409,22 +1409,22 @@ Table&nbsp;4: Summary statistics for the time-rescaling residuals. A correctly s
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\text{E}[\Lambda_k]\)</span></td>
 <td style="text-align: center;">1.000</td>
-<td style="text-align: center;">1.0038</td>
+<td style="text-align: center;">2.9660</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\text{Var}(\Lambda_k)\)</span></td>
 <td style="text-align: center;">1.000</td>
-<td style="text-align: center;">0.8693</td>
+<td style="text-align: center;">6.7723</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\text{E}[u_k]\)</span></td>
 <td style="text-align: center;">0.500</td>
-<td style="text-align: center;">0.5209</td>
+<td style="text-align: center;">0.7843</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">KS statistic</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">0.0605</td>
+<td style="text-align: center;">0.4312</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">KS <span class="math inline">\(p\)</span>-value</td>
@@ -1434,7 +1434,7 @@ Table&nbsp;4: Summary statistics for the time-rescaling residuals. A correctly s
 <tr class="even">
 <td style="text-align: left;">Significant ACF lags (of 20)</td>
 <td style="text-align: center;">0</td>
-<td style="text-align: center;">6</td>
+<td style="text-align: center;">20</td>
 </tr>
 </tbody>
 </table>
