@@ -23,7 +23,7 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
     t_end   <- spk[k + 1L]
     idx <- which(time_vec > t_start & time_vec <= t_end)
     if (length(idx) > 0) {
-      log(mean(exp(delta_vec[idx])))
+      -log(mean(exp(-delta_vec[idx])))
     } else {
       delta_vec[which.min(abs(time_vec - t_end))]
     }

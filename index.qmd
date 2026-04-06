@@ -506,7 +506,7 @@ At each simulation step, the current OU state is mapped to the mean interval via
 
 ###  Survival-Ratio Event Generation
 
-The Bernoulli approximation $P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t$ introduces a systematic positive bias equal to $\lambda\Delta t/2$ per step. Near the hazard peak, where $\lambda \approx 15$–$25$ Hz and $\Delta t = 0.005$ s, this corresponds to a 3.75–6.25% overestimate of the firing probability per step — a directional error that inflates event counts and compresses estimated inter-beat intervals.
+The Bernoulli approximation $P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t$ produces a signed error whose direction depends on the slope of the hazard at the step entry point. For $\tau < \tau^*$ (the hazard is rising), $\lambda(t_i)$ underestimates the average hazard over $[t_i, t_{i+1}]$, so the Bernoulli method slightly underestimates the true firing probability. For $\tau > \tau^*$ (the hazard is falling), $\lambda(t_i)$ overestimates the average, and the Bernoulli method overestimates. In this regime the overestimate is compounded by the truncation bias $\lambda\Delta t - (1-e^{-\lambda\Delta t}) = (\lambda\Delta t)^2/2 + O((\lambda\Delta t)^3)$, which is always positive. Near the hazard peak, where $\lambda \approx 15$–$25$ Hz and $\Delta t = 0.005$ s, the overestimate reaches 3–6% — a directional error that inflates event counts and compresses estimated inter-beat intervals. Because the IG density mode lies just before the hazard peak, the majority of beats are generated in the overestimating regime, producing a net positive bias in event rate across a full simulation.
 
 The exact within-step firing probability, under the assumption that $\mu(t)$ is constant within the interval $[t_i, t_{i+1}]$, is obtained directly from the survival function ratio:
 
@@ -525,7 +525,7 @@ using the identity $1 - e^x = -\text{expm1}(x)$, which is numerically stable for
 
 ```{r}
 #| label: fig-bernoulli-vs-survival
-#| fig-cap: "Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. **Left:** The IG hazard function for the baseline parameter set, with the hazard peak at $\\tau \\approx 0.72$ s. **Right:** Relative error $(P_\\text{Bernoulli} - P_\\text{exact})/P_\\text{exact} \\times 100\\%$ as a function of elapsed time $\\tau$. The error is everywhere positive (the Bernoulli approximation overestimates firing probability), peaking near the hazard maximum and reaching approximately 3.5% at the nominal step size of $\\Delta t = 5$ ms."
+#| fig-cap: "Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. **Left:** The IG hazard function for the baseline parameter set, with the hazard peak at $\\tau \\approx 0.72$ s. **Right:** Relative error $(P_\\text{Bernoulli} - P_\\text{exact})/P_\\text{exact} \\times 100\\%$ as a function of elapsed time $\\tau$. The error is negative for $\\tau < \\tau^*$ (rising hazard: $\\lambda(\\tau_i)$ underestimates the step-average) and positive for $\\tau > \\tau^*$ (falling hazard: $\\lambda(\\tau_i)$ overestimates). The maximum positive overestimate, annotated on the right panel, occurs just past the hazard peak where $\\lambda$ is largest and the surplus $\\lambda(\\tau_i)\\Delta t - P_{\\text{exact}}$ peaks. Because most beats are generated in this post-peak regime, the net bias across a full simulation is a systematic overestimate of event counts."
 
 fs <- study_firing_bias(mu = 0.85, kappa = 12, dt = 0.005, tau_range = c(0,2))
 
@@ -552,7 +552,7 @@ pk_err <- fs$rel_error_pct[which.max(abs(fs$rel_error_pct))]
 pk_tau <- fs$tau[which.max(abs(fs$rel_error_pct))]
 points(pk_tau, pk_err, pch = 19, col = "#D55E00", cex = 1.5)
 text(pk_tau + 0.06, pk_err,
-     sprintf("Peak: %.2f%%", pk_err), adj = 0, cex = 0.8, col = "#D55E00")
+     sprintf("Peak overestimate: +%.2f%%", pk_err), adj = 0, cex = 0.8, col = "#D55E00")
 grid(col = "lightgray", lty = 1)
 ```
 

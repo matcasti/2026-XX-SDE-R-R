@@ -197,11 +197,11 @@ study_firing_bias <- function(mu = 0.85, kappa = 12, dt = 0.005,
   p_surv <- vapply(tau_v, function(t) p_fire_survival_ratio(t, t + dt, mu, kappa), numeric(1))
 
   # Evaluate hazard at midpoint to isolate the Bernoulli truncation bias
-  lam_mid <- vapply(tau_v + dt/2, ig_hazard, numeric(1), mu = mu, kappa = kappa)
-  p_bern  <- pmin(lam_mid * dt, 1)
+  lam_start <- vapply(tau_v, ig_hazard, numeric(1), mu = mu, kappa = kappa)
+  p_bern    <- pmin(lam_start * dt, 1)
 
-  rel_e  <- ifelse(p_surv > 1e-10, (p_bern - p_surv) / p_surv * 100, 0)
-  lam_plot <- vapply(tau_v, ig_hazard, numeric(1), mu = mu, kappa = kappa)
+  rel_e    <- ifelse(p_surv > 1e-10, (p_bern - p_surv) / p_surv * 100, 0)
+  lam_plot <- lam_start   # reuse; already evaluated at tau_v
 
   data.frame(tau = tau_v, p_survival = p_surv, p_bernoulli = p_bern,
              lambda = lam_plot, rel_error_pct = rel_e)
