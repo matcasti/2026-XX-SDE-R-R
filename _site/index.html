@@ -432,8 +432,8 @@ d\Delta(t) \;=\; ds(t) - dp(t) \;=\;
 \]</span></p>
 <p>Because <span class="math inline">\(a_p \neq a_s\)</span>, <span class="math inline">\(\Delta(t)\)</span> is not itself an OU process but a sum of two OU processes with distinct time constants. Its spectral density is</p>
 <p><span class="math display">\[
-S_\Delta(f) \;=\; \frac{\sigma_s^2/(2\pi)}{a_s^2 + (2\pi f)^2}
-             \;+\; \frac{\sigma_p^2/(2\pi)}{a_p^2 + (2\pi f)^2},
+S_\Delta(f) \;=\; \frac{\sigma_s^2}{a_s^2 + (2\pi f)^2}
+             \;+\; \frac{\sigma_p^2}{a_p^2 + (2\pi f)^2},
 \]</span></p>
 <p>a two-Lorentzian form with poles at <span class="math inline">\(f_\text{LF} = a_s/(2\pi)\)</span> and <span class="math inline">\(f_\text{HF} = a_p/(2\pi)\)</span>. This spectrum is identifiable from the second-order properties of the RR interval series. The amplitude of each Lorentzian — determined by <span class="math inline">\(\sigma_s^2/a_s\)</span> and <span class="math inline">\(\sigma_p^2/a_p\)</span> — corresponds to the spectral area in each frequency band, linking the model parameters directly to classical HRV spectral indices.</p>
 </section>
@@ -1037,11 +1037,11 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 </figure>
 </div>
 </div>
-<p>The OU blocks have large eigenvalues because the state trajectory provides <span class="math inline">\(n \approx 60{,}000\)</span> independent Gaussian observations of <span class="math inline">\((\sigma_p, c_p)\)</span> and <span class="math inline">\((\sigma_s, c_s)\)</span> at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 750\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive: it is determined by the ratio of information about <span class="math inline">\(\mu_0\)</span> to information about <span class="math inline">\(\kappa\)</span>, which scales as <span class="math inline">\(\kappa_\text{true} \cdot \sum e^{\Delta_k} / N \cdot 2\kappa_\text{true}^2 / N^{-1}\)</span>. Across the parameter values examined here, this ratio remains below <span class="math inline">\(10^3\)</span>, well within the identifiable regime.</p>
+<p>The OU blocks have large eigenvalues because the state trajectory provides <span class="math inline">\(n \approx 60{,}000\)</span> independent Gaussian observations of <span class="math inline">\((\sigma_p, c_p)\)</span> and <span class="math inline">\((\sigma_s, c_s)\)</span> at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 750\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive: it equals <span class="math inline">\(\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]\)</span>. Substituting the analytic expressions gives a ratio of <span class="math inline">\(2\kappa\sum_k e^{\Delta_k}/(N\mu_0)\)</span>; for the reference parameters this is approximately <span class="math inline">\(2 \cdot 12 \cdot 750 / (750 \cdot 0.85) \approx 28\)</span>, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>.</p>
 </section>
 <section id="sec-recovery" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</h2>
-<p>We generated <span class="math inline">\(N = 200\)</span> independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. The study is conditional on the latent state trajectory; full marginal recovery from the spike train alone requires the filter developed in Section XX and is demonstrated there.</p>
+<p>We generated <span class="math inline">\(N = 200\)</span> independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. The study is conditional on the latent state trajectory; full marginal recovery from the spike train alone requires the inference engine described in <strong>?@sec-inference</strong> and will be demonstrated there.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>

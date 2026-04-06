@@ -136,8 +136,8 @@ $$
 Because $a_p \neq a_s$, $\Delta(t)$ is not itself an OU process but a sum of two OU processes with distinct time constants. Its spectral density is
 
 $$
-S_\Delta(f) \;=\; \frac{\sigma_s^2/(2\pi)}{a_s^2 + (2\pi f)^2}
-             \;+\; \frac{\sigma_p^2/(2\pi)}{a_p^2 + (2\pi f)^2},
+S_\Delta(f) \;=\; \frac{\sigma_s^2}{a_s^2 + (2\pi f)^2}
+             \;+\; \frac{\sigma_p^2}{a_p^2 + (2\pi f)^2},
 $$
 
 a two-Lorentzian form with poles at $f_\text{LF} = a_s/(2\pi)$ and $f_\text{HF} = a_p/(2\pi)$. This spectrum is identifiable from the second-order properties of the RR interval series. The amplitude of each Lorentzian — determined by $\sigma_s^2/a_s$ and $\sigma_p^2/a_p$ — corresponds to the spectral area in each frequency band, linking the model parameters directly to classical HRV spectral indices.
@@ -680,11 +680,11 @@ knitr::kable(fim_tbl, escape = FALSE,
                            "Condition number"))
 ```
 
-The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it is determined by the ratio of information about $\mu_0$ to information about $\kappa$, which scales as $\kappa_\text{true} \cdot \sum e^{\Delta_k} / N \cdot 2\kappa_\text{true}^2 / N^{-1}$. Across the parameter values examined here, this ratio remains below $10^3$, well within the identifiable regime.
+The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]$. Substituting the analytic expressions gives a ratio of $2\kappa\sum_k e^{\Delta_k}/(N\mu_0)$; for the reference parameters this is approximately $2 \cdot 12 \cdot 750 / (750 \cdot 0.85) \approx 28$, well within the identifiable regime and far below $10^3$.
 
 ## Simulation Recovery Study {#sec-recovery}
 
-We generated $N = 200$ independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. The study is conditional on the latent state trajectory; full marginal recovery from the spike train alone requires the filter developed in Section XX and is demonstrated there.
+We generated $N = 200$ independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. The study is conditional on the latent state trajectory; full marginal recovery from the spike train alone requires the inference engine described in @sec-inference and will be demonstrated there.
 
 ```{r}
 #| label: recovery-run

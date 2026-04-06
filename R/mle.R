@@ -213,7 +213,7 @@ ou_fim <- function(sigma_val, c_gain_val, x_vec, u_vec, a, dt) {
   list(
     fim       = fim,
     se        = c(1 / sqrt(i_log_sig), if (i_c > 0) 1 / sqrt(i_c) else Inf),
-    cond      = if (i_c > 0) i_log_sig / i_c else Inf,
+    cond      = if (i_c > 0) max(i_log_sig, i_c) / min(i_log_sig, i_c) else Inf,
     eig       = c(i_log_sig, i_c)
   )
 }
@@ -239,8 +239,6 @@ full_conditional_fim <- function(sim_res) {
 
   spk      <- sim_res$spikes
   tau_vec  <- diff(spk)
-  beat_idx <- vapply(spk[-1L],
-                     function(t) which.min(abs(sim_res$time - t)), integer(1L))
   delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
   fim_obs  <- ig_obs_fim(mle$mu0, mle$kappa, tau_vec, delta_v)
 
