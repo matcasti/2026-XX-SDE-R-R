@@ -285,14 +285,21 @@ window.Quarto = {
   <li><a href="#sec-recovery" id="toc-sec-recovery" class="nav-link" data-scroll-target="#sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</a></li>
   <li><a href="#sec-profiles" id="toc-sec-profiles" class="nav-link" data-scroll-target="#sec-profiles"><span class="header-section-number">4.4</span> Profile Likelihood</a></li>
   </ul></li>
-  <li><a href="#simulation-results-and-discussion" id="toc-simulation-results-and-discussion" class="nav-link" data-scroll-target="#simulation-results-and-discussion"><span class="header-section-number">5</span> Simulation Results and Discussion</a>
+  <li><a href="#sec-inference" id="toc-sec-inference" class="nav-link" data-scroll-target="#sec-inference"><span class="header-section-number">5</span> Inference Engine</a>
   <ul class="collapse">
-  <li><a href="#the-virtual-stress-protocol" id="toc-the-virtual-stress-protocol" class="nav-link" data-scroll-target="#the-virtual-stress-protocol"><span class="header-section-number">5.1</span> The Virtual Stress Protocol</a></li>
-  <li><a href="#autonomic-state-dynamics-and-the-identifiable-net-drive" id="toc-autonomic-state-dynamics-and-the-identifiable-net-drive" class="nav-link" data-scroll-target="#autonomic-state-dynamics-and-the-identifiable-net-drive"><span class="header-section-number">5.2</span> Autonomic State Dynamics and the Identifiable Net Drive</a></li>
-  <li><a href="#heteroscedasticity-and-variance-scaling" id="toc-heteroscedasticity-and-variance-scaling" class="nav-link" data-scroll-target="#heteroscedasticity-and-variance-scaling"><span class="header-section-number">5.3</span> Heteroscedasticity and Variance Scaling</a></li>
-  <li><a href="#time-rescaling-goodness-of-fit" id="toc-time-rescaling-goodness-of-fit" class="nav-link" data-scroll-target="#time-rescaling-goodness-of-fit"><span class="header-section-number">5.4</span> Time-Rescaling Goodness-of-Fit</a></li>
-  <li><a href="#stochastic-integrity" id="toc-stochastic-integrity" class="nav-link" data-scroll-target="#stochastic-integrity"><span class="header-section-number">5.5</span> Stochastic Integrity</a></li>
-  <li><a href="#extensibility-to-multiple-observation-streams" id="toc-extensibility-to-multiple-observation-streams" class="nav-link" data-scroll-target="#extensibility-to-multiple-observation-streams"><span class="header-section-number">5.6</span> Extensibility to Multiple Observation Streams</a></li>
+  <li><a href="#overview" id="toc-overview" class="nav-link" data-scroll-target="#overview"><span class="header-section-number">5.1</span> Overview</a></li>
+  <li><a href="#point-process-unscented-kalman-filter" id="toc-point-process-unscented-kalman-filter" class="nav-link" data-scroll-target="#point-process-unscented-kalman-filter"><span class="header-section-number">5.2</span> Point-Process Unscented Kalman Filter</a></li>
+  <li><a href="#static-parameter-estimation" id="toc-static-parameter-estimation" class="nav-link" data-scroll-target="#static-parameter-estimation"><span class="header-section-number">5.3</span> Static Parameter Estimation</a></li>
+  <li><a href="#filter-validation-on-simulated-data" id="toc-filter-validation-on-simulated-data" class="nav-link" data-scroll-target="#filter-validation-on-simulated-data"><span class="header-section-number">5.4</span> Filter Validation on Simulated Data</a></li>
+  </ul></li>
+  <li><a href="#simulation-results-and-discussion" id="toc-simulation-results-and-discussion" class="nav-link" data-scroll-target="#simulation-results-and-discussion"><span class="header-section-number">6</span> Simulation Results and Discussion</a>
+  <ul class="collapse">
+  <li><a href="#the-virtual-stress-protocol" id="toc-the-virtual-stress-protocol" class="nav-link" data-scroll-target="#the-virtual-stress-protocol"><span class="header-section-number">6.1</span> The Virtual Stress Protocol</a></li>
+  <li><a href="#autonomic-state-dynamics-and-the-identifiable-net-drive" id="toc-autonomic-state-dynamics-and-the-identifiable-net-drive" class="nav-link" data-scroll-target="#autonomic-state-dynamics-and-the-identifiable-net-drive"><span class="header-section-number">6.2</span> Autonomic State Dynamics and the Identifiable Net Drive</a></li>
+  <li><a href="#heteroscedasticity-and-variance-scaling" id="toc-heteroscedasticity-and-variance-scaling" class="nav-link" data-scroll-target="#heteroscedasticity-and-variance-scaling"><span class="header-section-number">6.3</span> Heteroscedasticity and Variance Scaling</a></li>
+  <li><a href="#time-rescaling-goodness-of-fit" id="toc-time-rescaling-goodness-of-fit" class="nav-link" data-scroll-target="#time-rescaling-goodness-of-fit"><span class="header-section-number">6.4</span> Time-Rescaling Goodness-of-Fit</a></li>
+  <li><a href="#stochastic-integrity" id="toc-stochastic-integrity" class="nav-link" data-scroll-target="#stochastic-integrity"><span class="header-section-number">6.5</span> Stochastic Integrity</a></li>
+  <li><a href="#extensibility-to-multiple-observation-streams" id="toc-extensibility-to-multiple-observation-streams" class="nav-link" data-scroll-target="#extensibility-to-multiple-observation-streams"><span class="header-section-number">6.6</span> Extensibility to Multiple Observation Streams</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -1040,7 +1047,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 </section>
 <section id="sec-recovery" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</h2>
-<p>We generated <span class="math inline">\(N = 500\)</span> independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. The study is conditional on the latent state trajectory; full marginal recovery from the spike train alone requires the inference engine described in <strong>?@sec-inference</strong> and will be demonstrated there.</p>
+<p>We generated <span class="math inline">\(N = 500\)</span> independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. The study is conditional on the latent state trajectory. Full marginal recovery from the spike train alone (i.e., without access to the latent states), is the subject of Section <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a>.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1152,7 +1159,7 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 </figure>
 </div>
 </div>
-<p>The bias is below 0.1% for the OU parameters, reflecting the large number of state observations. For the IG block (<span class="math inline">\(\mu_0\)</span>, <span class="math inline">\(\kappa\)</span>), bias is assessed in the table above; both should fall below 1% if the interval-averaged <span class="math inline">\(\bar\Delta_k\)</span> estimator is correctly specified (see Section~<span class="math inline">\(\ref{sec-recovery}\)</span>). RMSE scales with the inverse square root of the number of observations in each block, as predicted by the Cramér-Rao bound. Coverage is close to the nominal 95% for all parameters, validating the asymptotic standard error expressions derived analytically.</p>
+<p>Relative bias is below 0.5% for all OU parameters, consistent with the <span class="math inline">\({\sim}60{,}000\)</span> state-transition observations available per replication. For the IG block, <span class="math inline">\(\mu_0\)</span> and <span class="math inline">\(\kappa\)</span> show sub-percent relative bias (Table~<span class="math inline">\(\ref{tbl-recovery}\)</span>), confirming that the interval-averaged <span class="math inline">\(\bar\Delta_k\)</span> estimator introduces no material distortion. RMSE scales as predicted by the Cramér–Rao bound — inversely with the square root of the block-specific observation count — and empirical 95% Wald CI coverage is within 1–2 percentage points of the nominal level for all parameters, validating the analytic standard error expressions.</p>
 </section>
 <section id="sec-profiles" class="level2" data-number="4.4">
 <h2 data-number="4.4" class="anchored" data-anchor-id="sec-profiles"><span class="header-section-number">4.4</span> Profile Likelihood</h2>
@@ -1184,61 +1191,191 @@ Figure&nbsp;10: Profile log-likelihoods for all six free parameters, normalized 
 <p>All six profiles are strictly unimodal and sharply peaked. The profiles for <span class="math inline">\(\sigma_p\)</span> and <span class="math inline">\(\sigma_s\)</span> are the narrowest, reflecting the large number of OU observations. The profiles for <span class="math inline">\(\mu_0\)</span> and <span class="math inline">\(\kappa\)</span> have intermediate curvature, consistent with the <span class="math inline">\(\sim 750\)</span> beats per replication. The profiles for <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are sensitive to the duration and intensity of the external input: the 60-second stress window at unit amplitude provides adequate curvature for the values used here. Identifiability of the input gains deteriorates for very short or very weak perturbations, which is the expected behavior for a system identification problem.</p>
 </section>
 </section>
-<section id="simulation-results-and-discussion" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> Simulation Results and Discussion</h1>
-<section id="the-virtual-stress-protocol" class="level2" data-number="5.1">
-<h2 data-number="5.1" class="anchored" data-anchor-id="the-virtual-stress-protocol"><span class="header-section-number">5.1</span> The Virtual Stress Protocol</h2>
-<p>We validate the framework using the same protocol established in earlier sections: a deterministic boxcar forcing <span class="math inline">\(u(t) = \mathbf{1}_{[300, 420]}(t)\)</span>, representing a sustained period of physical stress followed by recovery, applied to a 720-second simulation. The input sensitivity coefficients <span class="math inline">\(c_p\)</span> = -1 (vagal withdrawal) and <span class="math inline">\(c_s\)</span> = 0.1 (sympathetic activation) encode the canonical exercise autonomic response.</p>
+<section id="sec-inference" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Inference Engine</h1>
+<section id="overview" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="overview"><span class="header-section-number">5.1</span> Overview</h2>
+<p>Section <a href="#sec-identifiability" class="quarto-xref">Section&nbsp;4</a> establishes identifiability <em>conditioned on the latent state trajectory</em>: given <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span>, the six free parameters are recoverable with quantified precision. In practice the states are unobserved; only the spike train <span class="math inline">\(\{t_k\}\)</span> is available. This section develops the marginal inference procedure that recovers <span class="math inline">\(\Theta\)</span> and the filtered net drive <span class="math inline">\(\hat\Delta(t)\)</span> from the RR interval series alone.</p>
 </section>
-<section id="autonomic-state-dynamics-and-the-identifiable-net-drive" class="level2" data-number="5.2">
-<h2 data-number="5.2" class="anchored" data-anchor-id="autonomic-state-dynamics-and-the-identifiable-net-drive"><span class="header-section-number">5.2</span> Autonomic State Dynamics and the Identifiable Net Drive</h2>
+<section id="point-process-unscented-kalman-filter" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="point-process-unscented-kalman-filter"><span class="header-section-number">5.2</span> Point-Process Unscented Kalman Filter</h2>
+<p>The filter processes one inter-beat interval <span class="math inline">\(\tau_k = t_k - t_{k-1}\)</span> at a time.</p>
+<p><strong>Prediction.</strong> The exact OU transition propagates the Gaussian belief from <span class="math inline">\(t_{k-1}\)</span> to <span class="math inline">\(t_k\)</span>:</p>
+<p><span class="math display">\[
+m_{k|k-1} = F(\tau_k)\,m_{k-1|k-1} + d(\tau_k),
+\qquad
+P_{k|k-1} = F(\tau_k)\,P_{k-1|k-1}\,F(\tau_k)^\top + Q(\tau_k),
+\]</span></p>
+<p>where <span class="math inline">\(F(\tau) = \mathrm{diag}(e^{-a_p\tau},\, e^{-a_s\tau})\)</span>, <span class="math inline">\(Q(\tau) = \mathrm{diag}\!\left(\tfrac{\sigma_p^2}{2a_p}(1-e^{-2a_p\tau}),\,
+\tfrac{\sigma_s^2}{2a_s}(1-e^{-2a_s\tau})\right)\)</span>, and <span class="math inline">\(d(\tau)\)</span> is the input-driven mean shift <span class="math inline">\(\bigl[\tfrac{c_p u}{a_p}(1-e^{-a_p\tau}),\,
+\tfrac{c_s u}{a_s}(1-e^{-a_s\tau})\bigr]^\top\)</span>. Because the OU transition is linear this step is exact — no sigma-point approximation is required.</p>
+<p><strong>Update.</strong> At spike time <span class="math inline">\(t_k\)</span> the observation is <span class="math inline">\(\tau_k \sim
+\mathrm{IG}\!\left(\mu_0 e^{-\Delta_k},\, \kappa\right)\)</span>. The observation function <span class="math inline">\(h(\mathbf{x}) = \mu_0 e^{p - s}\)</span> is nonlinear in <span class="math inline">\(\mathbf{x} = [p, s]^\top\)</span>, so the update uses UKF sigma-point quadrature with <span class="math inline">\(2L + 1 = 5\)</span> points (<span class="math inline">\(L=2\)</span>):</p>
+<p><span class="math display">\[
+\hat\mu_k = \sum_i W_i^m\, h(\boldsymbol{\sigma}_i),
+\qquad
+S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k,
+\]</span></p>
+<p>where <span class="math inline">\(R_k = \hat\mu_k^3/\kappa\)</span> is the IG variance outer-linearized at the predicted mean, and the Kalman gain and covariance update follow the standard UKF equations. The marginal log-likelihood contribution at beat <span class="math inline">\(k\)</span> is</p>
+<p><span class="math display">\[
+\log p(\tau_k \mid \Theta) \;\approx\; \log\mathcal{N}(\tau_k;\, \hat\mu_k,\, S_k).
+\]</span></p>
+<p>This Gaussian innovation approximation is the standard UKF marginal likelihood and provides a tractable, differentiable objective for static parameter estimation.</p>
+<p><strong>Identifiability geometry.</strong> The update couples <span class="math inline">\(p\)</span> and <span class="math inline">\(s\)</span> only through the difference <span class="math inline">\(\Delta = s - p\)</span>. As a result, posterior variance along <span class="math inline">\(\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}\)</span> (the <span class="math inline">\(\Delta\)</span> direction) contracts with each beat, while variance along <span class="math inline">\(\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}\)</span> (the common-mode direction) remains governed by the OU prior and never contracts. This geometry formalizes structurally what Section <a href="#sec-identifiability" class="quarto-xref">Section&nbsp;4</a> established analytically: the individual branches <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> are not separately identified from a single RR stream.</p>
+</section>
+<section id="static-parameter-estimation" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="static-parameter-estimation"><span class="header-section-number">5.3</span> Static Parameter Estimation</h2>
+<p>The total marginal log-likelihood <span class="math inline">\(\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)\)</span> is maximized over <span class="math inline">\(\Theta\)</span> by L-BFGS-B in log-space. Log-reparameterization <span class="math inline">\((\log\sigma_p,\, \log\sigma_s,\, \log\mu_0,\, \log\kappa)\)</span> enforces positivity without hard constraints and yields better-conditioned gradients than the natural scale.</p>
+</section>
+<section id="filter-validation-on-simulated-data" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="filter-validation-on-simulated-data"><span class="header-section-number">5.4</span> Filter Validation on Simulated Data</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">layout</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">1</span>), <span class="at">heights =</span> <span class="fu">c</span>(<span class="fl">0.6</span>, <span class="fl">0.9</span>, <span class="fl">0.9</span>, <span class="fl">1.4</span>))</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="fl">5.5</span>, <span class="fl">1.2</span>, <span class="dv">2</span>), <span class="at">oma =</span> <span class="fu">c</span>(<span class="fl">3.5</span>, <span class="dv">0</span>, <span class="dv">2</span>, <span class="dv">0</span>))</span>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">layout</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="dv">2</span>, <span class="dv">1</span>), <span class="at">heights =</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="fl">0.8</span>))</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">5</span>, <span class="fl">1.5</span>, <span class="dv">2</span>), <span class="at">oma =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>))</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Row 1: Input</span></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, <span class="fu">sapply</span>(RES<span class="sc">$</span>time, INPUT_FN), <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"u(t)"</span>, <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>,</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.1</span>, <span class="fl">1.3</span>))</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="fu">mtext</span>(<span class="st">"Stress Protocol — Phase 1 + 2 Revised Model"</span>,</span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">outer =</span> <span class="cn">TRUE</span>, <span class="at">cex =</span> <span class="fl">1.05</span>, <span class="at">font =</span> <span class="dv">2</span>)</span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Row 2: Net drive Delta(t) — identifiable quantity</span></span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>delta, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#2C5F2E"</span>, <span class="at">lwd =</span> <span class="fl">1.5</span>,</span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">Delta</span>(t) <span class="sc">==</span> <span class="fu">s</span>(t) <span class="sc">-</span> <span class="fu">p</span>(t)), <span class="at">xaxt =</span> <span class="st">"n"</span>,</span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>     <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
-<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
-<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Net drive (identified from RR data)"</span>,</span>
-<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"Sympathetic dominant \u2191  |  Vagal dominant \u2193"</span>),</span>
-<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"#2C5F2E"</span>, <span class="cn">NA</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="cn">NA</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.8</span>)</span>
-<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Row 3: Individual states (mechanistic interpretation)</span></span>
-<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>ylims <span class="ot">&lt;-</span> <span class="fu">range</span>(<span class="fu">c</span>(RES<span class="sc">$</span>p, RES<span class="sc">$</span>s))</span>
-<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>s, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
-<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> ylims, <span class="at">ylab =</span> <span class="st">"Latent states"</span>, <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>p, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="fl">1.5</span>)</span>
-<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
-<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Sympathetic s(t)  [LF, not individually identified]"</span>,</span>
-<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"Parasympathetic p(t)  [HF, not individually identified]"</span>),</span>
-<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"#D55E00"</span>, <span class="st">"#0072B2"</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="fl">1.5</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.8</span>)</span>
-<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a><span class="co"># Row 4: Tachogram</span></span>
-<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(beat_t, rr, <span class="at">type =</span> <span class="st">"o"</span>, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.45</span>, <span class="at">col =</span> <span class="st">"darkgray"</span>,</span>
-<span id="cb11-36"><a href="#cb11-36" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"R-R interval (s)"</span>, <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb11-37"><a href="#cb11-37" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(beat_t, mu_beats, <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">lwd =</span> <span class="fl">2.5</span>)</span>
-<span id="cb11-38"><a href="#cb11-38" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"bottomleft"</span>,</span>
-<span id="cb11-39"><a href="#cb11-39" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Observed R-R intervals"</span>,</span>
-<span id="cb11-40"><a href="#cb11-40" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(<span class="fu">mu</span>(t) <span class="sc">==</span> mu[<span class="dv">0</span>] <span class="sc">%.%</span> <span class="fu">exp</span>(<span class="sc">-</span><span class="fu">Delta</span>(t)))),</span>
-<span id="cb11-41"><a href="#cb11-41" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"darkgray"</span>, <span class="st">"black"</span>), <span class="at">pch =</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="cn">NA</span>),</span>
-<span id="cb11-42"><a href="#cb11-42" aria-hidden="true" tabindex="-1"></a>       <span class="at">lty =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="fl">2.5</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.8</span>)</span>
-<span id="cb11-43"><a href="#cb11-43" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb11-44"><a href="#cb11-44" aria-hidden="true" tabindex="-1"></a><span class="fu">mtext</span>(<span class="st">"Time (s)"</span>, <span class="at">side =</span> <span class="dv">1</span>, <span class="at">outer =</span> <span class="cn">TRUE</span>, <span class="at">line =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Top: Delta recovery ----</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>delta, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">Delta</span>(t)), <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> <span class="fu">range</span>(<span class="fu">c</span>(RES<span class="sc">$</span>delta,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>                    flt_grid<span class="sc">$</span>delta <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> flt_grid<span class="sc">$</span>sd_delta,</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>                    flt_grid<span class="sc">$</span>delta <span class="sc">-</span> <span class="dv">2</span> <span class="sc">*</span> flt_grid<span class="sc">$</span>sd_delta), <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="fu">polygon</span>(<span class="fu">c</span>(RES<span class="sc">$</span>time, <span class="fu">rev</span>(RES<span class="sc">$</span>time)),</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>        <span class="fu">c</span>(flt_grid<span class="sc">$</span>delta <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> flt_grid<span class="sc">$</span>sd_delta,</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>          <span class="fu">rev</span>(flt_grid<span class="sc">$</span>delta <span class="sc">-</span> <span class="dv">2</span> <span class="sc">*</span> flt_grid<span class="sc">$</span>sd_delta)),</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"#0072B2"</span>, <span class="fl">0.15</span>), <span class="at">border =</span> <span class="cn">NA</span>)</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, flt_grid<span class="sc">$</span>delta, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="fu">expression</span>(<span class="st">"True"</span> <span class="sc">~</span> <span class="fu">Delta</span>(t)),</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(<span class="st">"UKF"</span> <span class="sc">~</span> <span class="fu">hat</span>(Delta)(t) <span class="sc">~</span> <span class="st">"\u00b1 2 SD"</span>)),</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#0072B2"</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="dv">2</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Bottom: innovations ----</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>bt <span class="ot">&lt;-</span> FLT<span class="sc">$</span>beat_times</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bt, FLT<span class="sc">$</span>innov, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.4</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.35</span>),</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Innovation (s)"</span>, <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a><span class="fu">segments</span>(bt, <span class="sc">-</span><span class="dv">2</span> <span class="sc">*</span> <span class="fu">sqrt</span>(FLT<span class="sc">$</span>S_innov), bt, <span class="dv">2</span> <span class="sc">*</span> <span class="fu">sqrt</span>(FLT<span class="sc">$</span>S_innov),</span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>         <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"#D55E00"</span>, <span class="fl">0.4</span>), <span class="at">lwd =</span> <span class="fl">0.8</span>)</span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a><span class="fu">mtext</span>(<span class="st">"Time (s)"</span>, <span class="at">side =</span> <span class="dv">1</span>, <span class="at">outer =</span> <span class="cn">TRUE</span>, <span class="at">line =</span> <span class="fl">1.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-filter-recovery" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-filter-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-filter-recovery-1.svg" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-filter-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11: Filter validation on simulated data. <strong>Top:</strong> True net drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> (black) versus the UKF posterior mean <span class="math inline">\(\hat\Delta(t)\)</span> (blue) with pointwise <span class="math inline">\(\pm 2\)</span> posterior SD band (shaded). The filter recovers the stress-onset and recovery dynamics from the spike train alone, without access to the latent states. <strong>Bottom:</strong> Innovation sequence <span class="math inline">\(\tau_k - \hat\mu_k\)</span> (grey) with <span class="math inline">\(\pm 2\sqrt{S_k}\)</span> bands (dashed); absence of systematic structure confirms that the filter is not leaving exploitable signal in the residuals.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div id="tbl-filter-summary" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-filter-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;4: Filter performance summary. RMSE and mean absolute error of <span class="math inline">\(\hat\Delta(t)\)</span> relative to the true latent drive, computed on the simulation grid. Innovation statistics assess the Gaussian approximation quality: mean near zero and variance near 1 (after standardization by <span class="math inline">\(\sqrt{S_k}\)</span>) indicate a well-calibrated filter.
+</figcaption>
+<div aria-describedby="tbl-filter-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Statistic</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">RMSE of <span class="math inline">\(\hat\Delta(t)\)</span></td>
+<td style="text-align: right;">0.1193</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">MAE of <span class="math inline">\(\hat\Delta(t)\)</span></td>
+<td style="text-align: right;">0.0946</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Mean standardized innovation</td>
+<td style="text-align: right;">-0.0930</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">SD standardized innovation</td>
+<td style="text-align: right;">0.9979</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Filter log-likelihood</td>
+<td style="text-align: right;">364.1</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+</section>
+<section id="simulation-results-and-discussion" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Simulation Results and Discussion</h1>
+<section id="the-virtual-stress-protocol" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="the-virtual-stress-protocol"><span class="header-section-number">6.1</span> The Virtual Stress Protocol</h2>
+<p>We validate the framework using the same protocol established in earlier sections: a deterministic boxcar forcing <span class="math inline">\(u(t) = \mathbf{1}_{[300, 420]}(t)\)</span>, representing a sustained period of physical stress followed by recovery, applied to a 720-second simulation. The input sensitivity coefficients <span class="math inline">\(c_p\)</span> = -1 (vagal withdrawal) and <span class="math inline">\(c_s\)</span> = 0.1 (sympathetic activation) encode the canonical exercise autonomic response.</p>
+</section>
+<section id="autonomic-state-dynamics-and-the-identifiable-net-drive" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="autonomic-state-dynamics-and-the-identifiable-net-drive"><span class="header-section-number">6.2</span> Autonomic State Dynamics and the Identifiable Net Drive</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">layout</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">1</span>), <span class="at">heights =</span> <span class="fu">c</span>(<span class="fl">0.6</span>, <span class="fl">0.9</span>, <span class="fl">0.9</span>, <span class="fl">1.4</span>))</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="fl">5.5</span>, <span class="fl">1.2</span>, <span class="dv">2</span>), <span class="at">oma =</span> <span class="fu">c</span>(<span class="fl">3.5</span>, <span class="dv">0</span>, <span class="dv">2</span>, <span class="dv">0</span>))</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Row 1: Input</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, <span class="fu">sapply</span>(RES<span class="sc">$</span>time, INPUT_FN), <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"u(t)"</span>, <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.1</span>, <span class="fl">1.3</span>))</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="fu">mtext</span>(<span class="st">"Stress Protocol — Phase 1 + 2 Revised Model"</span>,</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">outer =</span> <span class="cn">TRUE</span>, <span class="at">cex =</span> <span class="fl">1.05</span>, <span class="at">font =</span> <span class="dv">2</span>)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Row 2: Net drive Delta(t) — identifiable quantity</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>delta, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#2C5F2E"</span>, <span class="at">lwd =</span> <span class="fl">1.5</span>,</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">Delta</span>(t) <span class="sc">==</span> <span class="fu">s</span>(t) <span class="sc">-</span> <span class="fu">p</span>(t)), <span class="at">xaxt =</span> <span class="st">"n"</span>,</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>     <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Net drive (identified from RR data)"</span>,</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"Sympathetic dominant \u2191  |  Vagal dominant \u2193"</span>),</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"#2C5F2E"</span>, <span class="cn">NA</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="cn">NA</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.8</span>)</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Row 3: Individual states (mechanistic interpretation)</span></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>ylims <span class="ot">&lt;-</span> <span class="fu">range</span>(<span class="fu">c</span>(RES<span class="sc">$</span>p, RES<span class="sc">$</span>s))</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>s, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> ylims, <span class="at">ylab =</span> <span class="st">"Latent states"</span>, <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>p, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="fl">1.5</span>)</span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="fu">expression</span>(<span class="st">"Sympathetic"</span> <span class="sc">~</span> <span class="fu">s</span>(t) <span class="sc">~</span> <span class="st">"(LF component)"</span>),</span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(<span class="st">"Parasympathetic"</span> <span class="sc">~</span> <span class="fu">p</span>(t) <span class="sc">~</span> <span class="st">"(HF component)"</span>)),</span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"#D55E00"</span>, <span class="st">"#0072B2"</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="fl">1.5</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.8</span>)</span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a><span class="co"># Row 4: Tachogram</span></span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(beat_t, rr, <span class="at">type =</span> <span class="st">"o"</span>, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.45</span>, <span class="at">col =</span> <span class="st">"darkgray"</span>,</span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"R-R interval (s)"</span>, <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(beat_t, mu_beats, <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">lwd =</span> <span class="fl">2.5</span>)</span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"bottomleft"</span>,</span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Observed R-R intervals"</span>,</span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(<span class="fu">mu</span>(t) <span class="sc">==</span> mu[<span class="dv">0</span>] <span class="sc">%.%</span> <span class="fu">exp</span>(<span class="sc">-</span><span class="fu">Delta</span>(t)))),</span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"darkgray"</span>, <span class="st">"black"</span>), <span class="at">pch =</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="cn">NA</span>),</span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true" tabindex="-1"></a>       <span class="at">lty =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="fl">2.5</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.8</span>)</span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true" tabindex="-1"></a><span class="fu">mtext</span>(<span class="st">"Time (s)"</span>, <span class="at">side =</span> <span class="dv">1</span>, <span class="at">outer =</span> <span class="cn">TRUE</span>, <span class="at">line =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-results-main" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1247,7 +1384,7 @@ Figure&nbsp;10: Profile log-likelihoods for all six free parameters, normalized 
 <img src="index_files/figure-html/fig-results-main-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-main-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Simulation of the autonomic response to a sustained stress protocol under the revised model. <strong>Row 1:</strong> Exogenous input <span class="math inline">\(u(t)\)</span>. <strong>Row 2:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> — the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. <strong>Row 3:</strong> Individual latent states <span class="math inline">\(p(t)\)</span> (blue, vagal) and <span class="math inline">\(s(t)\)</span> (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. <strong>Row 4:</strong> Tachogram of observed R-R intervals (grey) with the instantaneous mean <span class="math inline">\(\mu(t) = \mu_0\exp(-\Delta(t))\)</span> overlaid (black).
+Figure&nbsp;12: Simulation of the autonomic response to a sustained stress protocol. <strong>Row 1:</strong> Exogenous input <span class="math inline">\(u(t)\)</span>. <strong>Row 2:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> — the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. <strong>Row 3:</strong> Individual latent states <span class="math inline">\(p(t)\)</span> (blue, vagal) and <span class="math inline">\(s(t)\)</span> (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. <strong>Row 4:</strong> Tachogram of observed R-R intervals (grey) with the instantaneous mean <span class="math inline">\(\mu(t) = \mu_0\exp(-\Delta(t))\)</span> overlaid (black).
 </figcaption>
 </figure>
 </div>
@@ -1255,32 +1392,32 @@ Figure&nbsp;11: Simulation of the autonomic response to a sustained stress proto
 </div>
 <p>The onset of stress at <span class="math inline">\(t = 300\)</span> s produces an immediate drop in <span class="math inline">\(\Delta(t)\)</span> as vagal tone withdraws rapidly (high <span class="math inline">\(a_p\)</span>), followed by a slower rise as sympathetic tone accumulates (low <span class="math inline">\(a_s\)</span>). The cessation of stress at <span class="math inline">\(t = 420\)</span> s reverses this pattern asymmetrically: vagal restoration is rapid, while <span class="math inline">\(\Delta(t)\)</span> returns to baseline gradually as sympathetic tone washes out. This hysteresis, the asymmetry between onset and offset, emerges from the differing time constants and requires no special modeling beyond the structural difference <span class="math inline">\(a_p \gg a_s\)</span>.</p>
 </section>
-<section id="heteroscedasticity-and-variance-scaling" class="level2" data-number="5.3">
-<h2 data-number="5.3" class="anchored" data-anchor-id="heteroscedasticity-and-variance-scaling"><span class="header-section-number">5.3</span> Heteroscedasticity and Variance Scaling</h2>
+<section id="heteroscedasticity-and-variance-scaling" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="heteroscedasticity-and-variance-scaling"><span class="header-section-number">6.3</span> Heteroscedasticity and Variance Scaling</h2>
 <p>A distinctive property of the IG point process is the dependence of interval variance on the mean: <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span>. As heart rate increases (<span class="math inline">\(\mu\)</span> decreases), variability is suppressed cubically, independently of any changes in the underlying noise process. This property is intrinsic to the first-passage time framework.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>rr_wn  <span class="ot">&lt;-</span> <span class="dv">10</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>rmean  <span class="ot">&lt;-</span> zoo<span class="sc">::</span><span class="fu">rollmean</span>(rr, rr_wn)</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>rvar   <span class="ot">&lt;-</span> zoo<span class="sc">::</span><span class="fu">rollapply</span>(rr, rr_wn, var)</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>mu_seq  <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fu">min</span>(rmean, <span class="at">na.rm=</span><span class="cn">TRUE</span>), <span class="fu">max</span>(rmean, <span class="at">na.rm=</span><span class="cn">TRUE</span>), <span class="at">length.out =</span> <span class="dv">200</span>)</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>var_th  <span class="ot">&lt;-</span> mu_seq<span class="sc">^</span><span class="dv">3</span> <span class="sc">/</span> PARAMS<span class="sc">$</span>free<span class="sc">$</span>kappa</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">4.5</span>, <span class="dv">5</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rmean, rvar, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.5</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">0.3</span>),</span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Local mean R-R interval (s)"</span>,</span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="st">"Local variance (s"</span><span class="sc">^</span><span class="dv">2</span><span class="sc">~</span><span class="st">")"</span>),</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Heteroscedasticity: Empirical vs Theoretical"</span>,</span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(mu_seq, var_th, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">3</span>)</span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Rolling windows (n=10)"</span>,</span>
-<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(<span class="fu">Var</span>(tau) <span class="sc">==</span> mu<span class="sc">^</span><span class="dv">3</span> <span class="sc">/</span> kappa <span class="sc">~</span> <span class="st">"(theoretical)"</span>)),</span>
-<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#D55E00"</span>), <span class="at">pch =</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="cn">NA</span>),</span>
-<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>       <span class="at">lty =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">1</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">3</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
-<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>rr_wn  <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>rmean  <span class="ot">&lt;-</span> zoo<span class="sc">::</span><span class="fu">rollmean</span>(rr, rr_wn)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>rvar   <span class="ot">&lt;-</span> zoo<span class="sc">::</span><span class="fu">rollapply</span>(rr, rr_wn, var)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>mu_seq  <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fu">min</span>(rmean, <span class="at">na.rm=</span><span class="cn">TRUE</span>), <span class="fu">max</span>(rmean, <span class="at">na.rm=</span><span class="cn">TRUE</span>), <span class="at">length.out =</span> <span class="dv">200</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>var_th  <span class="ot">&lt;-</span> mu_seq<span class="sc">^</span><span class="dv">3</span> <span class="sc">/</span> PARAMS<span class="sc">$</span>free<span class="sc">$</span>kappa</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">4.5</span>, <span class="dv">5</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rmean, rvar, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.5</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">0.3</span>),</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Local mean R-R interval (s)"</span>,</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="st">"Local variance (s"</span><span class="sc">^</span><span class="dv">2</span><span class="sc">~</span><span class="st">")"</span>),</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Heteroscedasticity: Empirical vs Theoretical"</span>,</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(mu_seq, var_th, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">3</span>)</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Rolling windows (n=10)"</span>,</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(<span class="fu">Var</span>(tau) <span class="sc">==</span> mu<span class="sc">^</span><span class="dv">3</span> <span class="sc">/</span> kappa <span class="sc">~</span> <span class="st">"(theoretical)"</span>)),</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#D55E00"</span>), <span class="at">pch =</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="cn">NA</span>),</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>       <span class="at">lty =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">1</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">3</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-heteroscedasticity" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1289,15 +1426,15 @@ Figure&nbsp;11: Simulation of the autonomic response to a sustained stress proto
 <img src="index_files/figure-html/fig-heteroscedasticity-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-heteroscedasticity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> with the true <span class="math inline">\(\kappa = 20\)</span>. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
+Figure&nbsp;13: Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> with the true <span class="math inline">\(\kappa = 20\)</span>. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
 </section>
-<section id="time-rescaling-goodness-of-fit" class="level2" data-number="5.4">
-<h2 data-number="5.4" class="anchored" data-anchor-id="time-rescaling-goodness-of-fit"><span class="header-section-number">5.4</span> Time-Rescaling Goodness-of-Fit</h2>
+<section id="time-rescaling-goodness-of-fit" class="level2" data-number="6.4">
+<h2 data-number="6.4" class="anchored" data-anchor-id="time-rescaling-goodness-of-fit"><span class="header-section-number">6.4</span> Time-Rescaling Goodness-of-Fit</h2>
 <p>The time-rescaling theorem <span class="citation" data-cites="brown2002time">(<a href="#ref-brown2002time" role="doc-biblioref">Brown et al. 2002</a>)</span> provides the principled diagnostic for point process models. If the conditional intensity <span class="math inline">\(\lambda(t \mid \mathcal{H}_t)\)</span> correctly characterizes the probability structure of the event times, the integrated intensity</p>
 <p><span class="math display">\[
 \Lambda_k = \int_{t_{k-1}}^{t_k} \lambda(s \mid \mathcal{H}_s)\,ds
@@ -1307,66 +1444,66 @@ Figure&nbsp;12: Mean-variance scaling of the simulated R-R intervals, validating
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>Lk <span class="ot">&lt;-</span> <span class="fu">compute_time_rescaling</span>(RES)</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>Lk <span class="ot">&lt;-</span> Lk[<span class="fu">is.finite</span>(Lk)]   <span class="co"># drop any skipped intervals (should be empty at dt=0.005)</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>uk <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fu">exp</span>(<span class="sc">-</span>Lk)</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>vk <span class="ot">&lt;-</span> <span class="fu">qnorm</span>(uk)</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>n  <span class="ot">&lt;-</span> <span class="fu">length</span>(Lk)</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>vk_f <span class="ot">&lt;-</span> vk[<span class="fu">is.finite</span>(vk)]</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>ks   <span class="ot">&lt;-</span> <span class="fu">ks.test</span>(uk, <span class="st">"punif"</span>)</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>band <span class="ot">&lt;-</span> <span class="fl">1.36</span> <span class="sc">/</span> <span class="fu">sqrt</span>(n)</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="fu">layout</span>(<span class="fu">matrix</span>(<span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>), <span class="dv">2</span>, <span class="dv">2</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">4.5</span>, <span class="fl">4.5</span>, <span class="fl">2.8</span>, <span class="fl">1.2</span>))</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Uniform QQ ---</span></span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>u_s <span class="ot">&lt;-</span> <span class="fu">sort</span>(uk)</span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>theo <span class="ot">&lt;-</span> <span class="fu">ppoints</span>(n)</span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(theo, u_s, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.4</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.4</span>),</span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Theoretical [Uniform(0,1)]"</span>,</span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(u[k] <span class="sc">==</span> <span class="dv">1</span> <span class="sc">-</span> e<span class="sc">^</span>{<span class="sc">-</span>Lambda[k]}),</span>
-<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Uniform Q-Q Plot"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>,</span>
-<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>))</span>
-<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
-<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(theo, theo <span class="sc">+</span> band, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>)</span>
-<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(theo, theo <span class="sc">-</span> band, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>)</span>
-<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
-<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">sprintf</span>(<span class="st">"KS p = %.3f"</span>, ks<span class="sc">$</span>p.value),</span>
-<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>       <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
-<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Normal-score QQ ---</span></span>
-<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a><span class="fu">qqnorm</span>(vk_f, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.4</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.4</span>),</span>
-<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>       <span class="at">main =</span> <span class="st">"Normal-Score Q-Q"</span>,</span>
-<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a>       <span class="at">xlab =</span> <span class="st">"Theoretical N(0,1)"</span>,</span>
-<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>       <span class="at">ylab =</span> <span class="fu">expression</span>(v[k] <span class="sc">==</span> Phi<span class="sc">^</span>{<span class="sc">-</span><span class="dv">1</span>}(u[k])),</span>
-<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a>       <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a><span class="fu">qqline</span>(vk_f, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
-<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a><span class="co"># --- ACF of uk ---</span></span>
-<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(uk, <span class="at">lag.max =</span> <span class="dv">25</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
-<span id="cb13-41"><a href="#cb13-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">ci.col =</span> <span class="st">"#D55E00"</span>,</span>
-<span id="cb13-42"><a href="#cb13-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">main =</span> <span class="st">"Residual Autocorrelation"</span>,</span>
-<span id="cb13-43"><a href="#cb13-43" aria-hidden="true" tabindex="-1"></a>    <span class="at">xlab =</span> <span class="st">"Lag"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb13-44"><a href="#cb13-44" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb13-45"><a href="#cb13-45" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-46"><a href="#cb13-46" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Lambda_k vs Exp(1) ECDF ---</span></span>
-<span id="cb13-47"><a href="#cb13-47" aria-hidden="true" tabindex="-1"></a>lk_s  <span class="ot">&lt;-</span> <span class="fu">sort</span>(Lk)</span>
-<span id="cb13-48"><a href="#cb13-48" aria-hidden="true" tabindex="-1"></a>ecdf_v <span class="ot">&lt;-</span> <span class="fu">seq_along</span>(lk_s) <span class="sc">/</span> (n <span class="sc">+</span> <span class="dv">1</span>)</span>
-<span id="cb13-49"><a href="#cb13-49" aria-hidden="true" tabindex="-1"></a>exp1_c <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fu">exp</span>(<span class="sc">-</span>lk_s)</span>
-<span id="cb13-50"><a href="#cb13-50" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(lk_s, ecdf_v, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.4</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.4</span>),</span>
-<span id="cb13-51"><a href="#cb13-51" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="fu">expression</span>(Lambda[k]),</span>
-<span id="cb13-52"><a href="#cb13-52" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"CDF"</span>,</span>
-<span id="cb13-53"><a href="#cb13-53" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="fu">expression</span>(Lambda[k] <span class="sc">~</span> <span class="st">"vs Exp(1)"</span>),</span>
-<span id="cb13-54"><a href="#cb13-54" aria-hidden="true" tabindex="-1"></a>     <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb13-55"><a href="#cb13-55" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(lk_s, exp1_c, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
-<span id="cb13-56"><a href="#cb13-56" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"bottomright"</span>,</span>
-<span id="cb13-57"><a href="#cb13-57" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Empirical"</span>, <span class="st">"Exp(1)"</span>),</span>
-<span id="cb13-58"><a href="#cb13-58" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#D55E00"</span>),</span>
-<span id="cb13-59"><a href="#cb13-59" aria-hidden="true" tabindex="-1"></a>       <span class="at">pch =</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="cn">NA</span>), <span class="at">lty =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">1</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">2</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
-<span id="cb13-60"><a href="#cb13-60" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>Lk <span class="ot">&lt;-</span> <span class="fu">compute_time_rescaling</span>(RES)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>Lk <span class="ot">&lt;-</span> Lk[<span class="fu">is.finite</span>(Lk)]   <span class="co"># drop any skipped intervals (should be empty at dt=0.005)</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>uk <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fu">exp</span>(<span class="sc">-</span>Lk)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>vk <span class="ot">&lt;-</span> <span class="fu">qnorm</span>(uk)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>n  <span class="ot">&lt;-</span> <span class="fu">length</span>(Lk)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>vk_f <span class="ot">&lt;-</span> vk[<span class="fu">is.finite</span>(vk)]</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>ks   <span class="ot">&lt;-</span> <span class="fu">ks.test</span>(uk, <span class="st">"punif"</span>)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>band <span class="ot">&lt;-</span> <span class="fl">1.36</span> <span class="sc">/</span> <span class="fu">sqrt</span>(n)</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="fu">layout</span>(<span class="fu">matrix</span>(<span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>), <span class="dv">2</span>, <span class="dv">2</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">4.5</span>, <span class="fl">4.5</span>, <span class="fl">2.8</span>, <span class="fl">1.2</span>))</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Uniform QQ ---</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>u_s <span class="ot">&lt;-</span> <span class="fu">sort</span>(uk)</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>theo <span class="ot">&lt;-</span> <span class="fu">ppoints</span>(n)</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(theo, u_s, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.4</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.4</span>),</span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Theoretical [Uniform(0,1)]"</span>,</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(u[k] <span class="sc">==</span> <span class="dv">1</span> <span class="sc">-</span> e<span class="sc">^</span>{<span class="sc">-</span>Lambda[k]}),</span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Uniform Q-Q Plot"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>))</span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(theo, theo <span class="sc">+</span> band, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>)</span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(theo, theo <span class="sc">-</span> band, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>)</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">sprintf</span>(<span class="st">"KS p = %.3f"</span>, ks<span class="sc">$</span>p.value),</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>       <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Normal-score QQ ---</span></span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a><span class="fu">qqnorm</span>(vk_f, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.4</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.4</span>),</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>       <span class="at">main =</span> <span class="st">"Normal-Score Q-Q"</span>,</span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>       <span class="at">xlab =</span> <span class="st">"Theoretical N(0,1)"</span>,</span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a>       <span class="at">ylab =</span> <span class="fu">expression</span>(v[k] <span class="sc">==</span> Phi<span class="sc">^</span>{<span class="sc">-</span><span class="dv">1</span>}(u[k])),</span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a>       <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a><span class="fu">qqline</span>(vk_f, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a><span class="co"># --- ACF of uk ---</span></span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(uk, <span class="at">lag.max =</span> <span class="dv">25</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">ci.col =</span> <span class="st">"#D55E00"</span>,</span>
+<span id="cb14-42"><a href="#cb14-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">main =</span> <span class="st">"Residual Autocorrelation"</span>,</span>
+<span id="cb14-43"><a href="#cb14-43" aria-hidden="true" tabindex="-1"></a>    <span class="at">xlab =</span> <span class="st">"Lag"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-44"><a href="#cb14-44" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb14-45"><a href="#cb14-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-46"><a href="#cb14-46" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Lambda_k vs Exp(1) ECDF ---</span></span>
+<span id="cb14-47"><a href="#cb14-47" aria-hidden="true" tabindex="-1"></a>lk_s  <span class="ot">&lt;-</span> <span class="fu">sort</span>(Lk)</span>
+<span id="cb14-48"><a href="#cb14-48" aria-hidden="true" tabindex="-1"></a>ecdf_v <span class="ot">&lt;-</span> <span class="fu">seq_along</span>(lk_s) <span class="sc">/</span> (n <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb14-49"><a href="#cb14-49" aria-hidden="true" tabindex="-1"></a>exp1_c <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fu">exp</span>(<span class="sc">-</span>lk_s)</span>
+<span id="cb14-50"><a href="#cb14-50" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(lk_s, ecdf_v, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.4</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.4</span>),</span>
+<span id="cb14-51"><a href="#cb14-51" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="fu">expression</span>(Lambda[k]),</span>
+<span id="cb14-52"><a href="#cb14-52" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"CDF"</span>,</span>
+<span id="cb14-53"><a href="#cb14-53" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="fu">expression</span>(Lambda[k] <span class="sc">~</span> <span class="st">"vs Exp(1)"</span>),</span>
+<span id="cb14-54"><a href="#cb14-54" aria-hidden="true" tabindex="-1"></a>     <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-55"><a href="#cb14-55" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(lk_s, exp1_c, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb14-56"><a href="#cb14-56" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"bottomright"</span>,</span>
+<span id="cb14-57"><a href="#cb14-57" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Empirical"</span>, <span class="st">"Exp(1)"</span>),</span>
+<span id="cb14-58"><a href="#cb14-58" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#D55E00"</span>),</span>
+<span id="cb14-59"><a href="#cb14-59" aria-hidden="true" tabindex="-1"></a>       <span class="at">pch =</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="cn">NA</span>), <span class="at">lty =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">1</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">2</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
+<span id="cb14-60"><a href="#cb14-60" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-time-rescaling" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1375,7 +1512,7 @@ Figure&nbsp;12: Mean-variance scaling of the simulated R-R intervals, validating
 <img src="index_files/figure-html/fig-time-rescaling-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-time-rescaling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13: Time-rescaling goodness-of-fit diagnostics for the revised model, implementing the full Brown et al.&nbsp;(2002) diagnostic suite. <strong>Top-left:</strong> Uniform Q-Q plot of <span class="math inline">\(u_k = 1 - \exp(-\Lambda_k)\)</span> against theoretical <span class="math inline">\(\text{Uniform}(0,1)\)</span> quantiles, with 95% Kolmogorov-Smirnov confidence bands (dashed). <strong>Top-right:</strong> Normal-score Q-Q plot of <span class="math inline">\(v_k = \Phi^{-1}(u_k)\)</span>, testing normality of the transformed residuals. <strong>Bottom-left:</strong> Autocorrelation function of <span class="math inline">\(u_k\)</span>; no significant lags indicate that residuals are independent, as required. <strong>Bottom-right:</strong> Empirical CDF of <span class="math inline">\(\Lambda_k\)</span> (points) against <span class="math inline">\(\text{Exp}(1)\)</span> (red line), confirming that rescaled inter-beat intervals follow a unit-rate Poisson process.
+Figure&nbsp;14: Time-rescaling goodness-of-fit diagnostics for the revised model, implementing the full Brown et al.&nbsp;(2002) diagnostic suite. <strong>Top-left:</strong> Uniform Q-Q plot of <span class="math inline">\(u_k = 1 - \exp(-\Lambda_k)\)</span> against theoretical <span class="math inline">\(\text{Uniform}(0,1)\)</span> quantiles, with 95% Kolmogorov-Smirnov confidence bands (dashed). <strong>Top-right:</strong> Normal-score Q-Q plot of <span class="math inline">\(v_k = \Phi^{-1}(u_k)\)</span>, testing normality of the transformed residuals. <strong>Bottom-left:</strong> Autocorrelation function of <span class="math inline">\(u_k\)</span>; no significant lags indicate that residuals are independent, as required. <strong>Bottom-right:</strong> Empirical CDF of <span class="math inline">\(\Lambda_k\)</span> (points) against <span class="math inline">\(\text{Exp}(1)\)</span> (red line), confirming that rescaled inter-beat intervals follow a unit-rate Poisson process.
 </figcaption>
 </figure>
 </div>
@@ -1385,7 +1522,7 @@ Figure&nbsp;13: Time-rescaling goodness-of-fit diagnostics for the revised model
 <div id="tbl-tr-summary" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-tr-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;4: Summary statistics for the time-rescaling residuals. A correctly specified model produces <span class="math inline">\(\text{E}[\Lambda_k] = 1\)</span>, <span class="math inline">\(\text{Var}(\Lambda_k) = 1\)</span>, and <span class="math inline">\(\text{E}[u_k] = 0.5\)</span>. The KS statistic and p-value assess the uniformity of <span class="math inline">\(u_k\)</span>.
+Table&nbsp;5: Summary statistics for the time-rescaling residuals. A correctly specified model produces <span class="math inline">\(\text{E}[\Lambda_k] = 1\)</span>, <span class="math inline">\(\text{Var}(\Lambda_k) = 1\)</span>, and <span class="math inline">\(\text{E}[u_k] = 0.5\)</span>. The KS statistic and p-value assess the uniformity of <span class="math inline">\(u_k\)</span>.
 </figcaption>
 <div aria-describedby="tbl-tr-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
@@ -1436,12 +1573,12 @@ Table&nbsp;4: Summary statistics for the time-rescaling residuals. A correctly s
 </div>
 </div>
 </section>
-<section id="stochastic-integrity" class="level2" data-number="5.5">
-<h2 data-number="5.5" class="anchored" data-anchor-id="stochastic-integrity"><span class="header-section-number">5.5</span> Stochastic Integrity</h2>
+<section id="stochastic-integrity" class="level2" data-number="6.5">
+<h2 data-number="6.5" class="anchored" data-anchor-id="stochastic-integrity"><span class="header-section-number">6.5</span> Stochastic Integrity</h2>
 <p>The simulated beat train is generated by a doubly stochastic process: process noise in the SDEs creates the wandering autonomic baseline, while the first-passage mechanism introduces an additional layer of interval variability at fixed <span class="math inline">\(\mu\)</span>. Even without SDE noise (<span class="math inline">\(\sigma_p = \sigma_s = 0\)</span>), the IG mechanism produces variance <span class="math inline">\(\mu^3/\kappa\)</span>. Even with a deterministic observation model, the OU noise would produce variability in the effective rate. These two sources are distinct and identifiable from the model’s spectral structure: the SDE noise determines the temporal autocorrelation of the tachogram, while <span class="math inline">\(\kappa\)</span> determines the conditional variance at each beat given the state trajectory.</p>
 </section>
-<section id="extensibility-to-multiple-observation-streams" class="level2" data-number="5.6">
-<h2 data-number="5.6" class="anchored" data-anchor-id="extensibility-to-multiple-observation-streams"><span class="header-section-number">5.6</span> Extensibility to Multiple Observation Streams</h2>
+<section id="extensibility-to-multiple-observation-streams" class="level2" data-number="6.6">
+<h2 data-number="6.6" class="anchored" data-anchor-id="extensibility-to-multiple-observation-streams"><span class="header-section-number">6.6</span> Extensibility to Multiple Observation Streams</h2>
 <p>The modular observation model interface defined in this framework supports the addition of further physiological streams without altering the state equation. Each new stream registers as an observation model with a <code>$log_intensity</code> method — for example, a Gaussian linear observation of <span class="math inline">\(p(t)\)</span> through respiratory sinus arrhythmia amplitude, or of <span class="math inline">\(s(t)\)</span> through blood pressure. When such a stream is available, the scale aliasing between <span class="math inline">\(k_\text{sym}\)</span> and <span class="math inline">\(\sigma_s\)</span> is broken: the additional observation provides an independent measurement of an individual state, making <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> separately identified and enabling the coupling terms <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> to be estimated. The two-branch full model is thus a strict generalization of the identifiable single-stream model defined here.</p>
 
 

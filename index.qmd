@@ -9,7 +9,7 @@ bibliography: references.bib
 date: today
 title-block-style: manuscript
 execute: 
-  out-width: 100%
+  out-width: "100%"
 format: 
   html:
     code-fold: true
@@ -17,6 +17,7 @@ format:
     number-sections: true
     theme: cosmo
     fig-format: svg
+    fig-width: 7
 ---
 
 # Abstract
@@ -691,7 +692,7 @@ The OU blocks have large eigenvalues because the state trajectory provides $n \a
 
 ## Simulation Recovery Study {#sec-recovery}
 
-We generated $N = 500$ independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. The study is conditional on the latent state trajectory; full marginal recovery from the spike train alone requires the inference engine described in @sec-inference and will be demonstrated there.
+We generated $N = 500$ independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. The study is conditional on the latent state trajectory. Full marginal recovery from the spike train alone (i.e., without access to the latent states), is the subject of Section @sec-inference.
 
 ```{r}
 #| label: recovery-run
@@ -745,7 +746,7 @@ knitr::kable(rec_tbl, escape = FALSE,
                            "RMSE", "95\\% CI coverage"))
 ```
 
-The bias is below 0.1% for the OU parameters, reflecting the large number of state observations. For the IG block ($\mu_0$, $\kappa$), bias is assessed in the table above; both should fall below 1\% if the interval-averaged $\bar\Delta_k$ estimator is correctly specified (see Section~\ref{sec-recovery}). RMSE scales with the inverse square root of the number of observations in each block, as predicted by the Cramér-Rao bound. Coverage is close to the nominal 95% for all parameters, validating the asymptotic standard error expressions derived analytically.
+Relative bias is below 0.5% for all OU parameters, consistent with the ${\sim}60{,}000$ state-transition observations available per replication. For the IG block, $\mu_0$ and $\kappa$ show sub-percent relative bias (Table~\ref{tbl-recovery}), confirming that the interval-averaged $\bar\Delta_k$ estimator introduces no material distortion. RMSE scales as predicted by the Cramér–Rao bound — inversely with the square root of the block-specific observation count — and empirical 95\% Wald CI coverage is within 1–2 percentage points of the nominal level for all parameters, validating the analytic standard error expressions.
 
 ## Profile Likelihood {#sec-profiles}
 
@@ -775,6 +776,174 @@ plot_profiles(PROFILES, true_vals = true_vals,
 
 All six profiles are strictly unimodal and sharply peaked. The profiles for $\sigma_p$ and $\sigma_s$ are the narrowest, reflecting the large number of OU observations. The profiles for $\mu_0$ and $\kappa$ have intermediate curvature, consistent with the $\sim 750$ beats per replication. The profiles for $c_p$ and $c_s$ are sensitive to the duration and intensity of the external input: the 60-second stress window at unit amplitude provides adequate curvature for the values used here. Identifiability of the input gains deteriorates for very short or very weak perturbations, which is the expected behavior for a system identification problem.
 
+
+# Inference Engine {#sec-inference}
+
+## Overview
+
+Section @sec-identifiability establishes identifiability *conditioned on the latent
+state trajectory*: given $p(t)$ and $s(t)$, the six free parameters are recoverable
+with quantified precision.  In practice the states are unobserved; only the spike
+train $\{t_k\}$ is available.  This section develops the marginal inference procedure
+that recovers $\Theta$ and the filtered net drive $\hat\Delta(t)$ from the RR interval
+series alone.
+
+## Point-Process Unscented Kalman Filter
+
+The filter processes one inter-beat interval $\tau_k = t_k - t_{k-1}$ at a time.
+
+**Prediction.** The exact OU transition propagates the Gaussian belief from
+$t_{k-1}$ to $t_k$:
+
+$$
+m_{k|k-1} = F(\tau_k)\,m_{k-1|k-1} + d(\tau_k),
+\qquad
+P_{k|k-1} = F(\tau_k)\,P_{k-1|k-1}\,F(\tau_k)^\top + Q(\tau_k),
+$$
+
+where $F(\tau) = \mathrm{diag}(e^{-a_p\tau},\, e^{-a_s\tau})$,
+$Q(\tau) = \mathrm{diag}\!\left(\tfrac{\sigma_p^2}{2a_p}(1-e^{-2a_p\tau}),\,
+\tfrac{\sigma_s^2}{2a_s}(1-e^{-2a_s\tau})\right)$, and $d(\tau)$ is the
+input-driven mean shift $\bigl[\tfrac{c_p u}{a_p}(1-e^{-a_p\tau}),\,
+\tfrac{c_s u}{a_s}(1-e^{-a_s\tau})\bigr]^\top$.  Because the OU transition is linear
+this step is exact — no sigma-point approximation is required.
+
+**Update.** At spike time $t_k$ the observation is $\tau_k \sim
+\mathrm{IG}\!\left(\mu_0 e^{-\Delta_k},\, \kappa\right)$.  The observation function
+$h(\mathbf{x}) = \mu_0 e^{p - s}$ is nonlinear in $\mathbf{x} = [p, s]^\top$,
+so the update uses UKF sigma-point quadrature with $2L + 1 = 5$ points ($L=2$):
+
+$$
+\hat\mu_k = \sum_i W_i^m\, h(\boldsymbol{\sigma}_i),
+\qquad
+S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k,
+$$
+
+where $R_k = \hat\mu_k^3/\kappa$ is the IG variance outer-linearized at the
+predicted mean, and the Kalman gain and covariance update follow the standard
+UKF equations.  The marginal log-likelihood contribution at beat $k$ is
+
+$$
+\log p(\tau_k \mid \Theta) \;\approx\; \log\mathcal{N}(\tau_k;\, \hat\mu_k,\, S_k).
+$$
+
+This Gaussian innovation approximation is the standard UKF marginal likelihood and
+provides a tractable, differentiable objective for static parameter estimation.
+
+**Identifiability geometry.** The update couples $p$ and $s$ only through the
+difference $\Delta = s - p$.  As a result, posterior variance along
+$\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta$ direction) contracts
+with each beat, while variance along $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$
+(the common-mode direction) remains governed by the OU prior and never contracts.
+This geometry formalizes structurally what Section @sec-identifiability established
+analytically: the individual branches $p(t)$ and $s(t)$ are not separately identified
+from a single RR stream.
+
+## Static Parameter Estimation
+
+The total marginal log-likelihood
+$\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)$
+is maximized over $\Theta$ by L-BFGS-B in log-space.  Log-reparameterization
+$(\log\sigma_p,\, \log\sigma_s,\, \log\mu_0,\, \log\kappa)$ enforces positivity
+without hard constraints and yields better-conditioned gradients than the natural
+scale.
+
+## Filter Validation on Simulated Data
+
+```{r}
+#| label: filter-setup
+#| include: false
+source("R/filter.R")
+```
+
+```{r}
+#| label: filter-run
+#| cache: true
+#| include: false
+
+# Run filter at the true parameters to validate state recovery
+FLT       <- pp_ukf(RES$spikes, PARAMS, INPUT_FN)
+flt_grid  <- filter_to_grid(FLT, RES$time)
+```
+
+
+```{r}
+#| label: fig-filter-recovery
+#| fig-cap: >
+#|   Filter validation on simulated data. **Top:** True net drive
+#|   $\Delta(t) = s(t) - p(t)$ (black) versus the UKF posterior mean
+#|   $\hat\Delta(t)$ (blue) with pointwise $\pm 2$ posterior SD band (shaded).
+#|   The filter recovers the stress-onset and recovery dynamics from the
+#|   spike train alone, without access to the latent states.
+#|   **Bottom:** Innovation sequence $\tau_k - \hat\mu_k$ (grey) with
+#|   $\pm 2\sqrt{S_k}$ bands (dashed); absence of systematic structure
+#|   confirms that the filter is not leaving exploitable signal in the residuals.
+#| fig-height: 5.5
+
+layout(matrix(1:2, 2, 1), heights = c(1.2, 0.8))
+par(mar = c(2, 5, 1.5, 2), oma = c(3, 0, 0, 0))
+
+# ---- Top: Delta recovery ----
+plot(RES$time, RES$delta, type = "l", col = "black", lwd = 1.2,
+     ylab = expression(Delta(t)), xaxt = "n", frame.plot = FALSE,
+     ylim = range(c(RES$delta,
+                    flt_grid$delta + 2 * flt_grid$sd_delta,
+                    flt_grid$delta - 2 * flt_grid$sd_delta), na.rm = TRUE))
+polygon(c(RES$time, rev(RES$time)),
+        c(flt_grid$delta + 2 * flt_grid$sd_delta,
+          rev(flt_grid$delta - 2 * flt_grid$sd_delta)),
+        col = adjustcolor("#0072B2", 0.15), border = NA)
+lines(RES$time, flt_grid$delta, col = "#0072B2", lwd = 2)
+abline(h = 0, lty = 2, col = "gray60")
+legend("topleft",
+       legend = c(expression("True" ~ Delta(t)),
+                  expression("UKF" ~ hat(Delta)(t) ~ "\u00b1 2 SD")),
+       col = c("black", "#0072B2"), lwd = c(1.2, 2), bty = "n", cex = 0.85)
+grid(col = "lightgray", lty = 1)
+
+# ---- Bottom: innovations ----
+bt <- FLT$beat_times
+plot(bt, FLT$innov, pch = 20, cex = 0.4, col = rgb(0,0,0,0.35),
+     ylab = "Innovation (s)", xlab = "Time (s)", frame.plot = FALSE)
+segments(bt, -2 * sqrt(FLT$S_innov), bt, 2 * sqrt(FLT$S_innov),
+         col = adjustcolor("#D55E00", 0.4), lwd = 0.8)
+abline(h = 0, lty = 2, col = "gray60")
+grid(col = "lightgray", lty = 1)
+mtext("Time (s)", side = 1, outer = TRUE, line = 1.5)
+```
+```{r}
+#| label: tbl-filter-summary
+#| tbl-cap: >
+#|   Filter performance summary. RMSE and mean absolute error of
+#|   $\hat\Delta(t)$ relative to the true latent drive, computed on the
+#|   simulation grid. Innovation statistics assess the Gaussian approximation
+#|   quality: mean near zero and variance near 1 (after standardization by
+#|   $\sqrt{S_k}$) indicate a well-calibrated filter.
+#| echo: false
+
+delta_err <- flt_grid$delta - RES$delta
+std_innov <- FLT$innov / sqrt(FLT$S_innov)
+
+flt_tbl <- data.frame(
+  Statistic = c(
+    "RMSE of $\\hat\\Delta(t)$",
+    "MAE of $\\hat\\Delta(t)$",
+    "Mean standardized innovation",
+    "SD standardized innovation",
+    "Filter log-likelihood"
+  ),
+  Value = c(
+    sprintf("%.4f", sqrt(mean(delta_err^2, na.rm = TRUE))),
+    sprintf("%.4f", mean(abs(delta_err), na.rm = TRUE)),
+    sprintf("%.4f", mean(std_innov)),
+    sprintf("%.4f", sd(std_innov)),
+    sprintf("%.1f", FLT$ll)
+  )
+)
+knitr::kable(flt_tbl, escape = FALSE,
+             col.names = c("Statistic", "Value"), align = c("l","r"))
+```
+
 #  Simulation Results and Discussion
 
 ##  The Virtual Stress Protocol
@@ -795,7 +964,7 @@ mu_beats <- approx(RES$time, RES$mu, xout = beat_t)$y
 
 ```{r}
 #| label: fig-results-main
-#| fig-cap: "Simulation of the autonomic response to a sustained stress protocol under the revised model. **Row 1:** Exogenous input $u(t)$. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$ — the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
+#| fig-cap: "Simulation of the autonomic response to a sustained stress protocol. **Row 1:** Exogenous input $u(t)$. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$ — the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
 #| fig-height: 9
 
 layout(matrix(1:4, 4, 1), heights = c(0.6, 0.9, 0.9, 1.4))
@@ -826,8 +995,8 @@ plot(RES$time, RES$s, type = "l", col = "#D55E00", lwd = 2,
      ylim = ylims, ylab = "Latent states", xaxt = "n", frame.plot = FALSE)
 lines(RES$time, RES$p, col = "#0072B2", lwd = 1.5)
 legend("topleft",
-       legend = c("Sympathetic s(t)  [LF, not individually identified]",
-                  "Parasympathetic p(t)  [HF, not individually identified]"),
+       legend = c(expression("Sympathetic" ~ s(t) ~ "(LF component)"),
+                  expression("Parasympathetic" ~ p(t) ~ "(HF component)")),
        col = c("#D55E00", "#0072B2"), lwd = c(2, 1.5), bty = "n", cex = 0.8)
 grid(col = "lightgray", lty = 1)
 
