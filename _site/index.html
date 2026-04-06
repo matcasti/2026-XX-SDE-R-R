@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Matías Castillo-Aguilar">
-<meta name="dcterms.date" content="2026-04-05">
+<meta name="dcterms.date" content="2026-04-06">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -224,7 +224,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">April 5, 2026</p>
+              <p class="date">April 6, 2026</p>
             </div>
           </div>
           
@@ -476,7 +476,7 @@ ds(t) &amp;= \bigl[-a_s\, s(t) + c_s\, u(t)\bigr]\,dt + \sigma_s\,dW_s(t)
 <div id="fig-impulse-response" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-impulse-response-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-impulse-response-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-impulse-response-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-impulse-response-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;1: Theoretical impulse response of the vagal (blue) and sympathetic (red) branches. A unit impulse at <span class="math inline">\(t = 1\)</span> s illustrates the order-of-magnitude difference in recovery time. The vagal response dissipates within seconds; the sympathetic response persists for tens of seconds.
@@ -523,7 +523,7 @@ Figure&nbsp;1: Theoretical impulse response of the vagal (blue) and sympathetic 
 <div id="fig-latent-sde" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-latent-sde-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-latent-sde-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-latent-sde-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-latent-sde-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;2: Simulated trajectories of the latent autonomic states under baseline conditions (<span class="math inline">\(u(t) = 0\)</span>, all free parameters at their reference values). <strong>Top:</strong> Parasympathetic state <span class="math inline">\(p(t)\)</span> — high-frequency texture driven by the fast decay rate. <strong>Middle:</strong> Sympathetic state <span class="math inline">\(s(t)\)</span> — smooth, slow-trending trajectory. <strong>Bottom:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> — the quantity directly identified by the RR interval series. Positive values indicate sympathetic dominance; negative values indicate vagal dominance.
@@ -588,7 +588,7 @@ Figure&nbsp;2: Simulated trajectories of the latent autonomic states under basel
 <div id="fig-log-link" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-log-link-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-log-link-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-log-link-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-log-link-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;3: Comparison of the log link and the linear link for a simulated net drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>. <strong>Left:</strong> The linear link <span class="math inline">\(\mu(t) = 1/(\rho_0 + \Delta(t))\)</span> becomes undefined and negative when <span class="math inline">\(\Delta(t)\)</span> crosses below <span class="math inline">\(-\rho_0\)</span>, requiring clipping. <strong>Right:</strong> The log link <span class="math inline">\(\mu(t) = \mu_0 \exp(-\Delta(t))\)</span> is always positive and smooth. The shaded region on the left marks the invalid domain.
@@ -677,7 +677,7 @@ F(\tau;\mu,\kappa) \;=\;
 <div id="fig-ig-shapes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-ig-shapes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-ig-shapes-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-ig-shapes-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ig-shapes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;4: The Inverse Gaussian probability density. <strong>Left:</strong> Effect of the mean interval <span class="math inline">\(\mu\)</span> (shape fixed at <span class="math inline">\(\kappa = 15\)</span>). As <span class="math inline">\(\mu\)</span> decreases (sympathetic dominance), the distribution shifts to earlier times. <strong>Right:</strong> Effect of the shape parameter <span class="math inline">\(\kappa\)</span> (mean fixed at <span class="math inline">\(\mu = 0.85\)</span> s). Higher <span class="math inline">\(\kappa\)</span> corresponds to lower variance — a more regular rhythm. The heteroscedastic property <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> links both panels: reducing <span class="math inline">\(\mu\)</span> reduces the variance even at fixed <span class="math inline">\(\kappa\)</span>.
@@ -733,7 +733,7 @@ Figure&nbsp;4: The Inverse Gaussian probability density. <strong>Left:</strong> 
 <div id="fig-hazard-function" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-hazard-function-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-hazard-function-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-hazard-function-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hazard-function-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;5: The Inverse Gaussian hazard function <span class="math inline">\(\lambda(\tau \mid \mathcal{H}_t)\)</span>, computed using the fully log-space algorithm. <strong>Left:</strong> Effect of sympathetic activation: reducing <span class="math inline">\(\mu(t)\)</span> shifts the hazard peak to the left, increasing the probability of an earlier beat. <strong>Right:</strong> The hazard surface as a function of both elapsed time and the current mean interval. Brighter colors indicate higher instantaneous firing probability.
@@ -827,7 +827,7 @@ x(t + \Delta t) \mid x(t) \;\sim\;
 <div id="fig-ou-exact" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-ou-exact-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-ou-exact-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-ou-exact-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ou-exact-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;6: Stationary variance bias of Euler-Maruyama (EM) versus the exact OU kernel, shown for the vagal branch (<span class="math inline">\(a_p = 2.0\)</span> Hz, <span class="math inline">\(\sigma_p = 0.25\)</span>). <strong>Left:</strong> Empirical stationary variance from 300 replicate trajectories (<span class="math inline">\(N = 5000\)</span> steps each); the exact kernel achieves the true value <span class="math inline">\(\sigma^2/(2a) = 0.0156\)</span> at every step size. <strong>Right:</strong> Relative bias (%) as a function of step size, confirming the theoretical prediction <span class="math inline">\(\approx a\Delta t/2\)</span>.
@@ -843,7 +843,7 @@ Figure&nbsp;6: Stationary variance bias of Euler-Maruyama (EM) versus the exact 
 </section>
 <section id="survival-ratio-event-generation" class="level3" data-number="3.5.3">
 <h3 data-number="3.5.3" class="anchored" data-anchor-id="survival-ratio-event-generation"><span class="header-section-number">3.5.3</span> Survival-Ratio Event Generation</h3>
-<p>The Bernoulli approximation <span class="math inline">\(P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t\)</span> introduces a systematic positive bias equal to <span class="math inline">\(\lambda\Delta t/2\)</span> per step. Near the hazard peak, where <span class="math inline">\(\lambda \approx 15\)</span>–<span class="math inline">\(25\)</span> Hz and <span class="math inline">\(\Delta t = 0.005\)</span> s, this corresponds to a 3.75–6.25% overestimate of the firing probability per step — a directional error that inflates event counts and compresses estimated inter-beat intervals.</p>
+<p>The Bernoulli approximation <span class="math inline">\(P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t\)</span> produces a signed error whose direction depends on the slope of the hazard at the step entry point. For <span class="math inline">\(\tau &lt; \tau^*\)</span> (the hazard is rising), <span class="math inline">\(\lambda(t_i)\)</span> underestimates the average hazard over <span class="math inline">\([t_i, t_{i+1}]\)</span>, so the Bernoulli method slightly underestimates the true firing probability. For <span class="math inline">\(\tau &gt; \tau^*\)</span> (the hazard is falling), <span class="math inline">\(\lambda(t_i)\)</span> overestimates the average, and the Bernoulli method overestimates. In this regime the overestimate is compounded by the truncation bias <span class="math inline">\(\lambda\Delta t - (1-e^{-\lambda\Delta t}) = (\lambda\Delta t)^2/2 + O((\lambda\Delta t)^3)\)</span>, which is always positive. Near the hazard peak, where <span class="math inline">\(\lambda \approx 15\)</span>–<span class="math inline">\(25\)</span> Hz and <span class="math inline">\(\Delta t = 0.005\)</span> s, the overestimate reaches 3–6% — a directional error that inflates event counts and compresses estimated inter-beat intervals. Because the IG density mode lies just before the hazard peak, the majority of beats are generated in the overestimating regime, producing a net positive bias in event rate across a full simulation.</p>
 <p>The exact within-step firing probability, under the assumption that <span class="math inline">\(\mu(t)\)</span> is constant within the interval <span class="math inline">\([t_i, t_{i+1}]\)</span>, is obtained directly from the survival function ratio:</p>
 <p><span class="math display">\[
 P\!\bigl(\text{event in } [t_i, t_{i+1})\bigr)
@@ -878,21 +878,21 @@ P \;=\; -\text{expm1}\!\bigl(\log S(\tau + \Delta t) - \log S(\tau)\bigr),
 <span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Bernoulli vs Survival Ratio"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
 <span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
 <span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> pk, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
-<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>pk_err <span class="ot">&lt;-</span> fs<span class="sc">$</span>rel_error_pct[<span class="fu">which.max</span>(<span class="fu">abs</span>(fs<span class="sc">$</span>rel_error_pct))]</span>
-<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>pk_tau <span class="ot">&lt;-</span> fs<span class="sc">$</span>tau[<span class="fu">which.max</span>(<span class="fu">abs</span>(fs<span class="sc">$</span>rel_error_pct))]</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>pk_err <span class="ot">&lt;-</span> fs<span class="sc">$</span>rel_error_pct[<span class="fu">which.max</span>((fs<span class="sc">$</span>rel_error_pct))]</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>pk_tau <span class="ot">&lt;-</span> fs<span class="sc">$</span>tau[<span class="fu">which.max</span>((fs<span class="sc">$</span>rel_error_pct))]</span>
 <span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(pk_tau, pk_err, <span class="at">pch =</span> <span class="dv">19</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">cex =</span> <span class="fl">1.5</span>)</span>
 <span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(pk_tau <span class="sc">+</span> <span class="fl">0.06</span>, pk_err,</span>
-<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>     <span class="fu">sprintf</span>(<span class="st">"Peak: %.2f%%"</span>, pk_err), <span class="at">adj =</span> <span class="dv">0</span>, <span class="at">cex =</span> <span class="fl">0.8</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>     <span class="fu">sprintf</span>(<span class="st">"Peak overestimate: +%.2f%%"</span>, pk_err), <span class="at">adj =</span> <span class="dv">0</span>, <span class="at">cex =</span> <span class="fl">0.8</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>)</span>
 <span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-bernoulli-vs-survival" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-bernoulli-vs-survival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-bernoulli-vs-survival-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-bernoulli-vs-survival-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-bernoulli-vs-survival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. <strong>Left:</strong> The IG hazard function for the baseline parameter set, with the hazard peak at <span class="math inline">\(\tau \approx 0.72\)</span> s. <strong>Right:</strong> Relative error <span class="math inline">\((P_\text{Bernoulli} - P_\text{exact})/P_\text{exact} \times 100\%\)</span> as a function of elapsed time <span class="math inline">\(\tau\)</span>. The error is everywhere positive (the Bernoulli approximation overestimates firing probability), peaking near the hazard maximum and reaching approximately 3.5% at the nominal step size of <span class="math inline">\(\Delta t = 5\)</span> ms.
+Figure&nbsp;7: Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. <strong>Left:</strong> The IG hazard function for the baseline parameter set, with the hazard peak at <span class="math inline">\(\tau \approx 0.72\)</span> s. <strong>Right:</strong> Relative error <span class="math inline">\((P_\text{Bernoulli} - P_\text{exact})/P_\text{exact} \times 100\%\)</span> as a function of elapsed time <span class="math inline">\(\tau\)</span>. The error is negative for <span class="math inline">\(\tau &lt; \tau^*\)</span> (rising hazard: <span class="math inline">\(\lambda(\tau_i)\)</span> underestimates the step-average) and positive for <span class="math inline">\(\tau &gt; \tau^*\)</span> (falling hazard: <span class="math inline">\(\lambda(\tau_i)\)</span> overestimates). The maximum positive overestimate, annotated on the right panel, occurs just past the hazard peak where <span class="math inline">\(\lambda\)</span> is largest and the surplus <span class="math inline">\(\lambda(\tau_i)\Delta t - P_{\text{exact}}\)</span> peaks. Because most beats are generated in this post-peak regime, the net bias across a full simulation is a systematic overestimate of event counts.
 </figcaption>
 </figure>
 </div>
@@ -973,7 +973,7 @@ x_{i+1} = x_i e^{-a\Delta t} + \frac{c\, u_i}{a}(1 - e^{-a\Delta t}) + \varepsil
 <div id="fig-fim" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-fim-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-fim-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-fim-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fim-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;8: Observed Fisher information matrix and eigenvalue spectrum for the reference parameter set. <strong>Left:</strong> The normalized FIM (each entry divided by the maximum diagonal value) displayed as a heatmap. The three <span class="math inline">\(2 \times 2\)</span> blocks along the diagonal correspond to the parasympathetic OU block <span class="math inline">\((\log\sigma_p, c_p)\)</span>, sympathetic OU block <span class="math inline">\((\log\sigma_s, c_s)\)</span>, and IG observation block <span class="math inline">\((\log\mu_0, \log\kappa)\)</span>. Off-diagonal entries are zero to numerical precision, confirming the theoretical separability. <strong>Right:</strong> Eigenvalues on a log scale. All six eigenvalues are strictly positive, confirming that the FIM is positive definite and all parameters are locally identified. The large spread reflects the differing amounts of information available from <span class="math inline">\(n \approx 60{,}000\)</span> OU transitions versus <span class="math inline">\(N \approx 750\)</span> beats.
@@ -1053,7 +1053,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 <div id="fig-recovery" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-recovery-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-recovery-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;9: Monte Carlo recovery study (<span class="math inline">\(N = 200\)</span> replications). Centre of each interval: relative bias <span class="math inline">\((\hat\theta - \theta_\text{true})/|\theta_\text{true}| \times 100\%\)</span>. Whiskers: <span class="math inline">\(\pm\)</span> relative RMSE. Right margin: empirical 95% Wald CI coverage. A well-specified estimator shows bias near zero, modest RMSE, and coverage near 95%.
@@ -1113,18 +1113,18 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">0.850</td>
-<td style="text-align: left;">0.906</td>
-<td style="text-align: left;">0.0555</td>
-<td style="text-align: left;">6.53%</td>
-<td style="text-align: left;">0.0564</td>
+<td style="text-align: left;">0.905</td>
+<td style="text-align: left;">0.0547</td>
+<td style="text-align: left;">6.44%</td>
+<td style="text-align: left;">0.0556</td>
 <td style="text-align: left;">0.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\kappa\)</span></td>
 <td style="text-align: left;">12.000</td>
-<td style="text-align: left;">8.265</td>
-<td style="text-align: left;">-3.7346</td>
-<td style="text-align: left;">-31.12%</td>
+<td style="text-align: left;">8.267</td>
+<td style="text-align: left;">-3.7330</td>
+<td style="text-align: left;">-31.11%</td>
 <td style="text-align: left;">3.8496</td>
 <td style="text-align: left;">0.0%</td>
 </tr>
@@ -1173,7 +1173,7 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <div id="fig-profiles" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-profiles-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-profiles-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-profiles-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-profiles-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;10: Profile log-likelihoods for all six free parameters, normalized to zero at the MLE. The orange dashed line marks the <span class="math inline">\(\chi^2_1\)</span> 95% threshold (normalized profile LL <span class="math inline">\(= -1.92\)</span>); tick marks on the horizontal axis indicate the implied 95% profile confidence interval. The green vertical line shows the true parameter value used in the simulation (which equals the MLE here, since the conditional MLE is unbiased). All profiles are unimodal and sharply peaked, confirming that each parameter is precisely identified.
@@ -1245,7 +1245,7 @@ Figure&nbsp;10: Profile log-likelihoods for all six free parameters, normalized 
 <div id="fig-results-main" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-results-main-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-results-main-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-results-main-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-main-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;11: Simulation of the autonomic response to a sustained stress protocol under the revised model. <strong>Row 1:</strong> Exogenous input <span class="math inline">\(u(t)\)</span>. <strong>Row 2:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> — the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. <strong>Row 3:</strong> Individual latent states <span class="math inline">\(p(t)\)</span> (blue, vagal) and <span class="math inline">\(s(t)\)</span> (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. <strong>Row 4:</strong> Tachogram of observed R-R intervals (grey) with the instantaneous mean <span class="math inline">\(\mu(t) = \mu_0\exp(-\Delta(t))\)</span> overlaid (black).
@@ -1295,7 +1295,7 @@ Figure&nbsp;11: Simulation of the autonomic response to a sustained stress proto
 <div id="fig-heteroscedasticity" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-heteroscedasticity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-heteroscedasticity-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-heteroscedasticity-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-heteroscedasticity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;12: Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> with the true <span class="math inline">\(\kappa = 12\)</span>. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
@@ -1380,7 +1380,7 @@ Figure&nbsp;12: Mean-variance scaling of the simulated R-R intervals, validating
 <div id="fig-time-rescaling" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-time-rescaling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-time-rescaling-1.png" class="img-fluid figure-img" width="672">
+<img src="index_files/figure-html/fig-time-rescaling-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-time-rescaling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;13: Time-rescaling goodness-of-fit diagnostics for the revised model, implementing the full Brown et al.&nbsp;(2002) diagnostic suite. <strong>Top-left:</strong> Uniform Q-Q plot of <span class="math inline">\(u_k = 1 - \exp(-\Lambda_k)\)</span> against theoretical <span class="math inline">\(\text{Uniform}(0,1)\)</span> quantiles, with 95% Kolmogorov-Smirnov confidence bands (dashed). <strong>Top-right:</strong> Normal-score Q-Q plot of <span class="math inline">\(v_k = \Phi^{-1}(u_k)\)</span>, testing normality of the transformed residuals. <strong>Bottom-left:</strong> Autocorrelation function of <span class="math inline">\(u_k\)</span>; no significant lags indicate that residuals are independent, as required. <strong>Bottom-right:</strong> Empirical CDF of <span class="math inline">\(\Lambda_k\)</span> (points) against <span class="math inline">\(\text{Exp}(1)\)</span> (red line), confirming that rescaled inter-beat intervals follow a unit-rate Poisson process.

@@ -8,12 +8,15 @@ author:
 bibliography: references.bib
 date: today
 title-block-style: manuscript
+execute: 
+  out-width: 100%
 format: 
   html:
     code-fold: true
     toc: true
     number-sections: true
     theme: cosmo
+    fig-format: svg
 ---
 
 # Abstract
@@ -548,8 +551,8 @@ plot(fs$tau, fs$rel_error_pct, type = "l", lwd = 2.5, col = "#D55E00",
      main = "Bernoulli vs Survival Ratio", frame.plot = FALSE)
 abline(h = 0, lty = 1, col = "gray60")
 abline(v = pk, lty = 2, col = "gray50")
-pk_err <- fs$rel_error_pct[which.max(abs(fs$rel_error_pct))]
-pk_tau <- fs$tau[which.max(abs(fs$rel_error_pct))]
+pk_err <- fs$rel_error_pct[which.max((fs$rel_error_pct))]
+pk_tau <- fs$tau[which.max((fs$rel_error_pct))]
 points(pk_tau, pk_err, pch = 19, col = "#D55E00", cex = 1.5)
 text(pk_tau + 0.06, pk_err,
      sprintf("Peak overestimate: +%.2f%%", pk_err), adj = 0, cex = 0.8, col = "#D55E00")
