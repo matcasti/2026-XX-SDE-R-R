@@ -61,9 +61,14 @@ log1mexp <- function(x) {
   ifelse(x >= log(0.5), log(-expm1(x)), log1p(-exp(x)))
 }
 
-log_ig_pdf <- function(tau, mu, kappa)
-  0.5 * log(kappa) - 0.5 * log(2 * pi * tau^3) -
-  kappa * (tau - mu)^2 / (2 * mu^2 * tau)
+log_ig_pdf <- function(tau, mu, kappa) {
+  ifelse(
+    is.finite(tau) & tau > 0,
+    0.5 * log(kappa) - 0.5 * log(2 * pi * tau^3) -
+      kappa * (tau - mu)^2 / (2 * mu^2 * tau),
+    -Inf
+  )
+}
 
 log_ig_survival <- function(tau, mu, kappa) {
   if (tau <= 0) return(0)
@@ -81,7 +86,12 @@ log_ig_survival <- function(tau, mu, kappa) {
                 logF2 + log1p(exp(logF1 - logF2))
     # log S(τ) = log(1 − F(τ))
 
-    if (log_F >= 0) return(-Inf)   # numerical edge case: F ≥ 1
+    if (log_F >= 0) {
+      warning(sprintf(
+        "log_ig_survival: log_F = %.4g >= 0 (tau=%.4g, mu=%.4g, kappa=%.4g); clamping S to 0.",
+        log_F, tau, mu, kappa))
+      return(-Inf)
+    }
 
     return(log1mexp(log_F))    # log1mexp(x) = log(1−eˣ), x < 0 required
   } else {

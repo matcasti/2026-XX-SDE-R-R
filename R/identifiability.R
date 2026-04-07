@@ -94,6 +94,14 @@ recovery_study <- function(N             = 200L,
     ok     <- is.finite(hat_v) & is.finite(se_v) & se_v > 0
 
     n_ok   <- sum(ok)
+    if (n_ok == 0L) {
+      return(data.frame(
+        parameter = p, true_value = NA_real_, mean_hat = NA_real_,
+        bias = NA_real_, rel_bias_pct = NA_real_,
+        rmse = NA_real_, rmse_rel_pct = NA_real_,
+        coverage_95 = NA_real_, n_valid = 0L,
+        stringsAsFactors = FALSE))
+    }
     t_bar  <- mean(true_v[ok])
     h_bar  <- mean(hat_v[ok])
     bias   <- h_bar - t_bar

@@ -862,7 +862,7 @@ $$
 This Gaussian innovation approximation is the standard UKF marginal likelihood and
 provides a tractable, differentiable objective for static parameter estimation.
 
-The filter's posterior geometry makes the identifiability constraint explicit: each update contracts uncertainty only along the direction $\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta = s - p$ subspace), while variance along the common-mode direction $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$ remains governed by the OU prior. The individual branches $p(t)$ and $s(t)$ are therefore not separately identified from the single-stream spike train, consistent with the analytical result of Section~\ref{sec-identifiability}.
+The filter's posterior geometry makes the identifiability constraint explicit: each update contracts uncertainty only along the direction $\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta = s - p$ subspace), while variance along the common-mode direction $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$ remains governed by the OU prior. The individual branches $p(t)$ and $s(t)$ are therefore not separately identified from the single-stream spike train, consistent with the analytical result of @sec-identifiability.
 
 ## Static Parameter Estimation
 

@@ -34,12 +34,17 @@
 # beta = 2 is optimal for Gaussian priors; kappa = 0 is standard.
 
 .ukf_weights <- local({
-  L <- 2L; alpha <- 0.1; beta <- 2.0; kappa <- 0.0
-  lambda  <- alpha^2 * (L + kappa) - L
-  c_val   <- L + lambda
+  # Symmetric cubature rule: alpha=1, kappa=0, beta=2 (Wan & van der Merwe 2000).
+  # Gives c = L = 2, no negative weights (Wm[0] = 0, Wm[i] = 0.25),
+  # and Wc[0] = 2 (beta correction for Gaussian kurtosis).
+  # Sigma-point spread = sqrt(L * P), providing better nonlinear coverage than
+  # the alpha=0.1 rule (spread = sqrt(0.02 * P)) while avoiding Wm[0] = -99.
+  L <- 2L; alpha <- 1.0; beta <- 2.0; kappa <- 0.0
+  lambda  <- alpha^2 * (L + kappa) - L      # = 1*2 - 2 = 0
+  c_val   <- L + lambda                     # = 2
   n_pts   <- 2L * L + 1L
-  Wm <- c(lambda / c_val, rep(0.5 / c_val, 2L * L))
-  Wc <- c(lambda / c_val + (1 - alpha^2 + beta), rep(0.5 / c_val, 2L * L))
+  Wm <- c(lambda / c_val, rep(0.5 / c_val, 2L * L))   # [0, 0.25, 0.25, 0.25, 0.25]
+  Wc <- c(lambda / c_val + (1 - alpha^2 + beta), rep(0.5 / c_val, 2L * L))  # [2, 0.25, ...]
   list(lambda = lambda, c = c_val, Wm = Wm, Wc = Wc, L = L, n_pts = n_pts)
 })
 

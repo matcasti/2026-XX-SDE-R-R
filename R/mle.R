@@ -134,7 +134,7 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   #   I(log mu_0) = kappa * sum(exp(delta_k)) / mu_0
   #   I(log kappa) = N / 2
   #   Cross term = 0 (block diagonal in log-space)
-  i_log_mu0   <- kappa_hat * sum(denom_w) / mu0_hat   # reuse denom_w from above
+  i_log_mu0   <- kappa_hat * denom_w / mu0_hat   # reuse denom_w from above
   i_log_kappa <- n / 2
   # SEs are unreliable if kappa is at its cap; flag with NA
   mu0_se   <- if (kappa_hat >= 1e6 - 1) NA_real_ else mu0_hat   / sqrt(i_log_mu0)
@@ -407,18 +407,19 @@ all_profile_likelihoods <- function(sim_res, n_grid = 60, width = 3.0) {
                    label = expression(sigma[p])),
     sigma_s = list(center = mle$sigma_s, log_scale = TRUE,
                    label = expression(sigma[s])),
-    c_p     = list(center = mle$c_p,     log_scale = FALSE,
+    c_p     = list(center = mle$c_p,     log_scale = FALSE, width_override = 5.0,
                    label = expression(c[p])),
-    c_s     = list(center = mle$c_s,     log_scale = FALSE,
+    c_s     = list(center = mle$c_s,     log_scale = FALSE, width_override = 5.0,
                    label = expression(c[s]))
   )
 
   lapply(names(specs), function(p) {
     s <- specs[[p]]
+    eff_width <- if (!is.null(s$width_override)) s$width_override else width
     grid <- if (s$log_scale) {
-      exp(seq(log(s$center / width), log(s$center * width), length.out = n_grid))
+      exp(seq(log(s$center / eff_width), log(s$center * eff_width), length.out = n_grid))
     } else {
-      spread <- max(abs(s$center) * width, 0.5)
+      spread <- max(abs(s$center) * eff_width, 0.5)
       seq(s$center - spread, s$center + spread, length.out = n_grid)
     }
     ll <- profile_lik_one(p, grid, sim_res)

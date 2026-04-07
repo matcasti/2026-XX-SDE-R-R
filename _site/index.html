@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Matías Castillo-Aguilar">
-<meta name="dcterms.date" content="2026-04-06">
+<meta name="dcterms.date" content="2026-04-07">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -390,7 +390,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">April 6, 2026</p>
+              <p class="date">April 7, 2026</p>
             </div>
           </div>
           
@@ -1404,11 +1404,8 @@ m_{k|k-1} = F(\tau_k)\,m_{k-1|k-1} + d(\tau_k),
 \qquad
 P_{k|k-1} = F(\tau_k)\,P_{k-1|k-1}\,F(\tau_k)^\top + Q(\tau_k),
 \]</span></p>
-<p>where <span class="math inline">\(F(\tau) = \mathrm{diag}(e^{-a_p\tau},\, e^{-a_s\tau})\)</span>, <span class="math inline">\(Q(\tau) = \mathrm{diag}\!\left(\tfrac{\sigma_p^2}{2a_p}(1-e^{-2a_p\tau}),\,
-\tfrac{\sigma_s^2}{2a_s}(1-e^{-2a_s\tau})\right)\)</span>, and <span class="math inline">\(d(\tau)\)</span> is the input-driven mean shift <span class="math inline">\(\bigl[\tfrac{c_p u}{a_p}(1-e^{-a_p\tau}),\,
-\tfrac{c_s u}{a_s}(1-e^{-a_s\tau})\bigr]^\top\)</span>. Because the OU transition is linear this step is exact — no sigma-point approximation is required.</p>
-<p><strong>Update.</strong> At spike time <span class="math inline">\(t_k\)</span> the observation is <span class="math inline">\(\tau_k \sim
-\mathrm{IG}\!\left(\mu_0 e^{-\Delta_k},\, \kappa\right)\)</span>. The observation function <span class="math inline">\(h(\mathbf{x}) = \mu_0 e^{p - s}\)</span> is nonlinear in <span class="math inline">\(\mathbf{x} = [p, s]^\top\)</span>, so the update uses UKF sigma-point quadrature with <span class="math inline">\(2L + 1 = 5\)</span> points (<span class="math inline">\(L=2\)</span>):</p>
+<p>where <span class="math inline">\(F(\tau) = \mathrm{diag}(e^{-a_p\tau},\, e^{-a_s\tau})\)</span>, <span class="math inline">\(Q(\tau) = \mathrm{diag}\!\left(\tfrac{\sigma_p^2}{2a_p}(1-e^{-2a_p\tau}),\, \tfrac{\sigma_s^2}{2a_s}(1-e^{-2a_s\tau})\right)\)</span>, and <span class="math inline">\(d(\tau)\)</span> is the input-driven mean shift <span class="math inline">\(\bigl[\tfrac{c_p u}{a_p}(1-e^{-a_p\tau}),\, \tfrac{c_s u}{a_s}(1-e^{-a_s\tau})\bigr]^\top\)</span>. Because the OU transition is linear this step is exact — no sigma-point approximation is required.</p>
+<p><strong>Update.</strong> At spike time <span class="math inline">\(t_k\)</span> the observation is <span class="math inline">\(\tau_k \sim \mathrm{IG}\!\left(\mu_0 e^{-\Delta_k},\, \kappa\right)\)</span>. The observation function <span class="math inline">\(h(\mathbf{x}) = \mu_0 e^{p - s}\)</span> is nonlinear in <span class="math inline">\(\mathbf{x} = [p, s]^\top\)</span>, so the update uses UKF sigma-point quadrature with <span class="math inline">\(2L + 1 = 5\)</span> points (<span class="math inline">\(L=2\)</span>):</p>
 <p><span class="math display">\[
 \hat\mu_k = \sum_i W_i^m\, h(\boldsymbol{\sigma}_i),
 \qquad
@@ -1419,7 +1416,7 @@ S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k,
 \log p(\tau_k \mid \Theta) \;\approx\; \log\mathcal{N}(\tau_k;\, \hat\mu_k,\, S_k).
 \]</span></p>
 <p>This Gaussian innovation approximation is the standard UKF marginal likelihood and provides a tractable, differentiable objective for static parameter estimation.</p>
-<p>The filter’s posterior geometry makes the identifiability constraint explicit: each update contracts uncertainty only along the direction <span class="math inline">\(\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}\)</span> (the <span class="math inline">\(\Delta = s - p\)</span> subspace), while variance along the common-mode direction <span class="math inline">\(\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}\)</span> remains governed by the OU prior. The individual branches <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> are therefore not separately identified from the single-stream spike train, consistent with the analytical result of Section~<span class="math inline">\(\ref{sec-identifiability}\)</span>.</p>
+<p>The filter’s posterior geometry makes the identifiability constraint explicit: each update contracts uncertainty only along the direction <span class="math inline">\(\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}\)</span> (the <span class="math inline">\(\Delta = s - p\)</span> subspace), while variance along the common-mode direction <span class="math inline">\(\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}\)</span> remains governed by the OU prior. The individual branches <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> are therefore not separately identified from the single-stream spike train, consistent with the analytical result of <a href="#sec-identifiability" class="quarto-xref">Section&nbsp;4</a>.</p>
 </section>
 <section id="static-parameter-estimation" class="level2" data-number="5.3">
 <h2 data-number="5.3" class="anchored" data-anchor-id="static-parameter-estimation"><span class="header-section-number">5.3</span> Static Parameter Estimation</h2>
@@ -1504,7 +1501,7 @@ Table&nbsp;4: Filter performance summary. RMSE and mean absolute error of <span 
 </tr>
 <tr class="even">
 <td style="text-align: left;">SD standardized innovation</td>
-<td style="text-align: right;">0.9979</td>
+<td style="text-align: right;">0.9971</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Filter log-likelihood</td>

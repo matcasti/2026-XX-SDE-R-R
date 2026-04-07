@@ -81,24 +81,31 @@ barbieri_ig_fit <- function(rr_vec) {
 
 # ---- SDE-IG model selection statistics ----
 
-sde_ig_model_stats <- function(fit_result, rr_vec) {
-  # fit_result: output of fit_sde_ig()
+sde_ig_model_stats <- function(fit_result, rr_vec,
+                               grid_dt = 0.005) {
+  # fit_result: output of fit_sde_ig() (which wraps pp_mle)
   ll      <- fit_result$ll
   n_beats <- length(rr_vec)
-  # Free parameters estimated: sigma_p, sigma_s, mu_0, kappa (gains=0 for stationary)
   n_params <- 4L
   aic <- -2 * ll + 2 * n_params
   bic <- -2 * ll + log(n_beats) * n_params
 
-  # Time-rescaling KS test from filter output
-  flt     <- fit_result$filter
-  spikes  <- c(0, cumsum(rr_vec))
-  Lk      <- compute_time_rescaling(
-    list(time   = flt$beat_times,   # approximate: use beat times as grid
-         spikes = spikes,
-         mu     = flt$mu_filt,
-         params = fit_result$params_hat)
+  # Reconstruct a dense time grid to run compute_time_rescaling.
+  # The filter only produces estimates at beat times; interpolate to a fine grid.
+  spikes   <- c(0, cumsum(rr_vec))
+  T_end    <- tail(spikes, 1L)
+  tg       <- seq(0, T_end, by = grid_dt)
+  flt_grid <- filter_to_grid(fit_result$filter, tg)
+
+  # Build a sim_res-like list that compute_time_rescaling can consume.
+  res_proxy <- list(
+    time   = tg,
+    spikes = spikes,
+    mu     = flt_grid$mu,
+    params = fit_result$params_hat
   )
+
+  Lk  <- compute_time_rescaling(res_proxy)
   uk  <- 1 - exp(-Lk[is.finite(Lk)])
   ks  <- ks.test(uk, "punif")
 
