@@ -74,25 +74,39 @@
 
 .ou_predict <- function(m0, P0, tau, sp, fp, u = 0) {
   a_p <- sp$a_p;  a_s <- sp$a_s
-  F_p <- exp(-a_p * tau);  F_s <- exp(-a_s * tau)
 
-  # Input-driven mean shift (exact OU integral of the forcing term)
+  if ((abs(fp$b_ps) + abs(fp$b_sp)) > 1e-12) {
+    # Coupled path: full 2×2 matrix prediction.
+    # tau varies per IBI, so matrices are computed fresh each call.
+    A_mat <- matrix(c(-a_p, fp$b_sp, fp$b_ps, -a_s), 2L, 2L)
+    F_mat <- mat2x2_exp(A_mat, tau)
+    Q_mat <- ou_coupled_Q(A_mat, fp$sigma_p, fp$sigma_s, tau, n_steps = 20L)
+
+    d_vec <- c(0, 0)
+    if (u != 0) {
+      A_inv <- tryCatch(solve(A_mat), error = function(e) NULL)
+      if (!is.null(A_inv))
+        d_vec <- as.vector((F_mat - diag(2L)) %*% A_inv %*% c(fp$c_p * u, fp$c_s * u))
+    }
+    m1 <- as.vector(F_mat %*% m0) + d_vec
+    P1 <- F_mat %*% P0 %*% t(F_mat) + Q_mat
+    P1 <- 0.5 * (P1 + t(P1))
+    return(list(m = m1, P = P1))
+  }
+
+  # Uncoupled fast path: exact scalar formulas (no matrix operations).
+  F_p <- exp(-a_p * tau);  F_s <- exp(-a_s * tau)
   d_p <- (fp$c_p * u / a_p) * (-expm1(-a_p * tau))
   d_s <- (fp$c_s * u / a_s) * (-expm1(-a_s * tau))
+  m1  <- c(m0[1L] * F_p + d_p, m0[2L] * F_s + d_s)
 
-  m1 <- c(m0[1L] * F_p + d_p,
-          m0[2L] * F_s + d_s)
-
-  # Covariance: F P Fᵀ + Q  (F diagonal ⇒ off-diagonal of F P Fᵀ = F_p F_s P[1,2])
   Q_p <- (fp$sigma_p^2 / (2 * a_p)) * (-expm1(-2 * a_p * tau))
   Q_s <- (fp$sigma_s^2 / (2 * a_s)) * (-expm1(-2 * a_s * tau))
-
-  P1       <- matrix(0, 2, 2)
-  P1[1, 1] <- F_p^2 * P0[1, 1] + Q_p
-  P1[2, 2] <- F_s^2 * P0[2, 2] + Q_s
-  P1[1, 2] <- F_p * F_s * P0[1, 2]
-  P1[2, 1] <- P1[1, 2]
-
+  P1  <- matrix(0, 2L, 2L)
+  P1[1L, 1L] <- F_p^2 * P0[1L, 1L] + Q_p
+  P1[2L, 2L] <- F_s^2 * P0[2L, 2L] + Q_s
+  P1[1L, 2L] <- F_p * F_s * P0[1L, 2L]
+  P1[2L, 1L] <- P1[1L, 2L]
   list(m = m1, P = P1)
 }
 

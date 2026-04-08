@@ -98,29 +98,31 @@ The parameter set is therefore partitioned as follows.
 #| echo: false
 
 param_table <- data.frame(
-  Parameter   = c("$a_p$", "$a_s$", "$b_{ps},\\, b_{sp}$",
-                  "$k_\\text{par},\\, k_\\text{sym}$",
-                  "$\\sigma_p$", "$\\sigma_s$",
-                  "$\\mu_0$", "$\\kappa$",
-                  "$c_p,\\, c_s$"),
-  Class       = c("Structural", "Structural", "Structural", "Structural",
-                  "Free", "Free", "Free", "Free", "Free"),
-  Value       = c("2.0 Hz", "0.2 Hz",
-                  "0 (fixed)", "1 (fixed)",
-                  "Estimated", "Estimated",
-                  "Estimated", "Estimated",
-                  "Estimated or 0"),
-  Interpretation = c(
-    "Vagal decay rate; $\\tau_p = 0.5$ s",
-    "Sympathetic decay rate; $\\tau_s = 5$ s",
-    "Cross-branch coupling (zero for single-stream identifiability)",
-    "Observation gains (normalized; scale absorbed into $\\sigma$)",
-    "Vagal noise amplitude $\\to$ HF spectral power",
-    "Sympathetic noise amplitude $\\to$ LF spectral power",
-    "Baseline mean RR interval at autonomic neutrality",
-    "IG shape; controls interval regularity",
-    "Branch sensitivities to exogenous input $u(t)$"
-  )
+  Parameter   = c("$a_p$", "$a_s$",
+                    "$k_\\text{par},\\, k_\\text{sym}$",
+                    "$\\sigma_p$", "$\\sigma_s$",
+                    "$\\mu_0$", "$\\kappa$",
+                    "$c_p,\\, c_s$",
+                    "$b_{ps},\\, b_{sp}$"),
+    Class       = c("Structural", "Structural", "Structural",
+                    "Free", "Free", "Free", "Free", "Free", "Free"),
+    Value       = c("2.0 Hz", "0.2 Hz",
+                    "1 (fixed)",
+                    "Estimated", "Estimated",
+                    "Estimated", "Estimated",
+                    "Estimated or 0",
+                    "Estimated (default 0)"),
+    Interpretation = c(
+      "Vagal decay rate; $\\tau_p = 0.5$ s",
+      "Sympathetic decay rate; $\\tau_s = 5$ s",
+      "Observation gains (normalized; scale absorbed into $\\sigma$)",
+      "Vagal noise amplitude $\\to$ HF spectral power",
+      "Sympathetic noise amplitude $\\to$ LF spectral power",
+      "Baseline mean RR interval at autonomic neutrality",
+      "IG shape; controls interval regularity",
+      "Branch sensitivities to exogenous input $u(t)$",
+      "Cross-branch coupling gains; identifiability assessed empirically in @sec-coupling"
+    )
 )
 
 knitr::kable(param_table, escape = FALSE,
@@ -407,9 +409,9 @@ plot(tau_v, h_base, type = "l", lwd = 2.5, col = "black",
 lines(tau_v, h_sym,  lwd = 2.5, col = "#D55E00", lty = 2)
 lines(tau_v, h_para, lwd = 2.5, col = "#0072B2", lty = 3)
 legend("topright",
-       legend = c(expression(mu == 0.85 ~ s ~ "(baseline)"),
-                  expression(mu == 0.50 ~ s ~ "(sympathetic \u2191)"),
-                  expression(mu == 1.20 ~ s ~ "(vagal \u2191)")),
+       legend = c(bquote(mu == .(mu_base) ~ s ~ "(baseline)"),
+                  bquote(mu == .(round(mu_base * 0.60, 2)) ~ s ~ "(sympathetic \u2191)"),
+                  bquote(mu == .(round(mu_base * 1.40, 2)) ~ s ~ "(vagal \u2191)")),
        col = c("black", "#D55E00", "#0072B2"),
        lwd = 2.5, lty = c(1, 2, 3), bty = "n", cex = 0.85)
 grid(col = "lightgray", lty = 1)
@@ -447,14 +449,15 @@ Two numerical considerations arise in implementing the exact formula. The varian
 
 ```{r}
 #| label: fig-ou-exact
-#| fig-cap: "Stationary variance bias of Euler-Maruyama (EM) versus the exact OU kernel, shown for the vagal branch ($a_p = 2.0$ Hz, $\\sigma_p = 0.20$). **Left:** Empirical stationary variance from 300 replicate trajectories ($N = 5000$ steps each); the exact kernel achieves the true value $\\sigma^2/(2a) = 0.01$ at every step size. **Right:** Relative bias (%) as a function of step size, confirming the theoretical prediction $\\approx a\\Delta t/2$."
+#| cache: true
+#| fig-cap: "Stationary variance bias of Euler-Maruyama (EM) versus the exact OU kernel, shown for the vagal branch ($a_p = 2.0$ Hz, $\\sigma_p = 0.20$). **Left:** Empirical stationary variance from 300 replicate trajectories ($N = 10000$ steps each); The exact kernel achieves the true value $\\sigma^2/(2a) = 0.01$ at every step size. **Right:** Relative bias (%) as a function of step size, confirming the theoretical prediction $\\approx a\\Delta t/2$."
 #| fig-height: 4
 
 set.seed(321)
 a_p  <- PARAMS$structural$a_p;  sig_p <- PARAMS$free$sigma_p
 true_var <- sig_p^2 / (2 * a_p)
 dt_vals  <- c(0.005, 0.01, 0.025, 0.05, 0.1)
-nrep     <- 300;  nstep <- 5000;  burn <- 1000
+nrep     <- 300;  nstep <- 10000;  burn <- 1000
 
 em_var <- exact_var <- numeric(length(dt_vals))
 
@@ -487,7 +490,8 @@ plot(dt_vals * 1000, em_var,    type = "b", pch = 19, lwd = 2,
 lines(dt_vals * 1000, exact_var, type = "b", pch = 17, lwd = 2, col = "#0072B2")
 abline(h = true_var, lty = 2, col = "gray50")
 text(dt_vals[4] * 1000, true_var * 1.003,
-     expression(sigma^2 / (2*a) == 0.01), adj = 0, cex = 0.75, col = "gray40")
+     bquote(sigma^2 / (2*a) == .(round(true_var, 4))),
+     adj = 0, cex = 0.75, col = "gray40")
 legend("topleft",
        legend = c("Euler-Maruyama", "Exact OU"),
        col = c("#D55E00", "#0072B2"), pch = c(19, 17), lwd = 2,
@@ -684,7 +688,7 @@ knitr::kable(fim_tbl, escape = FALSE,
                            "Condition number"))
 ```
 
-The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]$. Substituting the analytic expressions gives a ratio of $2\kappa\sum_k e^{\Delta_k}/(N\mu_0)$; for the reference parameters (with $\kappa = 20$, $N \approx 750$ beats, $\bar{w} \approx 1$) this is approximately $2 \cdot 20 \cdot 750 / (750 \cdot 1.0) \approx 40$, well within the identifiable regime and far below $10^3$.
+The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]$. Substituting the analytic expressions gives a ratio of $2\kappa\sum_k e^{\Delta_k}/(N\mu_0)$; for the reference parameters (with $\kappa = `r PARAMS$free$kappa`$, $N \approx `r round(720 / PARAMS$free$mu_0)`$ beats, $\bar{w} \approx 1$) this simplifies to $2\kappa/\mu_0 = `r round(2 * PARAMS$free$kappa / PARAMS$free$mu_0, 0)`$, well within the identifiable regime and far below $10^3$.
 
 ## Simulation Recovery Study {#sec-recovery}
 
@@ -772,20 +776,95 @@ plot_profiles(PROFILES, true_vals = true_vals,
 
 All six profiles are strictly unimodal and sharply peaked. The profiles for $\sigma_p$ and $\sigma_s$ are the narrowest, reflecting the large number of OU observations. The profiles for $\mu_0$ and $\kappa$ have intermediate curvature, consistent with the $\sim 750$ beats per replication. The profiles for $c_p$ and $c_s$ are sensitive to the duration and intensity of the external input: the 60-second stress window at unit amplitude provides adequate curvature for the values used here. Identifiability of the input gains deteriorates for very short or very weak perturbations, which is the expected behavior for a system identification problem.
 
+
+## Cross-Branch Coupling Identifiability {#sec-coupling}
+
+The analyses above impose $b_{ps} = b_{sp} = 0$. Whether the coupling terms
+are identifiable from a single RR stream is an empirical question. We address
+it by simulating from a model with known non-zero coupling and then applying
+the same conditional MLE and profile likelihood machinery used for the six
+uncoupled parameters.
+
+```{r}
+#| label: coupling-setup
+#| include: false
+
+# Physiologically motivated coupling values.
+# Stability requires det(A) = a_p*a_s - b_ps*b_sp > 0, i.e. b_ps*b_sp < 0.4.
+# Here b_ps*b_sp = 0.15 * (-0.10) = -0.015 << 0.4 (well within the stable region).
+PARAMS_COUPLED <- make_model_params(
+  a_p = 2.0, a_s = 0.2,
+  sigma_p = 0.2, sigma_s = 0.07,
+  mu_0 = 1.0, kappa = 20,
+  c_p = -1.0, c_s = 0.1,
+  b_ps =  0.15,   # sympathetic → vagal excitation
+  b_sp = -0.10    # vagal → sympathetic inhibition
+)
+
+set.seed(5678)
+RES_COUPLED <- sim_sde_ig(300, 0.005, PARAMS_COUPLED, REC_INPUT)
+```
+
+```{r}
+#| label: coupling-mle
+#| cache: true
+#| include: false
+
+MLE_COUPLED   <- full_conditional_mle(RES_COUPLED)
+FIM_COUPLED   <- full_conditional_fim(RES_COUPLED)
+PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED, n_grid = 40, width = 3.0)
+```
+
+```{r}
+#| label: fig-coupling-profiles
+#| fig-cap: "Profile log-likelihoods for all eight free parameters under the coupled model ($b_{ps} = 0.15$, $b_{sp} = -0.10$). Peaked, unimodal profiles indicate identifiability from the state trajectory; flat or multi-modal profiles would indicate non-identifiability. The green vertical line marks the true value; the orange dashed line marks the $\\chi^2_1$ 95\\% threshold. Profiles for $b_{ps}$ and $b_{sp}$ are obtained by re-optimising over all remaining OU parameters at each grid point."
+#| fig-height: 6.5
+
+fp_c <- PARAMS_COUPLED$free
+true_coupled <- c(sigma_p = fp_c$sigma_p, sigma_s = fp_c$sigma_s,
+                  mu0     = fp_c$mu_0,    kappa   = fp_c$kappa,
+                  c_p     = fp_c$c_p,     c_s     = fp_c$c_s,
+                  b_ps    = fp_c$b_ps,    b_sp    = fp_c$b_sp)
+
+plot_profiles(PROF_COUPLED, true_vals = true_coupled,
+              main = "Profile Likelihoods — Coupled Model")
+```
+
+```{r}
+#| label: coupling-recovery
+#| cache: true
+#| include: false
+
+REC_COUPLED <- recovery_study(
+  N           = 200L,
+  true_params = PARAMS_COUPLED,
+  duration    = 300,
+  dt          = 0.005,
+  input_fn    = REC_INPUT,
+  use_parallel = TRUE
+)
+```
+
+```{r}
+#| label: fig-coupling-recovery
+#| fig-cap: "Monte Carlo recovery study ($N = 200$ replications) for the coupled model. The coupling terms $b_{ps}$ and $b_{sp}$ appear alongside the six uncoupled parameters. Narrow whiskers and coverage near 95\\% confirm conditional identifiability; wide whiskers or poor coverage would indicate that a single RR stream cannot resolve the coupling terms from the state trajectory."
+#| fig-height: 5.5
+
+plot_recovery(REC_COUPLED$summary,
+              main = "Coupled-Model Recovery Study (N = 200, 300 s each)")
+```
+
+The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all eight eigenvalues strictly positive confirms local identifiability of the coupling terms *conditioned on the observed state trajectory*. Whether the marginal spike-train likelihood — which integrates over the unobserved latent states — carries sufficient information to identify $b_{ps}$ and $b_{sp}$ is a separate question addressed by the filter in @sec-inference.
+
 ## Sensitivity to Structural Parameters {#sec-sensitivity}
 
-The decay rates $a_p$ and $a_s$ are fixed at physiologically calibrated values
-rather than estimated from data. To verify that conclusions about identifiability
-and filter performance are stable across the range of plausible values reported in
-the literature, we repeat the conditional MLE recovery ($N = 50$ replications) and
-filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the
-reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to
-the structural constraint $a_p > a_s$.
+The decay rates $a_p$ and $a_s$ are fixed at physiologically calibrated values rather than estimated from data. To verify that conclusions about identifiability and filter performance are stable across the range of plausible values reported in the literature, we repeat the conditional MLE recovery ($N = 50$ replications) and filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to the structural constraint $a_p > a_s$.
 
 ```{r}
 #| label: sensitivity-run
 #| cache: true
 #| include: false
+source("R/filter.R") 
 source("R/sensitivity.R")
 
 SENS <- run_sensitivity(

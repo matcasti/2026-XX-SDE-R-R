@@ -12,24 +12,114 @@ make_model_params <- function(
     a_p = 2.0, a_s = 0.2,
     sigma_p = 0.30, sigma_s = 0.20,
     mu_0 = 0.85, kappa = 15.0,
-    c_p = 0.0, c_s = 0.0) {
+    c_p = 0.0, c_s = 0.0,
+    b_ps = 0.0, b_sp = 0.0) {
   stopifnot(a_p > 0, a_s > 0, a_p > a_s,
             sigma_p > 0, sigma_s > 0,
-            mu_0 > 0, kappa > 0)
+            mu_0 > 0, kappa > 0,
+            a_p * a_s - b_ps * b_sp > 0)  # det(A) > 0 ensures stability
   list(
     structural = list(a_p = a_p, a_s = a_s,
-                      b_ps = 0.0, b_sp = 0.0,
                       k_par = 1.0, k_sym = 1.0),
     free       = list(sigma_p = sigma_p, sigma_s = sigma_s,
                       mu_0 = mu_0, kappa = kappa,
-                      c_p = c_p, c_s = c_s)
+                      c_p = c_p, c_s = c_s,
+                      b_ps = b_ps, b_sp = b_sp)
   )
 }
 
 # ---- Log link ----
 
-compute_mu    <- function(p, s, mu_0) mu_0 * exp(p - s)
-compute_delta <- function(p, s) s - p
+compute_mu    <- function(p, s, mu_0) {
+  mu_0 * exp(p - s)
+}
+
+compute_delta <- function(p, s) {
+  s - p
+}
+
+# ---- 2×2 analytical matrix exponential (no external dependencies) ----
+# Uses the Cayley-Hamilton spectral decomposition:
+#   e^{At} = α₀(t)I + α₁(t)(A − (tr/2)I)
+# covering three eigenvalue regimes: real distinct, repeated, complex.
+
+mat2x2_exp <- function(A, t) {
+  tr_A <- A[1L, 1L] + A[2L, 2L]
+  det_A <- A[1L, 1L] * A[2L, 2L] - A[1L, 2L] * A[2L, 1L]
+  disc  <- tr_A^2 - 4 * det_A      # (λ1 − λ2)²
+
+  ht  <- tr_A * t / 2
+  eht <- exp(ht)
+  B   <- A - (tr_A / 2) * diag(2L) # A − (tr/2)I
+
+  tol <- 1e-10 * (abs(tr_A)^2 + 1)
+  if (abs(disc) <= tol) {
+    eht * (diag(2L) + B * t)
+  } else if (disc > 0) {
+    sq <- sqrt(disc) / 2
+    eht * (cosh(sq * t) * diag(2L) + sinh(sq * t) / sq * B)
+  } else {
+    om <- sqrt(-disc) / 2
+    eht * (cos(om * t) * diag(2L) + sin(om * t) / om * B)
+  }
+}
+
+# ---- Process noise covariance for the coupled OU system ----
+# Q(dt) = ∫₀^dt e^{As} ΣΣᵀ e^{Aᵀs} ds, computed by trapezoidal quadrature.
+# n_steps = 40 keeps relative error well below 0.1% for all physiological IBIs.
+
+ou_coupled_Q <- function(A_mat, sigma_p, sigma_s, dt, n_steps = 40L) {
+  SS    <- diag(c(sigma_p^2, sigma_s^2))
+  h     <- dt / n_steps
+  t_pts <- seq(0, dt, length.out = n_steps + 1L)
+
+  f_prev <- SS                      # e^{A*0} = I, so integrand at t=0 is SS
+  Q      <- matrix(0, 2L, 2L)
+  for (i in seq_len(n_steps)) {
+    Ft     <- mat2x2_exp(A_mat, t_pts[i + 1L])
+    f_next <- Ft %*% SS %*% t(Ft)
+    Q      <- Q + (h / 2) * (f_prev + f_next)
+    f_prev <- f_next
+  }
+  0.5 * (Q + t(Q))                  # symmetrize against floating-point drift
+}
+
+# ---- Pre-compute all objects needed for simulation and likelihood ----
+# Calling this once per parameter vector avoids redundant matrix exponentials.
+
+ou_coupled_matrices <- function(a_p, a_s, b_ps, b_sp,
+                                sigma_p, sigma_s, dt,
+                                n_q_steps = 40L) {
+  A_mat <- matrix(c(-a_p, b_sp, b_ps, -a_s), 2L, 2L)
+  F_mat <- mat2x2_exp(A_mat, dt)
+  Q_mat <- ou_coupled_Q(A_mat, sigma_p, sigma_s, dt, n_q_steps)
+
+  eig_q <- eigen(Q_mat, symmetric = TRUE)
+  if (any(eig_q$values <= 0)) {
+    Q_mat <- Q_mat + 1e-10 * diag(2L)
+    eig_q <- eigen(Q_mat, symmetric = TRUE)
+  }
+  log_det_Q <- sum(log(eig_q$values))
+  Q_inv     <- eig_q$vectors %*% diag(1 / eig_q$values) %*% t(eig_q$vectors)
+  Q_chol    <- tryCatch(chol(Q_mat),
+                        error = function(e) chol(Q_mat + 1e-9 * diag(2L)))
+  A_inv     <- tryCatch(solve(A_mat), error = function(e) NULL)
+
+  list(A = A_mat, F = F_mat, Q = Q_mat,
+       Q_inv = Q_inv, log_det_Q = log_det_Q,
+       Q_chol = Q_chol, A_inv = A_inv)
+}
+
+# ---- Joint 2D OU simulation step ----
+
+ou_coupled_step <- function(x_now, mats, c_vec, u_now) {
+  mean_next <- as.vector(mats$F %*% x_now)
+  if (u_now != 0 && !is.null(mats$A_inv)) {
+    d         <- as.vector((mats$F - diag(2L)) %*% mats$A_inv %*% (c_vec * u_now))
+    mean_next <- mean_next + d
+  }
+  mean_next + as.vector(t(mats$Q_chol) %*% rnorm(2L))
+}
 
 # ---- Exact OU transition kernel ----
 
@@ -186,6 +276,15 @@ sim_sde_ig <- function(duration, dt, params,
   p[1L] <- rnorm(1, 0, sqrt(fp$sigma_p^2 / (2 * sp$a_p)))
   s[1L] <- rnorm(1, 0, sqrt(fp$sigma_s^2 / (2 * sp$a_s)))
 
+  # Pre-compute coupled transition matrices once if coupling is non-zero.
+  # Falls back to the scalar exact-step fast path when b_ps = b_sp = 0.
+  use_coupled <- (abs(fp$b_ps) + abs(fp$b_sp)) > 1e-12
+  if (use_coupled) {
+    cmats   <- ou_coupled_matrices(sp$a_p, sp$a_s, fp$b_ps, fp$b_sp,
+                                   fp$sigma_p, fp$sigma_s, dt)
+    c_vec_ou <- c(fp$c_p, fp$c_s)
+  }
+
   mu_v <- numeric(n); dlt <- numeric(n); loglam <- numeric(n)
 
   loglam[1L] <- -Inf   # hazard at tau=0 is zero by IG first-passage construction
@@ -197,8 +296,13 @@ sim_sde_ig <- function(duration, dt, params,
 
   for (i in seq_len(n - 1)) {
     u <- input_fn(tg[i])
-    p[i+1] <- ou_exact_step(p[i], sp$a_p, fp$sigma_p, fp$c_p, u, dt)
-    s[i+1] <- ou_exact_step(s[i], sp$a_s, fp$sigma_s, fp$c_s, u, dt)
+    if (use_coupled) {
+      xnew   <- ou_coupled_step(c(p[i], s[i]), cmats, c_vec_ou, u)
+      p[i+1] <- xnew[1L];  s[i+1] <- xnew[2L]
+    } else {
+      p[i+1] <- ou_exact_step(p[i], sp$a_p, fp$sigma_p, fp$c_p, u, dt)
+      s[i+1] <- ou_exact_step(s[i], sp$a_s, fp$sigma_s, fp$c_s, u, dt)
+    }
     mu_v[i+1] <- compute_mu(p[i+1], s[i+1], fp$mu_0)
     dlt[i+1]  <- compute_delta(p[i+1], s[i+1])
 

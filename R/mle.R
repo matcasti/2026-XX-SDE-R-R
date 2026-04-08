@@ -87,6 +87,91 @@ ou_mle <- function(x_vec, u_vec, a, dt) {
        log_lik = ll, n_obs = n)
 }
 
+# ---- Bivariate coupled-OU log-likelihood ----
+# Parameterization: b_ps, b_sp free; a_p, a_s fixed structural.
+# All n-1 bivariate Gaussian transition densities share the same F, Q
+# (dt constant), so these are computed once per call.
+
+ou_coupled_log_lik <- function(b_ps, b_sp, sigma_p, sigma_s, c_p, c_s,
+                               x_mat, u_vec, a_p, a_s, dt,
+                               n_q_steps = 40L) {
+  if (a_p * a_s - b_ps * b_sp <= 0) return(-Inf)   # stability gate
+
+  mats <- tryCatch(
+    ou_coupled_matrices(a_p, a_s, b_ps, b_sp, sigma_p, sigma_s, dt, n_q_steps),
+    error = function(e) NULL
+  )
+  if (is.null(mats) || !is.finite(mats$log_det_Q)) return(-Inf)
+
+  n      <- nrow(x_mat) - 1L
+  c_vec  <- c(c_p, c_s)
+  ll_base <- -n * log(2 * pi) - (n / 2) * mats$log_det_Q
+
+  quad <- 0
+  for (i in seq_len(n)) {
+    mu_i <- as.vector(mats$F %*% x_mat[i, ])
+    u_i  <- u_vec[i]
+    if (u_i != 0 && !is.null(mats$A_inv))
+      mu_i <- mu_i + as.vector((mats$F - diag(2L)) %*% mats$A_inv %*% (c_vec * u_i))
+    r    <- x_mat[i + 1L, ] - mu_i
+    quad <- quad + as.numeric(t(r) %*% mats$Q_inv %*% r)
+  }
+  ll_base - 0.5 * quad
+}
+
+# ---- Numerical MLE for the coupled OU block ----
+# Optimises (b_ps, b_sp, log σ_p, log σ_s, c_p, c_s).
+# Initialises from the closed-form uncoupled estimates for σ and c.
+
+ou_coupled_mle <- function(x_mat, u_vec, a_p, a_s, dt,
+                           b_ps_init = 0, b_sp_init = 0) {
+  init_p <- ou_mle(x_mat[, 1L], u_vec, a_p, dt)
+  init_s <- ou_mle(x_mat[, 2L], u_vec, a_s, dt)
+
+  th0 <- c(b_ps_init, b_sp_init,
+           log(max(init_p$sigma, 1e-5)), log(max(init_s$sigma, 1e-5)),
+           init_p$c_gain, init_s$c_gain)
+
+  neg_ll <- function(th) {
+    ll <- tryCatch(
+      ou_coupled_log_lik(th[1L], th[2L], exp(th[3L]), exp(th[4L]),
+                         th[5L], th[6L],
+                         x_mat, u_vec, a_p, a_s, dt),
+      error = function(e) -Inf)
+    if (is.finite(ll)) -ll else 1e10
+  }
+
+  res <- optim(th0, neg_ll, method = "L-BFGS-B",
+               control = list(maxit = 300L, factr = 1e8))
+  th  <- res$par
+  sp_hat <- exp(th[3L]);  ss_hat <- exp(th[4L])
+
+  # Numerical Hessian → standard errors
+  eps <- 1e-4;  np <- length(th)
+  H   <- matrix(0, np, np)
+  for (i in seq_len(np)) for (j in i:np) {
+    ei <- ej <- numeric(np); ei[i] <- eps; ej[j] <- eps
+    H[i, j] <- (neg_ll(th+ei+ej) - neg_ll(th+ei-ej) -
+                  neg_ll(th-ei+ej) + neg_ll(th-ei-ej)) / (4 * eps^2)
+    H[j, i] <- H[i, j]
+  }
+  V       <- tryCatch(solve(H), error = function(e) matrix(NA_real_, np, np))
+  safe_se <- function(k) sqrt(max(V[k, k], 0, na.rm = TRUE))
+
+  list(
+    b_ps = th[1L], b_sp = th[2L],
+    sigma_p = sp_hat, sigma_s = ss_hat,
+    c_p = th[5L], c_s = th[6L],
+    b_ps_se    = safe_se(1L), b_sp_se    = safe_se(2L),
+    sigma_p_se = sp_hat * safe_se(3L),
+    sigma_s_se = ss_hat * safe_se(4L),
+    c_p_se     = safe_se(5L), c_s_se     = safe_se(6L),
+    log_lik    = -res$value,
+    convergence = res$convergence,
+    n_obs = nrow(x_mat) - 1L
+  )
+}
+
 # ---- Block 3: Analytic IG observation MLE ----
 #
 # Given inter-beat intervals tau_k and known net-drive delta_k = s(t_k) - p(t_k),
@@ -155,10 +240,28 @@ full_conditional_mle <- function(sim_res) {
   n_t   <- length(sim_res$time)
   u_vec <- extract_u_vec(sim_res)
 
-  mle_p <- ou_mle(sim_res$p, u_vec, sp$a_p, dt)
-  mle_s <- ou_mle(sim_res$s, u_vec, sp$a_s, dt)
+  fp          <- sim_res$params$free
+  use_coupled <- (abs(fp$b_ps) + abs(fp$b_sp)) > 1e-12
+
+  if (use_coupled) {
+    x_mat  <- cbind(sim_res$p, sim_res$s)
+    mle_ou <- ou_coupled_mle(x_mat, u_vec, sp$a_p, sp$a_s, dt,
+                             b_ps_init = fp$b_ps, b_sp_init = fp$b_sp)
+    # Wrap into the same interface expected by the rest of the function
+    mle_p  <- list(sigma    = mle_ou$sigma_p, c_gain   = mle_ou$c_p,
+                   sigma_se = mle_ou$sigma_p_se, c_se  = mle_ou$c_p_se,
+                   log_lik  = NA_real_)
+    mle_s  <- list(sigma    = mle_ou$sigma_s, c_gain   = mle_ou$c_s,
+                   sigma_se = mle_ou$sigma_s_se, c_se  = mle_ou$c_s_se,
+                   log_lik  = NA_real_)
+  } else {
+    mle_ou <- NULL
+    mle_p  <- ou_mle(sim_res$p, u_vec, sp$a_p, dt)
+    mle_s  <- ou_mle(sim_res$s, u_vec, sp$a_s, dt)
+  }
 
   spk <- sim_res$spikes
+
   if (length(spk) < 2L) {
     na6 <- setNames(rep(NA_real_, 6),
                     c("sigma_p","sigma_s","mu0","kappa","c_p","c_s"))
@@ -171,7 +274,17 @@ full_conditional_mle <- function(sim_res) {
 
   mle_obs  <- ig_obs_mle(tau_vec, delta_v)
 
+  ll_ou <- if (!is.null(mle_ou)) {
+    mle_ou$log_lik
+  } else {
+    mle_p$log_lik + mle_s$log_lik
+  }
+
   list(
+    b_ps     = if (!is.null(mle_ou)) mle_ou$b_ps    else fp$b_ps,
+    b_sp     = if (!is.null(mle_ou)) mle_ou$b_sp    else fp$b_sp,
+    b_ps_se  = if (!is.null(mle_ou)) mle_ou$b_ps_se else NA_real_,
+    b_sp_se  = if (!is.null(mle_ou)) mle_ou$b_sp_se else NA_real_,
     sigma_p  = mle_p$sigma,   sigma_p_se  = mle_p$sigma_se,
     c_p      = mle_p$c_gain,  c_p_se      = mle_p$c_se,
     sigma_s  = mle_s$sigma,   sigma_s_se  = mle_s$sigma_se,
@@ -179,10 +292,8 @@ full_conditional_mle <- function(sim_res) {
     mu0      = mle_obs$mu0,   mu0_se      = mle_obs$mu0_se,
     kappa    = mle_obs$kappa, kappa_se    = mle_obs$kappa_se,
     n_beats  = mle_obs$n_beats,
-    ll_p     = mle_p$log_lik,
-    ll_s     = mle_s$log_lik,
     ll_obs   = mle_obs$log_lik,
-    ll_total = mle_p$log_lik + mle_s$log_lik + mle_obs$log_lik
+    ll_total = ll_ou + mle_obs$log_lik
   )
 }
 
@@ -255,6 +366,58 @@ ou_fim <- function(sigma_val, x_vec, u_vec, a, dt) {
 # Returns the full FIM, all eigenvalues, overall condition number,
 # and per-parameter SEs.
 
+# Internal: full numerical FIM for the coupled case.
+# Parameterisation: (b_ps, b_sp, log σ_p, log σ_s, c_p, c_s, log μ₀, log κ).
+# The block-diagonal structure no longer holds when b_ps or b_sp ≠ 0.
+
+.full_fim_coupled <- function(sim_res, mle, sp, u_vec, dt) {
+  x_mat   <- cbind(sim_res$p, sim_res$s)
+  spk     <- sim_res$spikes
+  tau_vec <- diff(spk)
+  delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
+
+  th0 <- c(mle$b_ps, mle$b_sp,
+           log(mle$sigma_p), log(mle$sigma_s),
+           mle$c_p, mle$c_s,
+           log(mle$mu0), log(mle$kappa))
+
+  obj <- function(th) {
+    if (sp$a_p * sp$a_s - th[1L] * th[2L] <= 0) return(-Inf)
+    ll_ou <- tryCatch(
+      ou_coupled_log_lik(th[1L], th[2L], exp(th[3L]), exp(th[4L]),
+                         th[5L], th[6L],
+                         x_mat, u_vec, sp$a_p, sp$a_s, dt),
+      error = function(e) -Inf)
+    mu_k   <- exp(th[7L]) * exp(-delta_v)
+    ll_obs <- sum(log_ig_pdf(tau_vec, mu_k, exp(th[8L])))
+    ll_ou + ll_obs
+  }
+
+  eps <- 1e-4;  np <- length(th0)
+  H   <- matrix(0, np, np)
+  for (i in seq_len(np)) for (j in i:np) {
+    ei <- ej <- numeric(np); ei[i] <- eps; ej[j] <- eps
+    H[i, j] <- (obj(th0+ei+ej) - obj(th0+ei-ej) -
+                  obj(th0-ei+ej) + obj(th0-ei-ej)) / (4 * eps^2)
+    H[j, i] <- H[i, j]
+  }
+  FIM <- -H
+  pnames <- c("b_ps", "b_sp",
+              "log(sigma_p)", "log(sigma_s)", "c_p", "c_s",
+              "log(mu_0)", "log(kappa)")
+  dimnames(FIM) <- list(pnames, pnames)
+  eig_all <- tryCatch(
+    eigen(FIM, symmetric = TRUE, only.values = TRUE)$values,
+    error = function(e) rep(NA_real_, np))
+  list(FIM         = FIM,
+       eigenvalues = eig_all,
+       cond_number = max(eig_all) / min(eig_all[eig_all > 0]),
+       param_names = pnames,
+       blocks      = list(p   = list(eig = NA, cond = NA),
+                          s   = list(eig = NA, cond = NA),
+                          obs = list(eig = tail(eig_all, 2L), cond = NA)))
+}
+
 full_conditional_fim <- function(sim_res) {
   sp    <- sim_res$params$structural
   dt    <- sim_res$time[2L] - sim_res$time[1L]
@@ -262,6 +425,9 @@ full_conditional_fim <- function(sim_res) {
   u_vec <- extract_u_vec(sim_res)
 
   mle <- full_conditional_mle(sim_res)
+
+  if ((abs(sim_res$params$free$b_ps) + abs(sim_res$params$free$b_sp)) > 1e-12)
+    return(.full_fim_coupled(sim_res, mle, sp, u_vec, dt))
 
   fim_p   <- ou_fim(mle$sigma_p, sim_res$p, u_vec, sp$a_p, dt)
   fim_s   <- ou_fim(mle$sigma_s, sim_res$s, u_vec, sp$a_s, dt)
@@ -312,7 +478,7 @@ ou_log_lik_at <- function(x_vec, u_vec, a, sigma, c_gain, dt) {
   sum(dnorm(x_vec[idx + 1L], mean = means, sd = sqrt(var_v), log = TRUE))
 }
 
-profile_lik_one <- function(param, grid, sim_res) {
+profile_lik_one <- function(param, grid, sim_res, mle = NULL) {
   sp    <- sim_res$params$structural
   dt    <- sim_res$time[2L] - sim_res$time[1L]
   n_t   <- length(sim_res$time)
@@ -388,6 +554,47 @@ profile_lik_one <- function(param, grid, sim_res) {
              sig_v <- sqrt(max(mean(r_v^2) / C_as, 1e-14))
              ou_log_lik_at(sim_res$s, u_vec, sp$a_s, sig_v, v, dt)
            },
+           b_ps = {
+             # Fix b_ps = v; profile over (b_sp, log σ_p, log σ_s, c_p, c_s).
+             if (sp$a_p * sp$a_s - v * sim_res$params$free$b_sp <= 0) return(-Inf)
+             x_mat <- cbind(sim_res$p, sim_res$s)
+             mle_v <- if (!is.null(mle)) mle else full_conditional_mle(sim_res)
+             th0   <- c(mle_v$b_sp,
+                        log(max(mle_v$sigma_p, 1e-5)),
+                        log(max(mle_v$sigma_s, 1e-5)),
+                        mle_v$c_p, mle_v$c_s)
+             nll <- function(th) {
+               if (sp$a_p * sp$a_s - v * th[1L] <= 0) return(1e10)
+               ll <- tryCatch(
+                 ou_coupled_log_lik(v, th[1L], exp(th[2L]), exp(th[3L]),
+                                    th[4L], th[5L],
+                                    x_mat, u_vec, sp$a_p, sp$a_s, dt),
+                 error = function(e) -Inf)
+               if (is.finite(ll)) -ll else 1e10
+             }
+             -optim(th0, nll, method = "L-BFGS-B",
+                    control = list(maxit = 150L, factr = 1e9))$value
+           },
+           b_sp = {
+             if (sp$a_p * sp$a_s - sim_res$params$free$b_ps * v <= 0) return(-Inf)
+             x_mat <- cbind(sim_res$p, sim_res$s)
+             mle_v <- if (!is.null(mle)) mle else full_conditional_mle(sim_res)
+             th0   <- c(mle_v$b_ps,
+                        log(max(mle_v$sigma_p, 1e-5)),
+                        log(max(mle_v$sigma_s, 1e-5)),
+                        mle_v$c_p, mle_v$c_s)
+             nll <- function(th) {
+               if (sp$a_p * sp$a_s - th[1L] * v <= 0) return(1e10)
+               ll <- tryCatch(
+                 ou_coupled_log_lik(th[1L], v, exp(th[2L]), exp(th[3L]),
+                                    th[4L], th[5L],
+                                    x_mat, u_vec, sp$a_p, sp$a_s, dt),
+                 error = function(e) -Inf)
+               if (is.finite(ll)) -ll else 1e10
+             }
+             -optim(th0, nll, method = "L-BFGS-B",
+                    control = list(maxit = 150L, factr = 1e9))$value
+           },
            -Inf   # unknown parameter name
     )
   }, numeric(1L))
@@ -397,6 +604,9 @@ profile_lik_one <- function(param, grid, sim_res) {
 
 all_profile_likelihoods <- function(sim_res, n_grid = 60, width = 3.0) {
   mle <- full_conditional_mle(sim_res)
+
+  fp_sim      <- sim_res$params$free
+  use_coupled <- (abs(fp_sim$b_ps) + abs(fp_sim$b_sp)) > 1e-12
 
   specs <- list(
     mu0     = list(center = mle$mu0,     log_scale = TRUE,
@@ -412,6 +622,12 @@ all_profile_likelihoods <- function(sim_res, n_grid = 60, width = 3.0) {
     c_s     = list(center = mle$c_s,     log_scale = FALSE, width_override = 5.0,
                    label = expression(c[s]))
   )
+  if (use_coupled) {
+    specs$b_ps <- list(center = mle$b_ps, log_scale = FALSE, width_override = 3.0,
+                       label = expression(b[ps]))
+    specs$b_sp <- list(center = mle$b_sp, log_scale = FALSE, width_override = 3.0,
+                       label = expression(b[sp]))
+  }
 
   lapply(names(specs), function(p) {
     s <- specs[[p]]
@@ -422,7 +638,7 @@ all_profile_likelihoods <- function(sim_res, n_grid = 60, width = 3.0) {
       spread <- max(abs(s$center) * eff_width, 0.5)
       seq(s$center - spread, s$center + spread, length.out = n_grid)
     }
-    ll <- profile_lik_one(p, grid, sim_res)
+    ll <- profile_lik_one(p, grid, sim_res, mle = mle)
     list(param = p, grid = grid, ll = ll,
          mle = s$center, label = s$label,
          ll_mle = max(ll, na.rm = TRUE))

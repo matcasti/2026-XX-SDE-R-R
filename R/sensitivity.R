@@ -174,8 +174,17 @@ plot_sensitivity <- function(sens_df,
       if (length(ci) == 1 && length(ri) == 1)
         vals[ri, ci] <- sens_df[[m]][i]
     }
+    all_na <- all(is.na(vals))
+    col_range <- if (all_na) c(0, 1) else range(vals, na.rm = TRUE)
+    if (all_na) {
+      plot.new()
+      title(main = labels[[mi]])
+      text(0.5, 0.5, "no data", col = "gray50", cex = 1.2)
+      next
+    }
     image(ap_vals, as_vals, t(vals),
           col  = hcl.colors(20, "YlOrRd", rev = TRUE),
+          zlim = col_range,
           xlab = expression(a[p] ~ "(Hz)"),
           ylab = expression(a[s] ~ "(Hz)"),
           main = labels[[mi]], axes = FALSE)

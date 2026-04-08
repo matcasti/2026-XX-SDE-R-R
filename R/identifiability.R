@@ -30,7 +30,8 @@ single_recovery <- function(true_params,
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
   mle     <- full_conditional_mle(sim_res)
 
-  fp <- true_params$free
+  fp           <- true_params$free
+  use_coupled  <- (abs(fp$b_ps) + abs(fp$b_sp)) > 1e-12
   true_vec <- c(sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
                 mu0     = fp$mu_0,    kappa   = fp$kappa,
                 c_p     = fp$c_p,     c_s     = fp$c_s)
@@ -40,6 +41,11 @@ single_recovery <- function(true_params,
   se_vec   <- c(sigma_p = mle$sigma_p_se, sigma_s = mle$sigma_s_se,
                 mu0     = mle$mu0_se,     kappa   = mle$kappa_se,
                 c_p     = mle$c_p_se,     c_s     = mle$c_s_se)
+  if (use_coupled) {
+    true_vec <- c(true_vec, b_ps = fp$b_ps, b_sp = fp$b_sp)
+    hat_vec  <- c(hat_vec,  b_ps = mle$b_ps, b_sp = mle$b_sp)
+    se_vec   <- c(se_vec,   b_ps = mle$b_ps_se, b_sp = mle$b_sp_se)
+  }
 
   list(true = true_vec, hat = hat_vec, se = se_vec,
        n_beats = mle$n_beats, ll = mle$ll_total)
@@ -81,10 +87,15 @@ recovery_study <- function(N             = 200L,
   }
   results <- Filter(Negate(is.null), results)
 
+  use_coupled <- (abs(true_params$free$b_ps) + abs(true_params$free$b_sp)) > 1e-12
   params <- c("sigma_p", "sigma_s", "mu0", "kappa", "c_p", "c_s")
   labels <- c(expression(sigma[p]), expression(sigma[s]),
               expression(mu[0]),    expression(kappa),
               expression(c[p]),     expression(c[s]))
+  if (use_coupled) {
+    params <- c(params, "b_ps", "b_sp")
+    labels <- c(labels,  expression(b[ps]), expression(b[sp]))
+  }
 
   summary_df <- do.call(rbind, lapply(seq_along(params), function(j) {
     p      <- params[j]
@@ -149,7 +160,9 @@ plot_recovery <- function(rec_summary,
     mu0     = expression(mu[0]),
     kappa   = expression(kappa),
     c_p     = expression(c[p]),
-    c_s     = expression(c[s])
+    c_s     = expression(c[s]),
+    b_ps    = expression(b[ps]),
+    b_sp    = expression(b[sp])
   )
 
   np   <- nrow(df)
@@ -202,8 +215,12 @@ plot_recovery <- function(rec_summary,
 plot_profiles <- function(profiles,
                            true_vals = NULL,
                            main = "Profile Likelihoods") {
-  par_order <- c("mu0", "kappa", "sigma_p", "sigma_s", "c_p", "c_s")
-  op <- par(mfrow = c(2, 3), mar = c(4, 4.5, 2.5, 1), oma = c(0, 0, 2, 0))
+  par_order <- intersect(
+    c("mu0", "kappa", "sigma_p", "sigma_s", "c_p", "c_s", "b_ps", "b_sp"),
+    names(profiles))
+  nc_pl <- min(3L, length(par_order))
+  nr_pl <- ceiling(length(par_order) / nc_pl)
+  op <- par(mfrow = c(nr_pl, nc_pl), mar = c(4, 4.5, 2.5, 1), oma = c(0, 0, 2, 0))
 
   for (p in par_order) {
     pf      <- profiles[[p]]
