@@ -73,12 +73,10 @@
 # Returns: list(m, P)
 
 .ou_predict <- function(m0, P0, tau, sp, fp, u = 0) {
-  a_p <- sp$a_p;  a_s <- sp$a_s
+  a_p <- fp$a_p;  a_s <- fp$a_s
 
-  if ((abs(fp$b_ps) + abs(fp$b_sp)) > 1e-12) {
-    # Coupled path: full 2×2 matrix prediction.
-    # tau varies per IBI, so matrices are computed fresh each call.
-    A_mat <- matrix(c(-a_p, fp$b_sp, fp$b_ps, -a_s), 2L, 2L)
+  if ((abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12) {
+    A_mat <- matrix(c(-a_p, -fp$a_sp, -fp$a_ps, -a_s), 2L, 2L)
     F_mat <- mat2x2_exp(A_mat, tau)
     Q_mat <- ou_coupled_Q(A_mat, fp$sigma_p, fp$sigma_s, tau, n_steps = 20L)
 
@@ -178,8 +176,8 @@ pp_ukf <- function(spikes,
   if (N < 2L) stop("pp_ukf: need at least 2 spikes.")
 
   if (is.null(m0)) m0 <- c(0, 0)
-  if (is.null(P0)) P0 <- diag(c(fp$sigma_p^2 / (2 * sp$a_p),
-                                fp$sigma_s^2 / (2 * sp$a_s)))
+  if (is.null(P0)) P0 <- diag(c(fp$sigma_p^2 / (2 * fp$a_p),
+                                fp$sigma_s^2 / (2 * fp$a_s)))
 
   n_ibi      <- N - 1L
   m_filt     <- matrix(0, n_ibi, 2L, dimnames = list(NULL, c("p", "s")))

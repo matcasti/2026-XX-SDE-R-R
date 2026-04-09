@@ -9,23 +9,34 @@
 # ---- Parameter object ----
 
 make_model_params <- function(
-    a_p = 2.0, a_s = 0.2,
+    a_p    = 2.0,  a_s   = 0.2,      # self-decay rates (estimated from data)
+    a_ps   = 0.0,  a_sp  = 0.0,      # antagonism magnitudes: s→p and p→s inhibition
     sigma_p = 0.30, sigma_s = 0.20,
-    mu_0 = 0.85, kappa = 15.0,
-    c_p = 0.0, c_s = 0.0,
-    b_ps = 0.0, b_sp = 0.0) {
-  stopifnot(a_p > 0, a_s > 0, a_p > a_s,
-            sigma_p > 0, sigma_s > 0,
-            mu_0 > 0, kappa > 0,
-            a_p * a_s - b_ps * b_sp > 0)  # det(A) > 0 ensures stability
-  list(
-    structural = list(a_p = a_p, a_s = a_s,
-                      k_par = 1.0, k_sym = 1.0),
-    free       = list(sigma_p = sigma_p, sigma_s = sigma_s,
-                      mu_0 = mu_0, kappa = kappa,
-                      c_p = c_p, c_s = c_s,
-                      b_ps = b_ps, b_sp = b_sp)
+    mu_0   = 0.85, rho   = 0.27,     # rho = sqrt(mu_0/kappa) = baseline CV of IBI
+    c_p    = 0.0,  c_s   = 0.0) {    # input sensitivities (simulation / forced protocols)
+  stopifnot(
+    a_p > 0, a_s > 0,
+    a_ps >= 0, a_sp >= 0,
+    a_p * a_s - a_ps * a_sp > 0,     # det(A) > 0: stability
+    sigma_p > 0, sigma_s > 0,
+    mu_0 > 0, rho > 0
   )
+  list(
+    structural = list(k_par = 1.0, k_sym = 1.0),  # observation gains; always fixed
+    free = list(
+      a_p = a_p, a_s = a_s,
+      a_ps = a_ps, a_sp = a_sp,
+      sigma_p = sigma_p, sigma_s = sigma_s,
+      mu_0 = mu_0, rho = rho,
+      c_p = c_p, c_s = c_s
+    )
+  )
+}
+
+# Helper: derive kappa from the (mu_0, rho) parameterisation.
+# kappa = mu_0 / rho^2  so that  Var(tau_0) = rho^2 * mu_0^2 at baseline.
+kappa_from_rho <- function(mu_0, rho) {
+  mu_0 / rho^2
 }
 
 # ---- Log link ----
@@ -87,10 +98,14 @@ ou_coupled_Q <- function(A_mat, sigma_p, sigma_s, dt, n_steps = 40L) {
 # ---- Pre-compute all objects needed for simulation and likelihood ----
 # Calling this once per parameter vector avoids redundant matrix exponentials.
 
-ou_coupled_matrices <- function(a_p, a_s, b_ps, b_sp,
+ou_coupled_matrices <- function(a_p, a_s, a_ps, a_sp,
                                 sigma_p, sigma_s, dt,
                                 n_q_steps = 40L) {
-  A_mat <- matrix(c(-a_p, b_sp, b_ps, -a_s), 2L, 2L)
+  # A = [[-a_p, -a_ps], [-a_sp, -a_s]]:
+  #   dp = -a_p*p - a_ps*s  (s inhibits p — accentuated antagonism)
+  #   ds = -a_sp*p - a_s*s  (p inhibits s — accentuated antagonism)
+  # Stability: det(A) = a_p*a_s - a_ps*a_sp > 0 (enforced by make_model_params)
+  A_mat <- matrix(c(-a_p, -a_sp, -a_ps, -a_s), 2L, 2L)
   F_mat <- mat2x2_exp(A_mat, dt)
   Q_mat <- ou_coupled_Q(A_mat, sigma_p, sigma_s, dt, n_q_steps)
 
@@ -249,7 +264,7 @@ make_rr_obs_model <- function() {
     description     = "IG point process; identifiable qty: Delta(t)=s(t)-p(t)",
     log_intensity   = function(tau, p, s, fp) {
       if (tau < 1e-3) return(-Inf)
-      log_ig_hazard(tau, compute_mu(p, s, fp$mu_0), fp$kappa)
+      log_ig_hazard(tau, compute_mu(p, s, fp$mu_0), kappa_from_rho(fp$mu_0, fp$kappa))
     }
   )
 }
@@ -273,15 +288,15 @@ sim_sde_ig <- function(duration, dt, params,
   # transient that would bias short simulations.
   p  <- numeric(n)
   s  <- numeric(n)
-  p[1L] <- rnorm(1, 0, sqrt(fp$sigma_p^2 / (2 * sp$a_p)))
-  s[1L] <- rnorm(1, 0, sqrt(fp$sigma_s^2 / (2 * sp$a_s)))
+  p[1L] <- rnorm(1, 0, sqrt(fp$sigma_p^2 / (2 * fp$a_p)))
+  s[1L] <- rnorm(1, 0, sqrt(fp$sigma_s^2 / (2 * fp$a_s)))
 
   # Pre-compute coupled transition matrices once if coupling is non-zero.
   # Falls back to the scalar exact-step fast path when b_ps = b_sp = 0.
-  use_coupled <- (abs(fp$b_ps) + abs(fp$b_sp)) > 1e-12
+  use_coupled <- (abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12
   if (use_coupled) {
-    cmats   <- ou_coupled_matrices(sp$a_p, sp$a_s, fp$b_ps, fp$b_sp,
-                                   fp$sigma_p, fp$sigma_s, dt)
+    cmats <- ou_coupled_matrices(fp$a_p, fp$a_s, fp$a_ps, fp$a_sp,
+                                 fp$sigma_p, fp$sigma_s, dt)
     c_vec_ou <- c(fp$c_p, fp$c_s)
   }
 
@@ -300,8 +315,8 @@ sim_sde_ig <- function(duration, dt, params,
       xnew   <- ou_coupled_step(c(p[i], s[i]), cmats, c_vec_ou, u)
       p[i+1] <- xnew[1L];  s[i+1] <- xnew[2L]
     } else {
-      p[i+1] <- ou_exact_step(p[i], sp$a_p, fp$sigma_p, fp$c_p, u, dt)
-      s[i+1] <- ou_exact_step(s[i], sp$a_s, fp$sigma_s, fp$c_s, u, dt)
+      p[i+1] <- ou_exact_step(p[i], fp$a_p, fp$sigma_p, fp$c_p, u, dt)
+      s[i+1] <- ou_exact_step(s[i], fp$a_s, fp$sigma_s, fp$c_s, u, dt)
     }
     mu_v[i+1] <- compute_mu(p[i+1], s[i+1], fp$mu_0)
     dlt[i+1]  <- compute_delta(p[i+1], s[i+1])
@@ -311,7 +326,8 @@ sim_sde_ig <- function(duration, dt, params,
 
     loglam[i+1] <- obs_models[[1]]$log_intensity(tau_end, p[i+1], s[i+1], fp)
 
-    pf <- p_fire_survival_ratio(tau_start, tau_end, mu_v[i+1], fp$kappa)
+    kap_i <- kappa_from_rho(fp$mu_0, fp$rho)
+    pf    <- p_fire_survival_ratio(tau_start, tau_end, mu_v[i+1], kap_i)
     if (runif(1) < pf) {
       n_spikes <- n_spikes + 1L
       spikes[n_spikes] <- tg[i+1]
@@ -333,7 +349,8 @@ compute_time_rescaling <- function(res) {
   tg    <- res$time
   dt    <- tg[2L] - tg[1L]
   mu_v  <- res$mu
-  kappa <- res$params$free$kappa
+  fp    <- res$params$free
+  kappa <- kappa_from_rho(fp$mu_0, fp$rho)
   n     <- length(sp)
   if (n < 2L) return(numeric(0L))
 

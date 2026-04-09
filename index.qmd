@@ -52,11 +52,14 @@ source("R/model_functions.R")
 # ---- Shared simulation parameters ----
 
 PARAMS <- make_model_params(
-  a_p = 2.0, a_s = 0.2,
-  sigma_p = 0.2, sigma_s = 0.07,
-  mu_0 = 1.0, kappa = 20,
+  a_p = 2.0, a_s = 0.2,          # decay rates (now free; these are sim ground truth)
+  a_ps = 0.0, a_sp = 0.0,        # uncoupled baseline
+  sigma_p = 0.20, sigma_s = 0.07,
+  mu_0 = 1.0, rho = 0.2236,      # rho = sqrt(1.0/20): preserves kappa=20 baseline
   c_p = -1.0, c_s = 0.1
 )
+# Derived quantity for inline use:
+KAPPA_REF <- kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)  # = 20
 
 
 INPUT_FN <- function(t) as.numeric(t >= 300 & t < 420)
@@ -84,11 +87,30 @@ which enters the mean RR interval through the log link established in Section 4.
 
 An additional identifiability constraint arises from the observation gains. The original formulation contained free sensitivity coefficients $k_\text{par}$ and $k_\text{sym}$ that scaled the contribution of each branch to the mean interval. Because the data identifies only $\Delta(t)$, the gains and the diffusion amplitudes $\sigma_p$, $\sigma_s$ share a common scale: multiplying $k_\text{sym}$ by $\alpha$ and dividing $s(t)$ and $\sigma_s$ by $\alpha$ leaves the likelihood unchanged for any $\alpha > 0$. This scale aliasing is resolved by normalizing $k_\text{par} = k_\text{sym} = 1$, absorbing the effective scale into $\sigma_p$ and $\sigma_s$. These are then interpretable as the amplitudes of autonomic noise in units directly linked to the log mean interval.
 
-The resulting net drive $\Delta(t) = s(t) - p(t)$ is, under the constraints imposed here (Section 3.2), a linear combination of two independent Ornstein-Uhlenbeck processes. Its spectral density function has two poles: one in the low-frequency (LF) band determined by $a_s$, and one in the high-frequency (HF) band determined by $a_p$. This is precisely the continuous-time ARMA(2,1) [CARMA(2,1)] spectral structure that a single RR stream can identify. Its parameters are the LF and HF power amplitudes — corresponding to $\sigma_s^2/(2a_s)$ and $\sigma_p^2/(2a_p)$ respectively — together with the baseline mean interval $\mu_0$ and the shape parameter $\kappa$.
+The resulting net drive $\Delta(t) = s(t) - p(t)$ is, under the constraints imposed here (Section 3.2), a linear combination of two independent Ornstein-Uhlenbeck processes. Its spectral density function has two poles: one in the low-frequency (LF) band determined by $a_s$, and one in the high-frequency (HF) band determined by $a_p$. This is precisely the continuous-time ARMA(2,1) [CARMA(2,1)] spectral structure that a single RR stream can identify. Its parameters are the LF and HF power amplitudes, corresponding to $\sigma_s^2/(2a_s)$ and $\sigma_p^2/(2a_p)$ respectively, together with the baseline mean interval $\mu_0$ and the shape parameter $\kappa$.
 
 ###  Structural and Free Parameter Decomposition
 
-A critical distinction governs inference. The **spectral pole locations** — the frequencies of the LF and HF oscillations — are determined by the decay rates $a_p$ and $a_s$. These quantities are not learned from RR data: the vagal time constant ($\tau_p = 1/a_p \approx 0.3$–$0.7$ s) is set by the kinetics of acetylcholine binding at muscarinic receptors [@udgaonkar1986acetylcholine], and the sympathetic time constant ($\tau_s = 1/a_s \approx 5$–$20$ s) is set by the second-messenger cascade underlying norepinephrine action [@eisenhofer1991neuronal]. Treating them as free parameters would introduce a second, empirically unresolvable aliasing: the RR series identifies only the product $\sigma_p^2/(2a_p)$ (the vagal spectral area), not $\sigma_p$ and $a_p$ individually.
+The system matrix is
+
+$$
+A = \begin{pmatrix} -a_p & -a_{ps} \\ -a_{sp} & -a_s \end{pmatrix},
+$$
+
+with four non-negative rate parameters. The self-decay rates $a_p$ and $a_s$
+govern the intrinsic time constants of each branch ($\tau_p = 1/a_p$,
+$\tau_s = 1/a_s$); the cross-inhibition rates $a_{ps}$ and $a_{sp}$ encode
+*accentuated antagonism*, the well-documented mechanism by which sympathetic
+activation actively withdraws vagal tone and vice versa. All four parameters
+are estimated from the RR interval series; neuroscientific literature provides
+physiologically plausible ranges that serve as prior information for starting
+values ($a_p \approx 2$ Hz, $a_s \approx 0.2$ Hz) but not as fixed constraints.
+
+Linear stability requires $\det(A) = a_p a_s - a_{ps} a_{sp} > 0$, which is
+enforced as a hard constraint during estimation. When the antagonism terms are
+zero ($a_{ps} = a_{sp} = 0$), the system reduces to two independent
+Ornstein-Uhlenbeck processes. Identifiability of the input sensitivities $c_p$
+and $c_s$ additionally requires a non-trivial exogenous input $u(t) \not\equiv 0$.
 
 The parameter set is therefore partitioned as follows.
 
@@ -98,31 +120,42 @@ The parameter set is therefore partitioned as follows.
 #| echo: false
 
 param_table <- data.frame(
-  Parameter   = c("$a_p$", "$a_s$",
-                    "$k_\\text{par},\\, k_\\text{sym}$",
-                    "$\\sigma_p$", "$\\sigma_s$",
-                    "$\\mu_0$", "$\\kappa$",
-                    "$c_p,\\, c_s$",
-                    "$b_{ps},\\, b_{sp}$"),
-    Class       = c("Structural", "Structural", "Structural",
-                    "Free", "Free", "Free", "Free", "Free", "Free"),
-    Value       = c("2.0 Hz", "0.2 Hz",
-                    "1 (fixed)",
-                    "Estimated", "Estimated",
-                    "Estimated", "Estimated",
-                    "Estimated or 0",
-                    "Estimated (default 0)"),
-    Interpretation = c(
-      "Vagal decay rate; $\\tau_p = 0.5$ s",
-      "Sympathetic decay rate; $\\tau_s = 5$ s",
-      "Observation gains (normalized; scale absorbed into $\\sigma$)",
-      "Vagal noise amplitude $\\to$ HF spectral power",
-      "Sympathetic noise amplitude $\\to$ LF spectral power",
-      "Baseline mean RR interval at autonomic neutrality",
-      "IG shape; controls interval regularity",
-      "Branch sensitivities to exogenous input $u(t)$",
-      "Cross-branch coupling gains; identifiability assessed empirically in @sec-coupling"
-    )
+  Parameter = c(
+    "$k_\\text{par},\\, k_\\text{sym}$",
+    "$a_p$", "$a_s$",
+    "$a_{ps}$", "$a_{sp}$",
+    "$\\sigma_p$", "$\\sigma_s$",
+    "$\\mu_0$",
+    "$\\rho$",
+    "$c_p,\\, c_s$"
+  ),
+  Class = c(
+    "Structural",
+    "Free", "Free", "Free", "Free",
+    "Free", "Free", "Free", "Free",
+    "Free (with input)"
+  ),
+  Value = c(
+    "1 (fixed)",
+    "Estimated", "Estimated",
+    "Estimated ($\\geq 0$)", "Estimated ($\\geq 0$)",
+    "Estimated", "Estimated",
+    "Estimated", "Estimated",
+    "Estimated when $u(t) \\not\\equiv 0$, else 0"
+  ),
+  Interpretation = c(
+    "Observation gains (normalized; scale absorbed into $\\sigma$)",
+    "Vagal self-decay rate; $\\tau_p = 1/a_p$",
+    "Sympathetic self-decay rate; $\\tau_s = 1/a_s$",
+    "Sympatho-vagal antagonism: $s(t)$ inhibits $p(t)$ (accentuated antagonism)",
+    "Vagosympathetic antagonism: $p(t)$ inhibits $s(t)$ (accentuated antagonism)",
+    "Vagal noise amplitude $\\to$ spectral power near $a_p/(2\\pi)$",
+    "Sympathetic noise amplitude $\\to$ spectral power near $a_s/(2\\pi)$",
+    "Baseline mean RR interval at autonomic neutrality",
+    "$\\rho = \\sqrt{\\mu_0/\\kappa}$: baseline coefficient of variation of intervals; $\\kappa = \\mu_0/\\rho^2$",
+    "Branch sensitivities to exogenous input $u(t)$"
+  ),
+  stringsAsFactors = FALSE
 )
 
 knitr::kable(param_table, escape = FALSE,
@@ -142,21 +175,23 @@ $$
 
 Because $a_p \neq a_s$, $\Delta(t)$ is not itself an OU process but a sum of two OU processes with distinct time constants. Its spectral density is
 
+The spectral density of $\Delta(t)$ is determined by the eigenvalues of $A$. Letting $\lambda_{1,2} = \tfrac{1}{2}\bigl[-(a_p + a_s) \mp \sqrt{(a_p - a_s)^2 + 4 a_{ps} a_{sp}}\bigr]$ (both negative when the stability condition holds), the spectral density takes the form of two Lorentzians centred at $|\lambda_1|/(2\pi)$ and $|\lambda_2|/(2\pi)$:
+
 $$
-S_\Delta(f) \;=\; \frac{\sigma_s^2}{a_s^2 + (2\pi f)^2}
-             \;+\; \frac{\sigma_p^2}{a_p^2 + (2\pi f)^2},
+S_\Delta(f) \;\approx\; \frac{A_1}{\lambda_1^2 + (2\pi f)^2}
+                      + \frac{A_2}{\lambda_2^2 + (2\pi f)^2},
 $$
 
-a two-Lorentzian form with poles at $f_\text{LF} = a_s/(2\pi)$ and $f_\text{HF} = a_p/(2\pi)$. This spectrum is identifiable from the second-order properties of the RR interval series. The amplitude of each Lorentzian — determined by $\sigma_s^2/a_s$ and $\sigma_p^2/a_p$ — corresponds to the spectral area in each frequency band, linking the model parameters directly to classical HRV spectral indices.
+where $A_1, A_2 > 0$ are amplitude coefficients that depend on all four rate parameters and the diffusion amplitudes. When $a_{ps} = a_{sp} = 0$, this collapses to the familiar two-Lorentzian form with poles at $a_s/(2\pi)$ and $a_p/(2\pi)$. Non-zero antagonism *spreads* the poles: $|\lambda_1|$ increases above $\max(a_p, a_s)$ and $|\lambda_2|$ decreases below $\min(a_p, a_s)$, producing a distinctive spectral signature from which all four rate parameters can, in principle, be identified. This spectrum is identifiable from the second-order properties of the RR interval series. The amplitude of each Lorentzian, determined by $\sigma_s^2/a_s$ and $\sigma_p^2/a_p$, corresponds to the spectral area in each frequency band, linking the model parameters directly to classical HRV spectral indices.
 
 ##  The Constrained Stochastic Differential Equations
 
-The autonomic state vector $\mathbf{x}(t) = [p(t),\, s(t)]^\top$ evolves according to a system of coupled linear SDEs. For inference from a single RR stream, the cross-branch coupling terms $b_{ps}$ and $b_{sp}$ are fixed at zero. Their identification requires a second independent observation stream — such as a simultaneous respiration signal, which pins the vagal component through the respiratory sinus arrhythmia mechanism, or continuous blood pressure, which provides an independent measurement of the sympatho-vagal balance through baroreflex dynamics (Section 6, extensibility). The constrained system is:
+The autonomic state vector $\mathbf{x}(t) = [p(t),\, s(t)]^\top$ evolves according to a system of coupled linear SDEs. For inference from a single RR stream, the cross-branch coupling terms $b_{ps}$ and $b_{sp}$ are fixed at zero. Their identification requires a second independent observation stream, such as a simultaneous respiration signal, which pins the vagal component through the respiratory sinus arrhythmia mechanism, or continuous blood pressure, which provides an independent measurement of the sympatho-vagal balance through baroreflex dynamics (Section 6, extensibility). The constrained system is:
 
 $$
 \begin{aligned}
-dp(t) &= \bigl[-a_p\, p(t) + c_p\, u(t)\bigr]\,dt + \sigma_p\,dW_p(t) \\
-ds(t) &= \bigl[-a_s\, s(t) + c_s\, u(t)\bigr]\,dt + \sigma_s\,dW_s(t)
+dp(t) &= \bigl[-a_p\, p(t) - a_{ps}\, s(t) + c_p\, u(t)\bigr]\,dt + \sigma_p\,dW_p(t) \\
+ds(t) &= \bigl[-a_{sp}\, p(t) - a_s\, s(t) + c_s\, u(t)\bigr]\,dt + \sigma_s\,dW_s(t)
 \end{aligned}
 $$
 
@@ -203,7 +238,7 @@ Figure @fig-latent-sde shows simulated trajectories under baseline conditions, i
 
 ```{r}
 #| label: fig-latent-sde
-#| fig-cap: "Simulated trajectories of the latent autonomic states under baseline conditions ($u(t) = 0$, all free parameters at their reference values). **Top:** Parasympathetic state $p(t)$ — high-frequency texture driven by the fast decay rate. **Middle:** Sympathetic state $s(t)$ — smooth, slow-trending trajectory. **Bottom:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$ — the quantity directly identified by the RR interval series. Positive values indicate sympathetic dominance; negative values indicate vagal dominance."
+#| fig-cap: "Simulated trajectories of the latent autonomic states under baseline conditions ($u(t) = 0$, all free parameters at their reference values). **Top:** Parasympathetic state $p(t)$, high-frequency texture driven by the fast decay rate. **Middle:** Sympathetic state $s(t)$, smooth, slow-trending trajectory. **Bottom:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$, the quantity directly identified by the RR interval series. Positive values indicate sympathetic dominance; negative values indicate vagal dominance."
 #| fig-height: 6
 
 set.seed(101)
@@ -266,7 +301,7 @@ mu_li <- ifelse((rho0 + del) > 0.1, 1 / (rho0 + del), NA)
 
 par(mfrow = c(1, 2), mar = c(4.5, 4.5, 2.5, 1))
 
-# Left: linear link — show where it fails
+# Left: linear link, show where it fails
 ylm <- c(-0.5, max(mu_li, na.rm = TRUE) * 1.1)
 plot(tt, mu_li, type = "l", col = "#D55E00", lwd = 2,
      xlab = "Time (s)", ylab = expression(mu(t) ~ "[s]"),
@@ -278,7 +313,7 @@ text(10, -0.25, "Invalid domain\n(clipping required)",
      col = "firebrick", cex = 0.8, adj = 0.5)
 grid(col = "lightgray", lty = 1)
 
-# Right: log link — always positive
+# Right: log link, always positive
 plot(tt, mu_ln, type = "l", col = "#0072B2", lwd = 2,
      xlab = "Time (s)", ylab = expression(mu(t) ~ "[s]"),
      main = "Log Link (this model)", frame.plot = FALSE)
@@ -299,13 +334,21 @@ f(t \mid u_k,\, \mathbf{x}(t)) \;=\;
 \right\},
 $$
 
-where $\tau = t - u_k$ is the elapsed time since the last beat and $\kappa > 0$ is the shape parameter controlling the variance of the distribution for a given mean. In the first-passage interpretation, $\kappa$ is proportional to the squared threshold-to-noise ratio of the SA node membrane: high $\kappa$ corresponds to a near-deterministic, metronome-like rhythm; low $\kappa$ corresponds to a highly variable, noise-dominated rhythm.
+where $\tau = t - u_k$ is the elapsed time since the last beat and $\kappa = \mu_0/\rho^2 > 0$ is the derived shape parameter and $\rho = \sqrt{\mu_0/\kappa}$ is the baseline coefficient of variation estimated directly from the data. In the first-passage interpretation, $\rho$ is proportional to the threshold-to-noise ratio of the SA node membrane: small $\rho$ corresponds to a near-deterministic rhythm; large $\rho$ to a highly variable, noise-dominated one. Typical resting values are $\rho \approx 0.15$--$0.30$.
+
+The shape parameter $\kappa > 0$ controls interval regularity but is not directly interpretable in variance units. We therefore work with the **baseline coefficient of variation**
+
+$$
+\rho \;=\; \sqrt{\mu_0/\kappa},
+$$
+
+so that $\kappa = \mu_0/\rho^2$ and $\operatorname{Var}(\tau_0) = \rho^2 \mu_0^2$ at autonomic neutrality ($\Delta = 0$). For a general state, $\operatorname{Var}(\tau) = \rho^2 \mu(t)^3/\mu_0$, preserving the heteroscedastic property while making the baseline variability directly readable: $\rho \approx 0.22$ corresponds to a coefficient of variation of 22\%, typical of resting HRV. The free parameter estimated from data is $\rho$; all likelihood computations use $\kappa = \mu_0/\rho^2$ internally.
 
 A distinctive property of the IG distribution is its **heteroscedastic variance**: $\text{Var}(\tau) = \mu(t)^3/\kappa$. The cubic dependence on the mean implies that as heart rate increases (and $\mu$ decreases), beat-to-beat variability decreases automatically, even when $\kappa$ is held constant. This provides a mechanistic account of the empirically well-documented reduction in HRV during exercise and stress, without requiring any model-specific adjustments.
 
 ###  Log-Space Hazard Computation
 
-For the conditional intensity function — the instantaneous probability of a beat at time $t$ given survival to time $t$ — we require the hazard rate $\lambda(t \mid \mathcal{H}_t) = f(\tau)/S(\tau)$, where $S(\tau) = 1 - F(\tau)$ is the survival function. The IG CDF is
+For the conditional intensity function, the instantaneous probability of a beat at time $t$ given survival to time $t$, we require the hazard rate $\lambda(t \mid \mathcal{H}_t) = f(\tau)/S(\tau)$, where $S(\tau) = 1 - F(\tau)$ is the survival function. The IG CDF is
 
 $$
 F(\tau;\mu,\kappa) \;=\;
@@ -315,7 +358,7 @@ F(\tau;\mu,\kappa) \;=\;
 \Phi\!\left(-\sqrt{\tfrac{\kappa}{\tau}}\Bigl(\tfrac{\tau}{\mu}+1\Bigr)\right).
 $$
 
-The term $\exp(2\kappa/\mu)$ grows rapidly: at $\kappa = 15$, $\mu = 0.5$ s, its value is $e^{60} \approx 10^{26}$. Although this is within IEEE 754 double-precision range, the numerical product $\exp(2\kappa/\mu) \cdot \Phi(-z_2)$ involves multiplying a huge number by a tiny one, causing catastrophic cancellation that propagates into both the survival function and the hazard. More critically, any gradient-based optimization of the likelihood will encounter numerical instability at precisely the parameter values of greatest interest — those where heart rate is elevated.
+The term $\exp(2\kappa/\mu)$ grows rapidly: at $\kappa = 15$, $\mu = 0.5$ s, its value is $e^{60} \approx 10^{26}$. Although this is within IEEE 754 double-precision range, the numerical product $\exp(2\kappa/\mu) \cdot \Phi(-z_2)$ involves multiplying a huge number by a tiny one, causing catastrophic cancellation that propagates into both the survival function and the hazard. More critically, any gradient-based optimization of the likelihood will encounter numerical instability at precisely the parameter values of greatest interest, those where heart rate is elevated.
 
 The resolution is to compute the log-survival entirely in log space. Defining
 
@@ -345,7 +388,7 @@ The two branches use the most numerically stable form for each range, avoiding c
 
 ```{r}
 #| label: fig-ig-shapes
-#| fig-cap: "The Inverse Gaussian probability density. **Left:** Effect of the mean interval $\\mu$ (shape fixed at $\\kappa = 15$). As $\\mu$ decreases (sympathetic dominance), the distribution shifts to earlier times. **Right:** Effect of the shape parameter $\\kappa$ (mean fixed at $\\mu = 1.00$ s). Higher $\\kappa$ corresponds to lower variance — a more regular rhythm. The heteroscedastic property $\\text{Var}(\\tau) = \\mu^3/\\kappa$ links both panels: reducing $\\mu$ reduces the variance even at fixed $\\kappa$."
+#| fig-cap: "The Inverse Gaussian probability density. **Left:** Effect of the mean interval $\\mu$ (shape fixed at $\\kappa = 15$). As $\\mu$ decreases (sympathetic dominance), the distribution shifts to earlier times. **Right:** Effect of the shape parameter $\\kappa$ (mean fixed at $\\mu = 1.00$ s). Higher $\\kappa$ corresponds to lower variance, a more regular rhythm. The heteroscedastic property $\\text{Var}(\\tau) = \\mu^3/\\kappa$ links both panels: reducing $\\mu$ reduces the variance even at fixed $\\kappa$."
 #| fig-height: 4
 
 t_sq  <- seq(0.01, 2.2, length.out = 400)
@@ -380,7 +423,7 @@ grid(col = "lightgray", lty = 1)
 
 ###  The Hazard Function and Its Physiological Significance
 
-The resulting hazard function $\lambda(\tau)$ is non-monotonic. At $\tau = 0$, the hazard is zero, correctly modeling the absolute refractory period of cardiac tissue. It rises steeply as $\tau$ approaches $\mu(t)$ — the membrane potential nears threshold — then peaks and gradually decreases in the tail. Under the log link, a shift in $\Delta(t)$ compresses or stretches this profile continuously, modulating the probability of an earlier or later beat without discontinuity.
+The resulting hazard function $\lambda(\tau)$ is non-monotonic. At $\tau = 0$, the hazard is zero, correctly modeling the absolute refractory period of cardiac tissue. It rises steeply as $\tau$ approaches $\mu(t)$, the membrane potential nears threshold, then peaks and gradually decreases in the tail. Under the log link, a shift in $\Delta(t)$ compresses or stretches this profile continuously, modulating the probability of an earlier or later beat without discontinuity.
 
 ```{r}
 #| label: fig-hazard-function
@@ -388,7 +431,7 @@ The resulting hazard function $\lambda(\tau)$ is non-monotonic. At $\tau = 0$, t
 
 tau_v  <- seq(0.01, 2.5, length.out = 500)
 
-kap_fig <- PARAMS$free$kappa
+kap_fig <- kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)
 mu_base <- PARAMS$free$mu_0
 
 h_base  <- vapply(tau_v, ig_hazard, numeric(1), mu = mu_base,        kappa = kap_fig)
@@ -443,7 +486,7 @@ x(t + \Delta t) \mid x(t) \;\sim\;
 \right).
 $$
 
-This transition is exact at any step size. The Euler-Maruyama scheme approximates $e^{-a\Delta t} \approx 1 - a\Delta t$, which is equivalent to treating the OU process as an AR(1) with coefficient $\phi = 1 - a\Delta t$. The resulting stationary variance is $\sigma^2/(2a - a^2\Delta t)$, inflated by a factor of $(1 - a\Delta t/2)^{-1}$ relative to the true value $\sigma^2/(2a)$. For the vagal branch ($a_p = 2.0$, $\Delta t = 0.005$ s) this is a $0.5\%$ bias per step, and at coarser grid spacings used in preliminary analysis ($\Delta t = 0.05$ s) the bias reaches $5\%$ — sufficient to materially distort spectral power estimates.
+This transition is exact at any step size. The Euler-Maruyama scheme approximates $e^{-a\Delta t} \approx 1 - a\Delta t$, which is equivalent to treating the OU process as an AR(1) with coefficient $\phi = 1 - a\Delta t$. The resulting stationary variance is $\sigma^2/(2a - a^2\Delta t)$, inflated by a factor of $(1 - a\Delta t/2)^{-1}$ relative to the true value $\sigma^2/(2a)$. For the vagal branch ($a_p = 2.0$, $\Delta t = 0.005$ s) this is a $0.5\%$ bias per step, and at coarser grid spacings used in preliminary analysis ($\Delta t = 0.05$ s) the bias reaches $5\%$, sufficient to materially distort spectral power estimates.
 
 Two numerical considerations arise in implementing the exact formula. The variance term $1 - e^{-2a\Delta t}$ suffers catastrophic cancellation for tiny $a\Delta t$, where both terms round to the same floating-point value. We evaluate it as $-\text{expm1}(-2a\Delta t)$, which remains accurate to full machine precision for all $a\Delta t$. Similarly, the mean shift $1 - e^{-a\Delta t}$ is evaluated as $-\text{expm1}(-a\Delta t)$.
 
@@ -516,7 +559,7 @@ At each simulation step, the current OU state is mapped to the mean interval via
 
 ###  Survival-Ratio Event Generation
 
-The Bernoulli approximation $P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t$ produces a signed error whose direction depends on the slope of the hazard at the step entry point. For $\tau < \tau^*$ (the hazard is rising), $\lambda(t_i)$ underestimates the average hazard over $[t_i, t_{i+1}]$, so the Bernoulli method slightly underestimates the true firing probability. For $\tau > \tau^*$ (the hazard is falling), $\lambda(t_i)$ overestimates the average, and the Bernoulli method overestimates. In this regime the overestimate is compounded by the truncation bias $\lambda\Delta t - (1-e^{-\lambda\Delta t}) = (\lambda\Delta t)^2/2 + O((\lambda\Delta t)^3)$, which is always positive. Near the hazard peak, where $\lambda \approx 15$–$25$ Hz and $\Delta t = 0.005$ s, the overestimate reaches 3–6% — a directional error that inflates event counts and compresses estimated inter-beat intervals. Because the IG density mode lies just before the hazard peak, the majority of beats are generated in the overestimating regime, producing a net positive bias in event rate across a full simulation.
+The Bernoulli approximation $P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t$ produces a signed error whose direction depends on the slope of the hazard at the step entry point. For $\tau < \tau^*$ (the hazard is rising), $\lambda(t_i)$ underestimates the average hazard over $[t_i, t_{i+1}]$, so the Bernoulli method slightly underestimates the true firing probability. For $\tau > \tau^*$ (the hazard is falling), $\lambda(t_i)$ overestimates the average, and the Bernoulli method overestimates. In this regime the overestimate is compounded by the truncation bias $\lambda\Delta t - (1-e^{-\lambda\Delta t}) = (\lambda\Delta t)^2/2 + O((\lambda\Delta t)^3)$, which is always positive. Near the hazard peak, where $\lambda \approx 15$–$25$ Hz and $\Delta t = 0.005$ s, the overestimate reaches 3–6%, a directional error that inflates event counts and compresses estimated inter-beat intervals. Because the IG density mode lies just before the hazard peak, the majority of beats are generated in the overestimating regime, producing a net positive bias in event rate across a full simulation.
 
 The exact within-step firing probability, under the assumption that $\mu(t)$ is constant within the interval $[t_i, t_{i+1}]$, is obtained directly from the survival function ratio:
 
@@ -537,7 +580,7 @@ using the identity $1 - e^x = -\text{expm1}(x)$, which is numerically stable for
 #| label: fig-bernoulli-vs-survival
 #| fig-cap: "Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. **Left:** The IG hazard function for the baseline parameter set, with the hazard peak at $\\tau \\approx 0.72$ s. **Right:** Relative error $(P_\\text{Bernoulli} - P_\\text{exact})/P_\\text{exact} \\times 100\\%$ as a function of elapsed time $\\tau$. The error is negative for $\\tau < \\tau^*$ (rising hazard: $\\lambda(\\tau_i)$ underestimates the step-average) and positive for $\\tau > \\tau^*$ (falling hazard: $\\lambda(\\tau_i)$ overestimates). The maximum positive overestimate, annotated on the right panel, occurs just past the hazard peak where $\\lambda$ is largest and the surplus $\\lambda(\\tau_i)\\Delta t - P_{\\text{exact}}$ peaks. Because most beats are generated in this post-peak regime, the net bias across a full simulation is a systematic overestimate of event counts."
 
-fs <- study_firing_bias(mu = PARAMS$free$mu_0, kappa = PARAMS$free$kappa,
+fs <- study_firing_bias(mu = PARAMS$free$mu_0, kappa = kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho),
                         dt = 0.005, tau_range = c(0.3, 3 * PARAMS$free$mu_0))
 
 par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
@@ -578,7 +621,7 @@ The full simulation integrates the three components above into a single time-ind
 
 # Identifiability Analysis {#sec-identifiability}
 
-The framework introduces six free parameters: $\Theta = \{\sigma_p,\, c_p,\, \sigma_s,\, c_s,\, \mu_0,\, \kappa\}$. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal — the RR interval series — and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.
+The framework introduces six free parameters: $\Theta = \{\sigma_p,\, c_p,\, \sigma_s,\, c_s,\, \mu_0,\, \kappa\}$. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal, the RR interval series, and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.
 
 ```{r}
 #| label: ident-setup
@@ -589,7 +632,7 @@ source("R/identifiability.R")
 
 ## Separability of the Conditional Log-Likelihood
 
-The conditional log-likelihood — conditioning on the latent state trajectory as observed in a simulation — separates into three independent blocks:
+The conditional log-likelihood, conditioning on the latent state trajectory as observed in a simulation, separates into three independent blocks:
 
 $$
 \log \mathcal{L}(\Theta \mid \mathbf{x}_{0:T},\, \{t_k\})
@@ -688,7 +731,7 @@ knitr::kable(fim_tbl, escape = FALSE,
                            "Condition number"))
 ```
 
-The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]$. Substituting the analytic expressions gives a ratio of $2\kappa\sum_k e^{\Delta_k}/(N\mu_0)$; for the reference parameters (with $\kappa = `r PARAMS$free$kappa`$, $N \approx `r round(720 / PARAMS$free$mu_0)`$ beats, $\bar{w} \approx 1$) this simplifies to $2\kappa/\mu_0 = `r round(2 * PARAMS$free$kappa / PARAMS$free$mu_0, 0)`$, well within the identifiable regime and far below $10^3$.
+The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $\max[I(\log\mu_0),\,I(\log\kappa)]/\min[I(\log\mu_0),\,I(\log\kappa)]$. Substituting the analytic expressions gives a ratio of $2\kappa\sum_k e^{\Delta_k}/(N\mu_0)$; for the reference parameters (with $\kappa = `r kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)`$, $N \approx `r round(720 / PARAMS$free$mu_0)`$ beats, $\bar{w} \approx 1$) this simplifies to $2/\rho^2 = `r round(2 / PARAMS$free$rho^2, 0)`$, well within the identifiable regime and far below $10^3$.
 
 ## Simulation Recovery Study {#sec-recovery}
 
@@ -746,7 +789,7 @@ knitr::kable(rec_tbl, escape = FALSE,
                            "RMSE", "95\\% CI coverage"))
 ```
 
-Relative bias is below 0.5% for all OU parameters, consistent with the ${\sim}60{,}000$ state-transition observations available per replication. For the IG block, $\mu_0$ and $\kappa$ show sub-percent relative bias (Table~\ref{tbl-recovery}), confirming that the interval-averaged $\bar\Delta_k$ estimator introduces no material distortion. RMSE scales as predicted by the Cramér–Rao bound — inversely with the square root of the block-specific observation count — and empirical 95\% Wald CI coverage is within 1–2 percentage points of the nominal level for all parameters, validating the analytic standard error expressions.
+Relative bias is below 0.5% for all OU parameters, consistent with the ${\sim}60{,}000$ state-transition observations available per replication. For the IG block, $\mu_0$ and $\kappa$ show sub-percent relative bias [@tbl-recovery], confirming that the interval-averaged $\bar\Delta_k$ estimator introduces no material distortion. RMSE scales as predicted by the Cramér–Rao bound, inversely with the square root of the block-specific observation count, and empirical 95\% Wald CI coverage is within 1–2 percentage points of the nominal level for all parameters, validating the analytic standard error expressions.
 
 ## Profile Likelihood {#sec-profiles}
 
@@ -771,7 +814,7 @@ true_vals <- c(sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
                c_p = fp$c_p, c_s = fp$c_s)
 
 plot_profiles(PROFILES, true_vals = true_vals,
-              main = "Profile Likelihoods — Reference Parameter Set")
+              main = "Profile Likelihoods, Reference Parameter Set")
 ```
 
 All six profiles are strictly unimodal and sharply peaked. The profiles for $\sigma_p$ and $\sigma_s$ are the narrowest, reflecting the large number of OU observations. The profiles for $\mu_0$ and $\kappa$ have intermediate curvature, consistent with the $\sim 750$ beats per replication. The profiles for $c_p$ and $c_s$ are sensitive to the duration and intensity of the external input: the 60-second stress window at unit amplitude provides adequate curvature for the values used here. Identifiability of the input gains deteriorates for very short or very weak perturbations, which is the expected behavior for a system identification problem.
@@ -794,11 +837,10 @@ uncoupled parameters.
 # Here b_ps*b_sp = 0.15 * (-0.10) = -0.015 << 0.4 (well within the stable region).
 PARAMS_COUPLED <- make_model_params(
   a_p = 2.0, a_s = 0.2,
-  sigma_p = 0.2, sigma_s = 0.07,
-  mu_0 = 1.0, kappa = 20,
-  c_p = -1.0, c_s = 0.1,
-  b_ps =  0.15,   # sympathetic → vagal excitation
-  b_sp = -0.10    # vagal → sympathetic inhibition
+  a_ps = 0.15, a_sp = 0.10,   # mutual inhibition: s→p and p→s, magnitudes both ≥ 0
+  sigma_p = 0.20, sigma_s = 0.07,
+  mu_0 = 1.0, rho = 0.2236,
+  c_p = -1.0, c_s = 0.1
 )
 
 set.seed(5678)
@@ -827,7 +869,7 @@ true_coupled <- c(sigma_p = fp_c$sigma_p, sigma_s = fp_c$sigma_s,
                   b_ps    = fp_c$b_ps,    b_sp    = fp_c$b_sp)
 
 plot_profiles(PROF_COUPLED, true_vals = true_coupled,
-              main = "Profile Likelihoods — Coupled Model")
+              main = "Profile Likelihoods, Coupled Model")
 ```
 
 ```{r}
@@ -854,7 +896,7 @@ plot_recovery(REC_COUPLED$summary,
               main = "Coupled-Model Recovery Study (N = 200, 300 s each)")
 ```
 
-The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all eight eigenvalues strictly positive confirms local identifiability of the coupling terms *conditioned on the observed state trajectory*. Whether the marginal spike-train likelihood — which integrates over the unobserved latent states — carries sufficient information to identify $b_{ps}$ and $b_{sp}$ is a separate question addressed by the filter in @sec-inference.
+The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all eight eigenvalues strictly positive confirms local identifiability of the coupling terms *conditioned on the observed state trajectory*. Whether the marginal spike-train likelihood, which integrates over the unobserved latent states, carries sufficient information to identify $b_{ps}$ and $b_{sp}$ is a separate question addressed by the filter in @sec-inference.
 
 ## Sensitivity to Structural Parameters {#sec-sensitivity}
 
@@ -920,7 +962,7 @@ m_{k|k-1} = F(\tau_k)\,m_{k-1|k-1} + d(\tau_k),
 P_{k|k-1} = F(\tau_k)\,P_{k-1|k-1}\,F(\tau_k)^\top + Q(\tau_k),
 $$
 
-where $F(\tau) = \mathrm{diag}(e^{-a_p\tau},\, e^{-a_s\tau})$, $Q(\tau) = \mathrm{diag}\!\left(\tfrac{\sigma_p^2}{2a_p}(1-e^{-2a_p\tau}),\, \tfrac{\sigma_s^2}{2a_s}(1-e^{-2a_s\tau})\right)$, and $d(\tau)$ is the input-driven mean shift $\bigl[\tfrac{c_p u}{a_p}(1-e^{-a_p\tau}),\, \tfrac{c_s u}{a_s}(1-e^{-a_s\tau})\bigr]^\top$. Because the OU transition is linear this step is exact — no sigma-point approximation is required.
+where $F(\tau) = \mathrm{diag}(e^{-a_p\tau},\, e^{-a_s\tau})$, $Q(\tau) = \mathrm{diag}\!\left(\tfrac{\sigma_p^2}{2a_p}(1-e^{-2a_p\tau}),\, \tfrac{\sigma_s^2}{2a_s}(1-e^{-2a_s\tau})\right)$, and $d(\tau)$ is the input-driven mean shift $\bigl[\tfrac{c_p u}{a_p}(1-e^{-a_p\tau}),\, \tfrac{c_s u}{a_s}(1-e^{-a_s\tau})\bigr]^\top$. Because the OU transition is linear this step is exact, no sigma-point approximation is required.
 
 **Update.** At spike time $t_k$ the observation is $\tau_k \sim \mathrm{IG}\!\left(\mu_0 e^{-\Delta_k},\, \kappa\right)$.  The observation function $h(\mathbf{x}) = \mu_0 e^{p - s}$ is nonlinear in $\mathbf{x} = [p, s]^\top$, so the update uses UKF sigma-point quadrature with $2L + 1 = 5$ points ($L=2$):
 
@@ -1068,7 +1110,7 @@ mu_beats <- approx(RES$time, RES$mu, xout = beat_t)$y
 
 ```{r}
 #| label: fig-results-main
-#| fig-cap: "Simulation of the autonomic response to a sustained stress protocol. **Row 1:** Exogenous input $u(t)$. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$ — the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
+#| fig-cap: "Simulation of the autonomic response to a sustained stress protocol. **Row 1:** Exogenous input $u(t)$. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
 #| fig-height: 9
 
 layout(matrix(1:4, 4, 1), heights = c(0.6, 0.9, 0.9, 1.4))
@@ -1082,7 +1124,7 @@ mtext("Autonomic Response to a Sustained Stress Protocol",
         outer = TRUE, cex = 1.05, font = 2)
 grid(col = "lightgray", lty = 1)
 
-# Row 2: Net drive Delta(t) — identifiable quantity
+# Row 2: Net drive Delta(t), identifiable quantity
 plot(RES$time, RES$delta, type = "l", col = "#2C5F2E", lwd = 1.5,
      ylab = expression(Delta(t) == s(t) - p(t)), xaxt = "n",
      frame.plot = FALSE)
@@ -1133,7 +1175,8 @@ rmean  <- zoo::rollmean(rr, rr_wn)
 rvar   <- zoo::rollapply(rr, rr_wn, var)
 
 mu_seq  <- seq(min(rmean, na.rm=TRUE), max(rmean, na.rm=TRUE), length.out = 200)
-var_th  <- mu_seq^3 / PARAMS$free$kappa
+kap_ref <- kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)
+var_th  <- mu_seq^3 / kap_ref
 
 par(mar = c(4.5, 5, 2.5, 1))
 plot(rmean, rvar, pch = 20, cex = 0.5, col = rgb(0, 0, 0, 0.3),
@@ -1144,7 +1187,7 @@ plot(rmean, rvar, pch = 20, cex = 0.5, col = rgb(0, 0, 0, 0.3),
 lines(mu_seq, var_th, col = "#D55E00", lwd = 3)
 legend("topleft",
        legend = c("Rolling windows (n=10)",
-                  expression(Var(tau) == mu^3 / kappa ~ "(theoretical)")),
+           bquote(Var(tau) == rho^2 * mu^3 / mu[0] ~ (rho == .(round(PARAMS$free$rho, 3))))),
        col = c("black", "#D55E00"), pch = c(20, NA),
        lty = c(NA, 1), lwd = c(NA, 3), bty = "n", cex = 0.85)
 grid(col = "lightgray", lty = 1)
@@ -1160,7 +1203,7 @@ $$
 
 forms an i.i.d. $\text{Exp}(1)$ sequence. The transformation $u_k = 1 - e^{-\Lambda_k}$ then produces i.i.d. $\text{Uniform}(0,1)$ residuals, whose departure from uniformity quantifies model misspecification.
 
-The $\Lambda_k$ values are computed by numerical integration of the stored intensity trace using the trapezoidal rule. For each inter-beat interval $[t_{k-1}, t_k]$, we accumulate the discrete approximation $\Lambda_k \approx \sum_i (\lambda_i + \lambda_{i+1})/2 \cdot \Delta t$ over the grid points spanning that interval. This is the direct, genuine computation of the theoretical quantity — it is not a simulation from the assumed distributional form, which would constitute a circular assessment.
+The $\Lambda_k$ values are computed by numerical integration of the stored intensity trace using the trapezoidal rule. For each inter-beat interval $[t_{k-1}, t_k]$, we accumulate the discrete approximation $\Lambda_k \approx \sum_i (\lambda_i + \lambda_{i+1})/2 \cdot \Delta t$ over the grid points spanning that interval. This is the direct, genuine computation of the theoretical quantity, it is not a simulation from the assumed distributional form, which would constitute a circular assessment.
 
 ```{r}
 #| label: fig-time-rescaling
@@ -1267,5 +1310,5 @@ The simulated beat train is generated by a doubly stochastic process: process no
 
 ##  Extensibility to Multiple Observation Streams
 
-The modular observation model interface defined in this framework supports the addition of further physiological streams without altering the state equation. Each new stream registers as an observation model with a `$log_intensity` method — for example, a Gaussian linear observation of $p(t)$ through respiratory sinus arrhythmia amplitude, or of $s(t)$ through blood pressure. When such a stream is available, the scale aliasing between $k_\text{sym}$ and $\sigma_s$ is broken: the additional observation provides an independent measurement of an individual state, making $p(t)$ and $s(t)$ separately identified and enabling the coupling terms $b_{ps}$ and $b_{sp}$ to be estimated. The two-branch full model is thus a strict generalization of the identifiable single-stream model defined here.
+The modular observation model interface defined in this framework supports the addition of further physiological streams without altering the state equation. Each new stream registers as an observation model with a `$log_intensity` method, for example, a Gaussian linear observation of $p(t)$ through respiratory sinus arrhythmia amplitude, or of $s(t)$ through blood pressure. When such a stream is available, the scale aliasing between $k_\text{sym}$ and $\sigma_s$ is broken: the additional observation provides an independent measurement of an individual state, making $p(t)$ and $s(t)$ separately identified and enabling the coupling terms $b_{ps}$ and $b_{sp}$ to be estimated. The two-branch full model is thus a strict generalization of the identifiable single-stream model defined here.
 

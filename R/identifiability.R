@@ -32,19 +32,22 @@ single_recovery <- function(true_params,
 
   fp           <- true_params$free
   use_coupled  <- (abs(fp$b_ps) + abs(fp$b_sp)) > 1e-12
-  true_vec <- c(sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
-                mu0     = fp$mu_0,    kappa   = fp$kappa,
-                c_p     = fp$c_p,     c_s     = fp$c_s)
-  hat_vec  <- c(sigma_p = mle$sigma_p, sigma_s = mle$sigma_s,
-                mu0     = mle$mu0,     kappa   = mle$kappa,
-                c_p     = mle$c_p,     c_s     = mle$c_s)
-  se_vec   <- c(sigma_p = mle$sigma_p_se, sigma_s = mle$sigma_s_se,
-                mu0     = mle$mu0_se,     kappa   = mle$kappa_se,
-                c_p     = mle$c_p_se,     c_s     = mle$c_s_se)
+  true_vec <- c(a_p = fp$a_p, a_s = fp$a_s,
+                sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
+                mu0 = fp$mu_0, rho = fp$rho,
+                c_p = fp$c_p, c_s = fp$c_s)
+  hat_vec  <- c(a_p = mle$a_p, a_s = mle$a_s,
+                sigma_p = mle$sigma_p, sigma_s = mle$sigma_s,
+                mu0 = mle$mu0, rho = mle$rho,
+                c_p = mle$c_p, c_s = mle$c_s)
+  se_vec   <- c(a_p = mle$a_p_se, a_s = mle$a_s_se,
+                sigma_p = mle$sigma_p_se, sigma_s = mle$sigma_s_se,
+                mu0 = mle$mu0_se, rho = mle$rho_se,
+                c_p = mle$c_p_se, c_s = mle$c_s_se)
   if (use_coupled) {
-    true_vec <- c(true_vec, b_ps = fp$b_ps, b_sp = fp$b_sp)
-    hat_vec  <- c(hat_vec,  b_ps = mle$b_ps, b_sp = mle$b_sp)
-    se_vec   <- c(se_vec,   b_ps = mle$b_ps_se, b_sp = mle$b_sp_se)
+    true_vec <- c(true_vec, a_ps = fp$a_ps, a_sp = fp$a_sp)
+    hat_vec  <- c(hat_vec,  a_ps = mle$a_ps, a_sp = mle$a_sp)
+    se_vec   <- c(se_vec,   a_ps = mle$a_ps_se, a_sp = mle$a_sp_se)
   }
 
   list(true = true_vec, hat = hat_vec, se = se_vec,
@@ -88,13 +91,14 @@ recovery_study <- function(N             = 200L,
   results <- Filter(Negate(is.null), results)
 
   use_coupled <- (abs(true_params$free$b_ps) + abs(true_params$free$b_sp)) > 1e-12
-  params <- c("sigma_p", "sigma_s", "mu0", "kappa", "c_p", "c_s")
-  labels <- c(expression(sigma[p]), expression(sigma[s]),
-              expression(mu[0]),    expression(kappa),
-              expression(c[p]),     expression(c[s]))
+  params <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho", "c_p", "c_s")
+  labels <- c(expression(a[p]), expression(a[s]),
+              expression(sigma[p]), expression(sigma[s]),
+              expression(mu[0]), expression(rho),
+              expression(c[p]), expression(c[s]))
   if (use_coupled) {
-    params <- c(params, "b_ps", "b_sp")
-    labels <- c(labels,  expression(b[ps]), expression(b[sp]))
+    params <- c(params, "a_ps", "a_sp")
+    labels <- c(labels, expression(a[ps]), expression(a[sp]))
   }
 
   summary_df <- do.call(rbind, lapply(seq_along(params), function(j) {
@@ -155,14 +159,16 @@ plot_recovery <- function(rec_summary,
                           main = "Conditional MLE Recovery Study") {
   df  <- rec_summary
   par_labels <- c(
+    a_p     = expression(a[p] ~ "(Hz)"),
+    a_s     = expression(a[s] ~ "(Hz)"),
     sigma_p = expression(sigma[p]),
     sigma_s = expression(sigma[s]),
     mu0     = expression(mu[0]),
-    kappa   = expression(kappa),
+    rho     = expression(rho ~ "(CV"[0]*")"),
     c_p     = expression(c[p]),
     c_s     = expression(c[s]),
-    b_ps    = expression(b[ps]),
-    b_sp    = expression(b[sp])
+    a_ps    = expression(a[ps]),
+    a_sp    = expression(a[sp])
   )
 
   np   <- nrow(df)
