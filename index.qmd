@@ -62,7 +62,7 @@ PARAMS <- make_model_params(
 KAPPA_REF <- kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)  # = 20
 
 
-INPUT_FN <- function(t) as.numeric(t >= 300 & t < 420)
+INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 10)
 
 set.seed(1234)
 RES <- sim_sde_ig(720, 0.005, PARAMS, INPUT_FN)
@@ -186,7 +186,7 @@ where $A_1, A_2 > 0$ are amplitude coefficients that depend on all four rate par
 
 ##  The Constrained Stochastic Differential Equations
 
-The autonomic state vector $\mathbf{x}(t) = [p(t),\, s(t)]^\top$ evolves according to a system of coupled linear SDEs. For inference from a single RR stream, the cross-branch coupling terms $b_{ps}$ and $b_{sp}$ are fixed at zero. Their identification requires a second independent observation stream, such as a simultaneous respiration signal, which pins the vagal component through the respiratory sinus arrhythmia mechanism, or continuous blood pressure, which provides an independent measurement of the sympatho-vagal balance through baroreflex dynamics (Section 6, extensibility). The constrained system is:
+The autonomic state vector $\mathbf{x}(t) = [p(t),\, s(t)]^\top$ evolves according to a system of coupled linear SDEs. The coupling terms $a_{ps}$ and $a_{sp}$ are free parameters estimated from data alongside $a_p$, $a_s$, $\sigma_p$, $\sigma_s$, $\mu_0$, and $\rho$. For the baseline single-stream protocol with no exogenous input, the data provide sufficient curvature to estimate the coupling magnitudes conditioned on the observed state trajectory (§\ref{sec-coupling}); the uncoupled constraint $a_{ps} = a_{sp} = 0$ is a special case used for comparison and for the initial simulation demonstrations. When coupling is nonzero, the OU log-likelihood blocks are no longer separable, and joint numerical optimization replaces the closed-form estimates (Section~\ref{sec-identifiability}). The full system is:
 
 $$
 \begin{aligned}
@@ -612,6 +612,17 @@ text(pk_tau + 0.06, pk_err,
 grid(col = "lightgray", lty = 1)
 ```
 
+###  Exogenous Input Protocol
+
+The simulation study uses a **double-logistic** input function to represent a rest–exercise–recovery protocol:
+
+$$
+u(t) \;=\; \sigma\!\bigl(k(t - t_{\rm on})\bigr)\cdot\sigma\!\bigl(k(t_{\rm off} - t)\bigr),
+\qquad \sigma(x) = (1 + e^{-x})^{-1}
+$$
+
+with $t_{\rm on} = 300$ s, $t_{\rm off} = 420$ s, and steepness $k = 10$ Hz. At $k = 10$ the 10–90\% rise time is $\ln(81)/k \approx 0.44$ s, which is negligible relative to both the vagal time constant ($\tau_p = 0.5$ s) and the sympathetic time constant ($\tau_s = 5$ s), so the transient is physiologically abrupt while remaining smooth and differentiable at all $t$. The boxcar $\mathbf{1}_{[t_{\rm on}, t_{\rm off})}(t)$ is the $k \to \infty$ limit; its breakpoint discontinuities create non-smooth gradients in the OU input-driven mean shift, which impairs profile likelihood computations and MLE convergence. The double-logistic eliminates this artifact without altering the qualitative autonomic response.
+
 ###  Complete Simulation Algorithm
 
 The full simulation integrates the three components above into a single time-indexed loop. At each step $i$:
@@ -623,7 +634,7 @@ The full simulation integrates the three components above into a single time-ind
 
 # Identifiability Analysis {#sec-identifiability}
 
-The framework introduces eight free parameters: $\Theta = \{a_p,\, a_s,\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$, where $c_p$ and $c_s$ are only identifiable when an exogenous input $u(t) \not\equiv 0$ is present. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal, the RR interval series, and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.
+The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in §\ref{sec-coupling}. For the baseline uncoupled analysis ($a_{ps} = a_{sp} = 0$) the active set reduces to six structural and two protocol-conditional parameters. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal, the RR interval series, and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.
 
 ```{r}
 #| label: ident-setup
@@ -661,7 +672,7 @@ $$
 
 where $\hat\mu_k = \hat\mu_0 e^{-\Delta_k}$, and $\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}$ is recovered by the delta method. These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)$ when $\Delta_k = 0$ (no autonomic variation), confirming consistency with the renewal process literature.
 
-**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, c_p,\, \log a_s,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $3 \times 3$ OU blocks and the $2 \times 2$ observation block.
+**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, c_p,\, \log a_s,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $3 \times 3$ OU blocks $({\log a_p,\, \log\sigma_p,\, c_p})$ and $({\log a_s,\, \log\sigma_s,\, c_s})$ and the $2 \times 2$ observation block. This block-diagonal structure holds for $a_{ps} = a_{sp} = 0$; when coupling is nonzero the OU blocks are linked and the FIM is computed as a single $10 \times 10$ numerical object [@sec-coupling].
 
 ## Observed Fisher Information Matrix
 
@@ -745,7 +756,7 @@ We generated $N = 500$ independent realizations from the reference parameter set
 #| cache: true
 #| include: false
 
-REC_INPUT <- function(t) as.numeric(t >= 120 & t < 180)
+REC_INPUT <- make_double_logistic(t_on = 120, t_off = 180, k = 10)
 
 # Recovery uses PARAMS defined in the setup chunk.
 # Input sensitivities c_p, c_s are non-zero, enabling identification.
@@ -827,11 +838,7 @@ All six profiles are strictly unimodal and sharply peaked. The profiles for $\si
 
 ## Cross-Branch Coupling Identifiability {#sec-coupling}
 
-The analyses above impose $b_{ps} = b_{sp} = 0$. Whether the coupling terms
-are identifiable from a single RR stream is an empirical question. We address
-it by simulating from a model with known non-zero coupling and then applying
-the same conditional MLE and profile likelihood machinery used for the six
-uncoupled parameters.
+The analyses above impose $a_{ps} = a_{sp} = 0$ (the uncoupled baseline). Whether the coupling terms are identifiable from a single RR stream is an empirical question. We address it by simulating from a model with known non-zero coupling and then applying the same conditional MLE and profile likelihood machinery used for the six uncoupled parameters.
 
 ```{r}
 #| label: coupling-setup
@@ -902,7 +909,7 @@ plot_recovery(REC_COUPLED$summary,
               main = "Coupled-Model Recovery Study (N = 200, 300 s each)")
 ```
 
-The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all eight eigenvalues strictly positive confirms local identifiability of the coupling terms *conditioned on the observed state trajectory*. Whether the marginal spike-train likelihood, which integrates over the unobserved latent states, carries sufficient information to identify $b_{ps}$ and $b_{sp}$ is a separate question addressed by the filter in @sec-inference.
+The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all eight eigenvalues strictly positive confirms local identifiability of the coupling terms *conditioned on the observed state trajectory*. Whether the marginal spike-train likelihood, which integrates over the unobserved latent states, carries sufficient information to identify $a_{ps}$ and $a_{sp}$ is a separate question addressed by the filter in @sec-inference.
 
 ## Sensitivity to Structural Parameters {#sec-sensitivity}
 
@@ -1116,7 +1123,7 @@ mu_beats <- approx(RES$time, RES$mu, xout = beat_t)$y
 
 ```{r}
 #| label: fig-results-main
-#| fig-cap: "Simulation of the autonomic response to a sustained stress protocol. **Row 1:** Exogenous input $u(t)$. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
+#| fig-cap: "Simulation of the autonomic response to a double-logistic stress protocol ($t_{\\rm on} = 300$ s, $t_{\\rm off} = 420$ s, $k = 10$ Hz). **Row 1:** Exogenous input $u(t)$; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
 #| fig-height: 9
 
 layout(matrix(1:4, 4, 1), heights = c(0.6, 0.9, 0.9, 1.4))

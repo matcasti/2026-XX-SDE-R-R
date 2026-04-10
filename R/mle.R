@@ -675,10 +675,23 @@ profile_lik_one <- function(param, grid, sim_res, mle = NULL) {
              pf$ll
            },
            rho = {
-             # Profile mu0 over fixed rho = v
+             # Correct profile: maximize L_obs over mu_0 as nuisance for fixed rho = v.
+             # kappa = mu_0 / v^2, so both mu_k and kappa change with mu_0; no
+             # closed form exists — 1-D optimize over log(mu_0).
              if (v <= 0) return(-Inf)
-             kap_v <- kappa_from_rho(mu0_hat, v)
-             sum(log_ig_pdf(tau_vec, mu_k_at_mu0hat, kap_v))
+             opt <- optimize(
+               function(mu0_v) {
+                 if (mu0_v <= 0) return(-Inf)
+                 kap_v  <- kappa_from_rho(mu0_v, v)   # = mu0_v / v^2
+                 mu_k_v <- mu0_v * g                   # g = exp(-delta_v), defined above
+                 val    <- sum(log_ig_pdf(tau_vec, mu_k_v, kap_v))
+                 if (is.finite(val)) val else -Inf
+               },
+               interval = c(mu0_hat * 0.05, mu0_hat * 20),
+               maximum  = TRUE,
+               tol      = 1e-6
+             )
+             opt$objective
            },
            -Inf   # unknown parameter name
     )

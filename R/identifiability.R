@@ -25,7 +25,7 @@ RECOVERY_MASTER_SEED <- 2026L
 
 single_recovery <- function(true_params,
                              duration = 300, dt = 0.005,
-                             input_fn = function(t) as.numeric(t >= 120 & t < 180),
+                             input_fn = make_double_logistic(120, 180),
                              seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
   mle     <- full_conditional_mle(sim_res)
@@ -68,7 +68,7 @@ recovery_study <- function(N = 200L,
                            true_params,
                            duration = 300,
                            dt = 0.005,
-                           input_fn = function(t) {as.numeric(t >= 120 & t < 180)},
+                           input_fn = make_double_logistic(120, 180),
                            use_parallel = TRUE) {
   set.seed(RECOVERY_MASTER_SEED)
   seeds <- sample.int(1e6L, N)

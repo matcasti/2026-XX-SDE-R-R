@@ -47,7 +47,7 @@ sensitivity_one <- function(a_p_val, a_s_val,
                             N_rep   = 50L,
                             duration = 300,
                             dt       = 0.005,
-                            input_fn = function(t) as.numeric(t >= 120 & t < 180)) {
+                            input_fn = make_double_logistic(120, 180)) {
 
   # Build modified parameter object — only structural rates change
   params_mod <- base_params

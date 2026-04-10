@@ -6,6 +6,21 @@
 # No side-effects: does NOT define PARAMS, INPUT_FN, or RES.
 # ============================================================
 
+# ---- Double-logistic input function ----
+# Smooth, differentiable approximation to a boxcar transient:
+#   u(t) ≈ 0  (rest)  →  1  (exercise)  →  0  (recovery)
+# with onset at t_on, offset at t_off, and steepness k (Hz).
+# At k = 10: 10–90% rise ≈ 0.44 s  ≪  τ_p = 0.5 s, τ_s = 5 s.
+# The boxcar is the k → ∞ limit; k = 10 preserves differentiability
+# without materially widening the transition relative to autonomic time scales.
+#
+# Usage:  INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420)
+
+make_double_logistic <- function(t_on, t_off, k = 10) {
+  force(t_on); force(t_off); force(k)
+  function(t) plogis(k * (t - t_on)) * plogis(k * (t_off - t))
+}
+
 # ---- Parameter object ----
 
 make_model_params <- function(
