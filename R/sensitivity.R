@@ -51,8 +51,8 @@ sensitivity_one <- function(a_p_val, a_s_val,
 
   # Build modified parameter object — only structural rates change
   params_mod <- base_params
-  params_mod$structural$a_p <- a_p_val
-  params_mod$structural$a_s <- a_s_val
+  params_mod$free$a_p <- a_p_val
+  params_mod$free$a_s <- a_s_val
 
   # (1) Conditional MLE recovery — N_rep short replications
   set.seed(SENSITIVITY_SEED)
@@ -81,8 +81,8 @@ sensitivity_one <- function(a_p_val, a_s_val,
   # (2) Filter RMSE on the reference simulation at modified structural params
   flt <- tryCatch({
     params_for_filter        <- base_params
-    params_for_filter$structural$a_p <- a_p_val
-    params_for_filter$structural$a_s <- a_s_val
+    params_for_filter$free$a_p <- a_p_val
+    params_for_filter$free$a_s <- a_s_val
     pp_ukf(sim_res_ref$spikes, params_for_filter,
            input_fn = sim_res_ref$input_fn)
   }, error = function(e) NULL)
@@ -118,8 +118,8 @@ run_sensitivity <- function(base_params,
                             N_rep         = 50L,
                             use_parallel  = TRUE) {
   grid <- sensitivity_grid(
-    ref_ap       = base_params$structural$a_p,
-    ref_as       = base_params$structural$a_s,
+    ref_ap       = base_params$free$a_p,
+    ref_as       = base_params$free$a_s,
     multipliers  = multipliers
   )
 

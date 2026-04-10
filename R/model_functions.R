@@ -264,7 +264,7 @@ make_rr_obs_model <- function() {
     description     = "IG point process; identifiable qty: Delta(t)=s(t)-p(t)",
     log_intensity   = function(tau, p, s, fp) {
       if (tau < 1e-3) return(-Inf)
-      log_ig_hazard(tau, compute_mu(p, s, fp$mu_0), kappa_from_rho(fp$mu_0, fp$kappa))
+      log_ig_hazard(tau, compute_mu(p, s, fp$mu_0), kappa_from_rho(fp$mu_0, fp$rho))
     }
   )
 }
@@ -309,6 +309,8 @@ sim_sde_ig <- function(duration, dt, params,
   n_spikes   <- 0L
   last_t     <- 0
 
+  kap <- kappa_from_rho(fp$mu_0, fp$rho)
+
   for (i in seq_len(n - 1)) {
     u <- input_fn(tg[i])
     if (use_coupled) {
@@ -326,8 +328,7 @@ sim_sde_ig <- function(duration, dt, params,
 
     loglam[i+1] <- obs_models[[1]]$log_intensity(tau_end, p[i+1], s[i+1], fp)
 
-    kap_i <- kappa_from_rho(fp$mu_0, fp$rho)
-    pf    <- p_fire_survival_ratio(tau_start, tau_end, mu_v[i+1], kap_i)
+    pf <- p_fire_survival_ratio(tau_start, tau_end, mu_v[i+1], kap)
     if (runif(1) < pf) {
       n_spikes <- n_spikes + 1L
       spikes[n_spikes] <- tg[i+1]

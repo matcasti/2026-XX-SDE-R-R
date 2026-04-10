@@ -31,7 +31,7 @@ single_recovery <- function(true_params,
   mle     <- full_conditional_mle(sim_res)
 
   fp           <- true_params$free
-  use_coupled  <- (abs(fp$b_ps) + abs(fp$b_sp)) > 1e-12
+  use_coupled  <- (abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12
   true_vec <- c(a_p = fp$a_p, a_s = fp$a_s,
                 sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
                 mu0 = fp$mu_0, rho = fp$rho,
@@ -64,12 +64,12 @@ single_recovery <- function(true_params,
 #   input_fn     : exogenous input; must be non-trivial to identify c_p, c_s
 #   use_parallel : use parallel::mclapply on Unix; falls back to lapply
 
-recovery_study <- function(N             = 200L,
-                            true_params,
-                            duration      = 300,
-                            dt            = 0.005,
-                            input_fn      = function(t) as.numeric(t >= 120 & t < 180),
-                            use_parallel  = TRUE) {
+recovery_study <- function(N = 200L,
+                           true_params,
+                           duration = 300,
+                           dt = 0.005,
+                           input_fn = function(t) {as.numeric(t >= 120 & t < 180)},
+                           use_parallel = TRUE) {
   set.seed(RECOVERY_MASTER_SEED)
   seeds <- sample.int(1e6L, N)
 
@@ -90,7 +90,7 @@ recovery_study <- function(N             = 200L,
   }
   results <- Filter(Negate(is.null), results)
 
-  use_coupled <- (abs(true_params$free$b_ps) + abs(true_params$free$b_sp)) > 1e-12
+  use_coupled <- (abs(true_params$free$a_ps) + abs(true_params$free$a_sp)) > 1e-12
   params <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho", "c_p", "c_s")
   labels <- c(expression(a[p]), expression(a[s]),
               expression(sigma[p]), expression(sigma[s]),
