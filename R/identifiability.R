@@ -222,9 +222,10 @@ plot_profiles <- function(profiles,
                            true_vals = NULL,
                            main = "Profile Likelihoods") {
   par_order <- intersect(
-    c("mu0", "kappa", "sigma_p", "sigma_s", "c_p", "c_s", "b_ps", "b_sp"),
+    c("a_p", "a_s", "sigma_p", "sigma_s", "c_p", "c_s", "mu0", "rho",
+      "a_ps", "a_sp"),
     names(profiles))
-  nc_pl <- min(3L, length(par_order))
+  nc_pl <- min(4L, length(par_order))   # 4 columns fits 8 params in 2 rows, 10 in 3
   nr_pl <- ceiling(length(par_order) / nc_pl)
   op <- par(mfrow = c(nr_pl, nc_pl), mar = c(4, 4.5, 2.5, 1), oma = c(0, 0, 2, 0))
 

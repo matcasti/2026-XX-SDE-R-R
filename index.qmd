@@ -195,11 +195,11 @@ ds(t) &= \bigl[-a_{sp}\, p(t) - a_s\, s(t) + c_s\, u(t)\bigr]\,dt + \sigma_s\,dW
 \end{aligned}
 $$
 
-where $W_p$ and $W_s$ are independent standard Wiener processes. Each branch is an Ornstein-Uhlenbeck process: mean-reverting to the homeostatic baseline (or to the input-driven equilibrium when $u(t) \neq 0$), with a time constant and noise amplitude set by its respective parameters. The structural parameters $a_p$ and $a_s$ are fixed at physiologically calibrated values; only $\sigma_p$, $\sigma_s$, $\mu_0$, $\kappa$, and when an external input is present, $c_p$ and $c_s$, are estimated from data.
+where $W_p$ and $W_s$ are independent standard Wiener processes. Each branch is an Ornstein-Uhlenbeck process: mean-reverting to the homeostatic baseline (or to the input-driven equilibrium when $u(t) \neq 0$), with a time constant and noise amplitude set by its respective parameters. All six parameters $\{a_p,\, a_s,\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho\}$ are estimated from the RR interval series; the literature values $a_p \approx 2\,\text{Hz}$ and $a_s \approx 0.2\,\text{Hz}$ serve only as starting values for the optimiser [@sec-identifiability]. When a non-trivial external input is present, $c_p$ and $c_s$ are additionally identifiable.
 
 ###  Vagal Kinetics and the HF Band
 
-The parasympathetic state $p(t)$, governed by $a_p = 2.0$ Hz (time constant $\tau_p = 0.5$ s), acts as a high-pass filter on the Wiener process noise. Its impulse response decays within approximately $2$–$3$ s. This rapid recovery allows beat-to-beat vagal modulation and is responsible for the spectral power in the HF band ($0.15$–$0.4$ Hz), classically associated with respiratory sinus arrhythmia [@malik1996heart].
+The parasympathetic state $p(t)$, governed by a self-decay rate $a_p$ estimated from data (simulation ground truth: $a_p = 2.0$ Hz, time constant $\tau_p = 0.5$ s), acts as a high-pass filter on the Wiener process noise. Its impulse response decays within approximately $2$–$3$ s. This rapid recovery allows beat-to-beat vagal modulation and is responsible for the spectral power in the HF band ($0.15$–$0.4$ Hz), classically associated with respiratory sinus arrhythmia [@malik1996heart].
 
 ```{r}
 #| label: fig-impulse-response
@@ -230,7 +230,7 @@ grid(col = "lightgray", lty = 1)
 
 ###  Sympathetic Inertia and the LF Band
 
-The sympathetic state $s(t)$, governed by $a_s = 0.2$ Hz (time constant $\tau_s = 5$ s), acts as a low-pass filter. Its slow decay integrates inputs over a prolonged window, producing the smooth, trending components of autonomic regulation. The emergent spectral power is concentrated in the LF band ($0.04$–$0.15$ Hz) without any explicit oscillatory forcing, arising purely from the interaction of OU dynamics and the Wiener process.
+The sympathetic state $s(t)$, governed by a self-decay rate $a_s$ estimated from data (simulation ground truth: $a_s = 0.2$ Hz, time constant $\tau_s = 5$ s), acts as a low-pass filter. Its slow decay integrates inputs over a prolonged window, producing the smooth, trending components of autonomic regulation. The emergent spectral power is concentrated in the LF band ($0.04$–$0.15$ Hz) without any explicit oscillatory forcing, arising purely from the interaction of OU dynamics and the Wiener process.
 
 ##  Visualization of the Latent State Trajectories
 
@@ -814,8 +814,9 @@ PROFILES <- all_profile_likelihoods(RES, n_grid = 80, width = 3.0)
 #| fig-height: 5.5
 
 fp <- PARAMS$free
-true_vals <- c(sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
-               mu0 = fp$mu_0, kappa = fp$kappa,
+true_vals <- c(a_p = fp$a_p, a_s = fp$a_s,
+               sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
+               mu0 = fp$mu_0, rho = fp$rho,
                c_p = fp$c_p, c_s = fp$c_s)
 
 plot_profiles(PROFILES, true_vals = true_vals,
@@ -905,7 +906,7 @@ The FIM eigenvalue spectrum for the coupled model provides the diagnostic summar
 
 ## Sensitivity to Structural Parameters {#sec-sensitivity}
 
-The decay rates $a_p$ and $a_s$ are fixed at physiologically calibrated values rather than estimated from data. To verify that conclusions about identifiability and filter performance are stable across the range of plausible values reported in the literature, we repeat the conditional MLE recovery ($N = 50$ replications) and filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to the structural constraint $a_p > a_s$.
+The decay rates $a_p$ and $a_s$ are free parameters estimated jointly with $\sigma_p$, $\sigma_s$, $\mu_0$, and $\rho$.  Their recovery depends on the spectral content of the recording: a short or narrowband protocol may not resolve $a_p$ from $\sigma_p$, or $a_s$ from $\sigma_s$, precisely.  To verify that recovery of the diffusion and observation parameters and filter performance are stable across the physiologically plausible range of true rate values, we repeat the conditional MLE recovery ($N = 50$ replications, all parameters including $a_p$ and $a_s$ estimated jointly) and filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to the constraint $a_p > a_s$.  For the filter component, $a_p$ and $a_s$ are held at the grid values rather than re-estimated, quantifying robustness to rate misspecification as would occur if an erroneous prior were used to initialise the filter.
 
 ```{r}
 #| label: sensitivity-run

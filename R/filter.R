@@ -117,7 +117,7 @@
 
 .ukf_update <- function(m1, P1, tau_k, fp) {
   mu_0  <- fp$mu_0
-  kappa <- fp$kappa
+  kappa <- kappa_from_rho(fp$mu_0, fp$rho)
 
   pts    <- .sigma_points(m1, P1)
   h_pts  <- mu_0 * exp(pts[1L, ] - pts[2L, ])   # h(sigma_i)
@@ -305,7 +305,7 @@ pp_mle <- function(spikes,
             " — consider re-running from a perturbed starting value.")
 
   fp_hat     <- unpack(res$par)
-  params_hat <- list(structural = sp, free = fp_hat)
+  params_hat <- list(structural = params_init$structural, free = fp_hat)
 
   list(
     params_hat  = params_hat,
