@@ -67,16 +67,19 @@ sensitivity_one <- function(a_p_val, a_s_val,
   results <- Filter(Negate(is.null), results)
 
   # Aggregate bias and RMSE for the four IG + OU-amplitude parameters
-  agg <- lapply(c("sigma_p", "sigma_s", "mu0", "kappa"), function(p) {
+  agg <- lapply(c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho"), function(p) {
     hat_v  <- sapply(results, function(r) r$hat[p])
     true_v <- sapply(results, function(r) r$true[p])
-    ok     <- is.finite(hat_v)
-    bias   <- mean(hat_v[ok] - true_v[ok])
-    rmse   <- sqrt(mean((hat_v[ok] - true_v[ok])^2))
-    rel_rmse <- 100 * rmse / abs(mean(true_v[ok]))
+    ok     <- is.finite(hat_v) & is.finite(true_v)
+    if (sum(ok) == 0L)
+      return(c(bias = NA_real_, rmse = NA_real_, rel_rmse_pct = NA_real_))
+    bias     <- mean(hat_v[ok] - true_v[ok])
+    rmse     <- sqrt(mean((hat_v[ok] - true_v[ok])^2))
+    t_bar    <- mean(true_v[ok])
+    rel_rmse <- if (abs(t_bar) > 1e-10) 100 * rmse / abs(t_bar) else NA_real_
     c(bias = bias, rmse = rmse, rel_rmse_pct = rel_rmse)
   })
-  names(agg) <- c("sigma_p", "sigma_s", "mu0", "kappa")
+  names(agg) <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
 
   # (2) Filter RMSE on the reference simulation at modified structural params
   flt <- tryCatch({
@@ -97,16 +100,18 @@ sensitivity_one <- function(a_p_val, a_s_val,
   }
 
   data.frame(
-    a_p           = a_p_val,
-    a_s           = a_s_val,
-    rel_rmse_sigma_p = agg$sigma_p["rel_rmse_pct"],
-    rel_rmse_sigma_s = agg$sigma_s["rel_rmse_pct"],
-    rel_rmse_mu0     = agg$mu0["rel_rmse_pct"],
-    rel_rmse_kappa   = agg$kappa["rel_rmse_pct"],
+    a_p               = a_p_val,
+    a_s               = a_s_val,
+    rel_rmse_a_p      = agg$a_p["rel_rmse_pct"],
+    rel_rmse_a_s      = agg$a_s["rel_rmse_pct"],
+    rel_rmse_sigma_p  = agg$sigma_p["rel_rmse_pct"],
+    rel_rmse_sigma_s  = agg$sigma_s["rel_rmse_pct"],
+    rel_rmse_mu0      = agg$mu0["rel_rmse_pct"],
+    rel_rmse_rho      = agg$rho["rel_rmse_pct"],
     filter_rmse_delta = flt_rmse,
-    filter_ll        = flt_ll,
-    n_valid          = length(results),
-    stringsAsFactors = FALSE
+    filter_ll         = flt_ll,
+    n_valid           = length(results),
+    stringsAsFactors  = FALSE
   )
 }
 
@@ -148,13 +153,16 @@ run_sensitivity <- function(base_params,
 plot_sensitivity <- function(sens_df,
                              ref_ap = 2.0,
                              ref_as = 0.2) {
-  metrics <- c("rel_rmse_sigma_p", "rel_rmse_sigma_s",
-               "rel_rmse_mu0",     "rel_rmse_kappa",
+  metrics <- c("rel_rmse_a_p",    "rel_rmse_a_s",
+               "rel_rmse_sigma_p","rel_rmse_sigma_s",
+               "rel_rmse_mu0",    "rel_rmse_rho",
                "filter_rmse_delta")
-  labels  <- c(expression("Rel. RMSE" ~ sigma[p] ~ "(%)"),
+  labels  <- c(expression("Rel. RMSE" ~ a[p] ~ "(%)"),
+               expression("Rel. RMSE" ~ a[s] ~ "(%)"),
+               expression("Rel. RMSE" ~ sigma[p] ~ "(%)"),
                expression("Rel. RMSE" ~ sigma[s] ~ "(%)"),
                expression("Rel. RMSE" ~ mu[0] ~ "(%)"),
-               expression("Rel. RMSE" ~ kappa ~ "(%)"),
+               expression("Rel. RMSE" ~ rho ~ "(%)"),
                expression("Filter RMSE" ~ hat(Delta)(t)))
 
   ap_vals <- sort(unique(sens_df$a_p))
@@ -162,7 +170,7 @@ plot_sensitivity <- function(sens_df,
   n_ap    <- length(ap_vals)
   n_as    <- length(as_vals)
 
-  op <- par(mfrow = c(2, 3), mar = c(4, 4.5, 2.5, 3),
+  op <- par(mfrow = c(3, 3), mar = c(4, 4.5, 2.5, 3),
             oma  = c(0, 0, 2.5, 0))
 
   for (mi in seq_along(metrics)) {

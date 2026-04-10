@@ -441,7 +441,8 @@ window.Quarto = {
   <li><a href="#exact-ornstein-uhlenbeck-transition-kernel" id="toc-exact-ornstein-uhlenbeck-transition-kernel" class="nav-link" data-scroll-target="#exact-ornstein-uhlenbeck-transition-kernel"><span class="header-section-number">3.5.1</span> Exact Ornstein-Uhlenbeck Transition Kernel</a></li>
   <li><a href="#log-space-intensity-evaluation" id="toc-log-space-intensity-evaluation" class="nav-link" data-scroll-target="#log-space-intensity-evaluation"><span class="header-section-number">3.5.2</span> Log-Space Intensity Evaluation</a></li>
   <li><a href="#survival-ratio-event-generation" id="toc-survival-ratio-event-generation" class="nav-link" data-scroll-target="#survival-ratio-event-generation"><span class="header-section-number">3.5.3</span> Survival-Ratio Event Generation</a></li>
-  <li><a href="#complete-simulation-algorithm" id="toc-complete-simulation-algorithm" class="nav-link" data-scroll-target="#complete-simulation-algorithm"><span class="header-section-number">3.5.4</span> Complete Simulation Algorithm</a></li>
+  <li><a href="#exogenous-input-protocol" id="toc-exogenous-input-protocol" class="nav-link" data-scroll-target="#exogenous-input-protocol"><span class="header-section-number">3.5.4</span> Exogenous Input Protocol</a></li>
+  <li><a href="#complete-simulation-algorithm" id="toc-complete-simulation-algorithm" class="nav-link" data-scroll-target="#complete-simulation-algorithm"><span class="header-section-number">3.5.5</span> Complete Simulation Algorithm</a></li>
   </ul></li>
   </ul></li>
   <li><a href="#sec-identifiability" id="toc-sec-identifiability" class="nav-link" data-scroll-target="#sec-identifiability"><span class="header-section-number">4</span> Identifiability Analysis</a>
@@ -628,17 +629,17 @@ S_\Delta(f) \;\approx\; \frac{A_1}{\lambda_1^2 + (2\pi f)^2}
 </section>
 <section id="the-constrained-stochastic-differential-equations" class="level2" data-number="3.2">
 <h2 data-number="3.2" class="anchored" data-anchor-id="the-constrained-stochastic-differential-equations"><span class="header-section-number">3.2</span> The Constrained Stochastic Differential Equations</h2>
-<p>The autonomic state vector <span class="math inline">\(\mathbf{x}(t) = [p(t),\, s(t)]^\top\)</span> evolves according to a system of coupled linear SDEs. For inference from a single RR stream, the cross-branch coupling terms <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> are fixed at zero. Their identification requires a second independent observation stream, such as a simultaneous respiration signal, which pins the vagal component through the respiratory sinus arrhythmia mechanism, or continuous blood pressure, which provides an independent measurement of the sympatho-vagal balance through baroreflex dynamics (Section 6, extensibility). The constrained system is:</p>
+<p>The autonomic state vector <span class="math inline">\(\mathbf{x}(t) = [p(t),\, s(t)]^\top\)</span> evolves according to a system of coupled linear SDEs. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are free parameters estimated from data alongside <span class="math inline">\(a_p\)</span>, <span class="math inline">\(a_s\)</span>, <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>, <span class="math inline">\(\mu_0\)</span>, and <span class="math inline">\(\rho\)</span>. For the baseline single-stream protocol with no exogenous input, the data provide sufficient curvature to estimate the coupling magnitudes conditioned on the observed state trajectory (§<span class="math inline">\(\ref{sec-coupling}\)</span>); the uncoupled constraint <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span> is a special case used for comparison and for the initial simulation demonstrations. When coupling is nonzero, the OU log-likelihood blocks are no longer separable, and joint numerical optimization replaces the closed-form estimates (Section~<span class="math inline">\(\ref{sec-identifiability}\)</span>). The full system is:</p>
 <p><span class="math display">\[
 \begin{aligned}
 dp(t) &amp;= \bigl[-a_p\, p(t) - a_{ps}\, s(t) + c_p\, u(t)\bigr]\,dt + \sigma_p\,dW_p(t) \\
 ds(t) &amp;= \bigl[-a_{sp}\, p(t) - a_s\, s(t) + c_s\, u(t)\bigr]\,dt + \sigma_s\,dW_s(t)
 \end{aligned}
 \]</span></p>
-<p>where <span class="math inline">\(W_p\)</span> and <span class="math inline">\(W_s\)</span> are independent standard Wiener processes. Each branch is an Ornstein-Uhlenbeck process: mean-reverting to the homeostatic baseline (or to the input-driven equilibrium when <span class="math inline">\(u(t) \neq 0\)</span>), with a time constant and noise amplitude set by its respective parameters. The structural parameters <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> are fixed at physiologically calibrated values; only <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>, <span class="math inline">\(\mu_0\)</span>, <span class="math inline">\(\kappa\)</span>, and when an external input is present, <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span>, are estimated from data.</p>
+<p>where <span class="math inline">\(W_p\)</span> and <span class="math inline">\(W_s\)</span> are independent standard Wiener processes. Each branch is an Ornstein-Uhlenbeck process: mean-reverting to the homeostatic baseline (or to the input-driven equilibrium when <span class="math inline">\(u(t) \neq 0\)</span>), with a time constant and noise amplitude set by its respective parameters. All six parameters <span class="math inline">\(\{a_p,\, a_s,\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho\}\)</span> are estimated from the RR interval series; the literature values <span class="math inline">\(a_p \approx 2\,\text{Hz}\)</span> and <span class="math inline">\(a_s \approx 0.2\,\text{Hz}\)</span> serve only as starting values for the optimiser <a href="#sec-identifiability" class="quarto-xref">Section&nbsp;4</a>. When a non-trivial external input is present, <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are additionally identifiable.</p>
 <section id="vagal-kinetics-and-the-hf-band" class="level3" data-number="3.2.1">
 <h3 data-number="3.2.1" class="anchored" data-anchor-id="vagal-kinetics-and-the-hf-band"><span class="header-section-number">3.2.1</span> Vagal Kinetics and the HF Band</h3>
-<p>The parasympathetic state <span class="math inline">\(p(t)\)</span>, governed by <span class="math inline">\(a_p = 2.0\)</span> Hz (time constant <span class="math inline">\(\tau_p = 0.5\)</span> s), acts as a high-pass filter on the Wiener process noise. Its impulse response decays within approximately <span class="math inline">\(2\)</span>–<span class="math inline">\(3\)</span> s. This rapid recovery allows beat-to-beat vagal modulation and is responsible for the spectral power in the HF band (<span class="math inline">\(0.15\)</span>–<span class="math inline">\(0.4\)</span> Hz), classically associated with respiratory sinus arrhythmia <span class="citation" data-cites="malik1996heart">(<a href="#ref-malik1996heart" role="doc-biblioref">Malik 1996</a>)</span>.</p>
+<p>The parasympathetic state <span class="math inline">\(p(t)\)</span>, governed by a self-decay rate <span class="math inline">\(a_p\)</span> estimated from data (simulation ground truth: <span class="math inline">\(a_p = 2.0\)</span> Hz, time constant <span class="math inline">\(\tau_p = 0.5\)</span> s), acts as a high-pass filter on the Wiener process noise. Its impulse response decays within approximately <span class="math inline">\(2\)</span>–<span class="math inline">\(3\)</span> s. This rapid recovery allows beat-to-beat vagal modulation and is responsible for the spectral power in the HF band (<span class="math inline">\(0.15\)</span>–<span class="math inline">\(0.4\)</span> Hz), classically associated with respiratory sinus arrhythmia <span class="citation" data-cites="malik1996heart">(<a href="#ref-malik1996heart" role="doc-biblioref">Malik 1996</a>)</span>.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -679,7 +680,7 @@ Figure&nbsp;1: Theoretical impulse response of the vagal (blue) and sympathetic 
 </section>
 <section id="sympathetic-inertia-and-the-lf-band" class="level3" data-number="3.2.2">
 <h3 data-number="3.2.2" class="anchored" data-anchor-id="sympathetic-inertia-and-the-lf-band"><span class="header-section-number">3.2.2</span> Sympathetic Inertia and the LF Band</h3>
-<p>The sympathetic state <span class="math inline">\(s(t)\)</span>, governed by <span class="math inline">\(a_s = 0.2\)</span> Hz (time constant <span class="math inline">\(\tau_s = 5\)</span> s), acts as a low-pass filter. Its slow decay integrates inputs over a prolonged window, producing the smooth, trending components of autonomic regulation. The emergent spectral power is concentrated in the LF band (<span class="math inline">\(0.04\)</span>–<span class="math inline">\(0.15\)</span> Hz) without any explicit oscillatory forcing, arising purely from the interaction of OU dynamics and the Wiener process.</p>
+<p>The sympathetic state <span class="math inline">\(s(t)\)</span>, governed by a self-decay rate <span class="math inline">\(a_s\)</span> estimated from data (simulation ground truth: <span class="math inline">\(a_s = 0.2\)</span> Hz, time constant <span class="math inline">\(\tau_s = 5\)</span> s), acts as a low-pass filter. Its slow decay integrates inputs over a prolonged window, producing the smooth, trending components of autonomic regulation. The emergent spectral power is concentrated in the LF band (<span class="math inline">\(0.04\)</span>–<span class="math inline">\(0.15\)</span> Hz) without any explicit oscillatory forcing, arising purely from the interaction of OU dynamics and the Wiener process.</p>
 </section>
 </section>
 <section id="visualization-of-the-latent-state-trajectories" class="level2" data-number="3.3">
@@ -1094,8 +1095,17 @@ Figure&nbsp;7: Systematic bias of the Bernoulli approximation relative to the ex
 </div>
 </div>
 </section>
-<section id="complete-simulation-algorithm" class="level3" data-number="3.5.4">
-<h3 data-number="3.5.4" class="anchored" data-anchor-id="complete-simulation-algorithm"><span class="header-section-number">3.5.4</span> Complete Simulation Algorithm</h3>
+<section id="exogenous-input-protocol" class="level3" data-number="3.5.4">
+<h3 data-number="3.5.4" class="anchored" data-anchor-id="exogenous-input-protocol"><span class="header-section-number">3.5.4</span> Exogenous Input Protocol</h3>
+<p>The simulation study uses a <strong>double-logistic</strong> input function to represent a rest–exercise–recovery protocol:</p>
+<p><span class="math display">\[
+u(t) \;=\; \sigma\!\bigl(k(t - t_{\rm on})\bigr)\cdot\sigma\!\bigl(k(t_{\rm off} - t)\bigr),
+\qquad \sigma(x) = (1 + e^{-x})^{-1}
+\]</span></p>
+<p>with <span class="math inline">\(t_{\rm on} = 300\)</span> s, <span class="math inline">\(t_{\rm off} = 420\)</span> s, and steepness <span class="math inline">\(k = 10\)</span> Hz. At <span class="math inline">\(k = 10\)</span> the 10–90% rise time is <span class="math inline">\(\ln(81)/k \approx 0.44\)</span> s, which is negligible relative to both the vagal time constant (<span class="math inline">\(\tau_p = 0.5\)</span> s) and the sympathetic time constant (<span class="math inline">\(\tau_s = 5\)</span> s), so the transient is physiologically abrupt while remaining smooth and differentiable at all <span class="math inline">\(t\)</span>. The boxcar <span class="math inline">\(\mathbf{1}_{[t_{\rm on}, t_{\rm off})}(t)\)</span> is the <span class="math inline">\(k \to \infty\)</span> limit; its breakpoint discontinuities create non-smooth gradients in the OU input-driven mean shift, which impairs profile likelihood computations and MLE convergence. The double-logistic eliminates this artifact without altering the qualitative autonomic response.</p>
+</section>
+<section id="complete-simulation-algorithm" class="level3" data-number="3.5.5">
+<h3 data-number="3.5.5" class="anchored" data-anchor-id="complete-simulation-algorithm"><span class="header-section-number">3.5.5</span> Complete Simulation Algorithm</h3>
 <p>The full simulation integrates the three components above into a single time-indexed loop. At each step <span class="math inline">\(i\)</span>:</p>
 <ol type="1">
 <li><strong>State update</strong>: draw <span class="math inline">\(p_{i+1}\)</span> and <span class="math inline">\(s_{i+1}\)</span> from the exact OU transition densities with decay rates <span class="math inline">\(a_p\)</span>, <span class="math inline">\(a_s\)</span> and diffusion amplitudes <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>.</li>
@@ -1108,7 +1118,7 @@ Figure&nbsp;7: Systematic bias of the Bernoulli approximation relative to the ex
 </section>
 <section id="sec-identifiability" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Identifiability Analysis</h1>
-<p>The framework introduces eight free parameters: <span class="math inline">\(\Theta = \{a_p,\, a_s,\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}\)</span>, where <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are only identifiable when an exogenous input <span class="math inline">\(u(t) \not\equiv 0\)</span> is present. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal, the RR interval series, and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.</p>
+<p>The framework introduces up to ten free parameters: <span class="math inline">\(\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}\)</span>. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are identifiable only when <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are always free parameters; their conditional identifiability from a single RR stream is established in §<span class="math inline">\(\ref{sec-coupling}\)</span>. For the baseline uncoupled analysis (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>) the active set reduces to six structural and two protocol-conditional parameters. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal, the RR interval series, and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.</p>
 <section id="separability-of-the-conditional-log-likelihood" class="level2" data-number="4.1">
 <h2 data-number="4.1" class="anchored" data-anchor-id="separability-of-the-conditional-log-likelihood"><span class="header-section-number">4.1</span> Separability of the Conditional Log-Likelihood</h2>
 <p>The conditional log-likelihood, conditioning on the latent state trajectory as observed in a simulation, separates into three independent blocks:</p>
@@ -1130,7 +1140,7 @@ x_{i+1} = x_i e^{-a\Delta t} + \frac{c\, u_i}{a}(1 - e^{-a\Delta t}) + \varepsil
 \hat\kappa = \frac{N}{\displaystyle\sum_k \frac{(\tau_k - \hat\mu_k)^2}{\hat\mu_k^2\,\tau_k}}
 \]</span></p>
 <p>where <span class="math inline">\(\hat\mu_k = \hat\mu_0 e^{-\Delta_k}\)</span>, and <span class="math inline">\(\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}\)</span> is recovered by the delta method. These reduce to the standard inverse-Gaussian MLEs <span class="math inline">\(\hat\mu = \bar\tau\)</span> and <span class="math inline">\(\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)\)</span> when <span class="math inline">\(\Delta_k = 0\)</span> (no autonomic variation), confirming consistency with the renewal process literature.</p>
-<p><strong>Consequence 2: block-diagonal FIM.</strong> The Fisher information matrix is block-diagonal in the parameterization <span class="math inline">\((\log a_p,\, \log\sigma_p,\, c_p,\, \log a_s,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\rho)\)</span>. Identifiability reduces to showing that each block is positive definite: the two <span class="math inline">\(3 \times 3\)</span> OU blocks and the <span class="math inline">\(2 \times 2\)</span> observation block.</p>
+<p><strong>Consequence 2: block-diagonal FIM.</strong> The Fisher information matrix is block-diagonal in the parameterization <span class="math inline">\((\log a_p,\, \log\sigma_p,\, c_p,\, \log a_s,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\rho)\)</span>. Identifiability reduces to showing that each block is positive definite: the two <span class="math inline">\(3 \times 3\)</span> OU blocks <span class="math inline">\(({\log a_p,\, \log\sigma_p,\, c_p})\)</span> and <span class="math inline">\(({\log a_s,\, \log\sigma_s,\, c_s})\)</span> and the <span class="math inline">\(2 \times 2\)</span> observation block. This block-diagonal structure holds for <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>; when coupling is nonzero the OU blocks are linked and the FIM is computed as a single <span class="math inline">\(10 \times 10\)</span> numerical object <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>.</p>
 </section>
 <section id="observed-fisher-information-matrix" class="level2" data-number="4.2">
 <h2 data-number="4.2" class="anchored" data-anchor-id="observed-fisher-information-matrix"><span class="header-section-number">4.2</span> Observed Fisher Information Matrix</h2>
@@ -1204,13 +1214,13 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">Parasympathetic OU <span class="math inline">\((\log a_p,\, \log\sigma_p,\, c_p)\)</span></td>
-<td style="text-align: left;">3.43e+02</td>
+<td style="text-align: left;">3.41e+02</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">1.39e+03</td>
+<td style="text-align: left;">1.40e+03</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Sympathetic OU <span class="math inline">\((\log a_s,\, \log\sigma_s,\, c_s)\)</span></td>
-<td style="text-align: left;">7.73e+01</td>
+<td style="text-align: left;">7.74e+01</td>
 <td style="text-align: left;">2.88e+05</td>
 <td style="text-align: left;">4.14e+03</td>
 </tr>
@@ -1222,7 +1232,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. Information values are repo
 </tr>
 <tr class="even">
 <td style="text-align: left;">Full <span class="math inline">\(8 \times 8\)</span> matrix</td>
-<td style="text-align: left;">7.73e+01</td>
+<td style="text-align: left;">7.74e+01</td>
 <td style="text-align: left;">2.88e+05</td>
 <td style="text-align: left;">3.72e+03</td>
 </tr>
@@ -1291,20 +1301,20 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(a_p\)</span></td>
 <td style="text-align: left;">2.000</td>
-<td style="text-align: left;">2.005</td>
-<td style="text-align: left;">0.0049</td>
-<td style="text-align: left;">0.24%</td>
-<td style="text-align: left;">0.1148</td>
-<td style="text-align: left;">94.8%</td>
+<td style="text-align: left;">2.004</td>
+<td style="text-align: left;">0.0041</td>
+<td style="text-align: left;">0.21%</td>
+<td style="text-align: left;">0.1147</td>
+<td style="text-align: left;">95.2%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_s\)</span></td>
 <td style="text-align: left;">0.200</td>
 <td style="text-align: left;">0.209</td>
-<td style="text-align: left;">0.0094</td>
-<td style="text-align: left;">4.70%</td>
+<td style="text-align: left;">0.0095</td>
+<td style="text-align: left;">4.75%</td>
 <td style="text-align: left;">0.0342</td>
-<td style="text-align: left;">94.4%</td>
+<td style="text-align: left;">94.6%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\sigma_p\)</span></td>
@@ -1331,34 +1341,34 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <td style="text-align: left;">0.0022</td>
 <td style="text-align: left;">0.22%</td>
 <td style="text-align: left;">0.0082</td>
-<td style="text-align: left;">96.4%</td>
+<td style="text-align: left;">96.2%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\rho\)</span></td>
 <td style="text-align: left;">0.224</td>
 <td style="text-align: left;">0.232</td>
-<td style="text-align: left;">0.0081</td>
-<td style="text-align: left;">3.63%</td>
-<td style="text-align: left;">0.0117</td>
-<td style="text-align: left;">84.0%</td>
+<td style="text-align: left;">0.0080</td>
+<td style="text-align: left;">3.59%</td>
+<td style="text-align: left;">0.0116</td>
+<td style="text-align: left;">84.8%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(c_p\)</span></td>
 <td style="text-align: left;">-1.000</td>
-<td style="text-align: left;">-1.004</td>
-<td style="text-align: left;">-0.0035</td>
-<td style="text-align: left;">-0.35%</td>
-<td style="text-align: left;">0.0623</td>
-<td style="text-align: left;">95.0%</td>
+<td style="text-align: left;">-1.003</td>
+<td style="text-align: left;">-0.0031</td>
+<td style="text-align: left;">-0.31%</td>
+<td style="text-align: left;">0.0622</td>
+<td style="text-align: left;">94.8%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(c_s\)</span></td>
 <td style="text-align: left;">0.100</td>
 <td style="text-align: left;">0.104</td>
-<td style="text-align: left;">0.0042</td>
-<td style="text-align: left;">4.24%</td>
+<td style="text-align: left;">0.0043</td>
+<td style="text-align: left;">4.31%</td>
 <td style="text-align: left;">0.0182</td>
-<td style="text-align: left;">94.8%</td>
+<td style="text-align: left;">95.6%</td>
 </tr>
 </tbody>
 </table>
@@ -1376,12 +1386,13 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>fp <span class="ot">&lt;-</span> PARAMS<span class="sc">$</span>free</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>true_vals <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">sigma_p =</span> fp<span class="sc">$</span>sigma_p, <span class="at">sigma_s =</span> fp<span class="sc">$</span>sigma_s,</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">mu0 =</span> fp<span class="sc">$</span>mu_0, <span class="at">kappa =</span> fp<span class="sc">$</span>kappa,</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">c_p =</span> fp<span class="sc">$</span>c_p, <span class="at">c_s =</span> fp<span class="sc">$</span>c_s)</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_profiles</span>(PROFILES, <span class="at">true_vals =</span> true_vals,</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>              <span class="at">main =</span> <span class="st">"Profile Likelihoods, Reference Parameter Set"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>true_vals <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">a_p =</span> fp<span class="sc">$</span>a_p, <span class="at">a_s =</span> fp<span class="sc">$</span>a_s,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">sigma_p =</span> fp<span class="sc">$</span>sigma_p, <span class="at">sigma_s =</span> fp<span class="sc">$</span>sigma_s,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">mu0 =</span> fp<span class="sc">$</span>mu_0, <span class="at">rho =</span> fp<span class="sc">$</span>rho,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>               <span class="at">c_p =</span> fp<span class="sc">$</span>c_p, <span class="at">c_s =</span> fp<span class="sc">$</span>c_s)</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_profiles</span>(PROFILES, <span class="at">true_vals =</span> true_vals,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>              <span class="at">main =</span> <span class="st">"Profile Likelihoods, Reference Parameter Set"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-profiles" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1400,7 +1411,7 @@ Figure&nbsp;10: Profile log-likelihoods for all eight free parameters (six alway
 </section>
 <section id="sec-coupling" class="level2" data-number="4.5">
 <h2 data-number="4.5" class="anchored" data-anchor-id="sec-coupling"><span class="header-section-number">4.5</span> Cross-Branch Coupling Identifiability</h2>
-<p>The analyses above impose <span class="math inline">\(b_{ps} = b_{sp} = 0\)</span>. Whether the coupling terms are identifiable from a single RR stream is an empirical question. We address it by simulating from a model with known non-zero coupling and then applying the same conditional MLE and profile likelihood machinery used for the six uncoupled parameters.</p>
+<p>The analyses above impose <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span> (the uncoupled baseline). Whether the coupling terms are identifiable from a single RR stream is an empirical question. We address it by simulating from a model with known non-zero coupling and then applying the same conditional MLE and profile likelihood machinery used for the six uncoupled parameters.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1446,11 +1457,11 @@ Figure&nbsp;12: Monte Carlo recovery study (<span class="math inline">\(N = 200\
 </div>
 </div>
 </div>
-<p>The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all eight eigenvalues strictly positive confirms local identifiability of the coupling terms <em>conditioned on the observed state trajectory</em>. Whether the marginal spike-train likelihood, which integrates over the unobserved latent states, carries sufficient information to identify <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> is a separate question addressed by the filter in <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a>.</p>
+<p>The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all eight eigenvalues strictly positive confirms local identifiability of the coupling terms <em>conditioned on the observed state trajectory</em>. Whether the marginal spike-train likelihood, which integrates over the unobserved latent states, carries sufficient information to identify <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> is a separate question addressed by the filter in <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a>.</p>
 </section>
 <section id="sec-sensitivity" class="level2" data-number="4.6">
 <h2 data-number="4.6" class="anchored" data-anchor-id="sec-sensitivity"><span class="header-section-number">4.6</span> Sensitivity to Structural Parameters</h2>
-<p>The decay rates <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> are fixed at physiologically calibrated values rather than estimated from data. To verify that conclusions about identifiability and filter performance are stable across the range of plausible values reported in the literature, we repeat the conditional MLE recovery (<span class="math inline">\(N = 50\)</span> replications) and filter evaluation at each point of a <span class="math inline">\(5 \times 5\)</span> grid spanning <span class="math inline">\(\pm 50\%\)</span> of the reference values (<span class="math inline">\(a_p \in [1.0, 3.0]\)</span> Hz, <span class="math inline">\(a_s \in [0.1, 0.3]\)</span> Hz), subject to the structural constraint <span class="math inline">\(a_p &gt; a_s\)</span>.</p>
+<p>The decay rates <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> are free parameters estimated jointly with <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>, <span class="math inline">\(\mu_0\)</span>, and <span class="math inline">\(\rho\)</span>. Their recovery depends on the spectral content of the recording: a short or narrowband protocol may not resolve <span class="math inline">\(a_p\)</span> from <span class="math inline">\(\sigma_p\)</span>, or <span class="math inline">\(a_s\)</span> from <span class="math inline">\(\sigma_s\)</span>, precisely. To verify that recovery of the diffusion and observation parameters and filter performance are stable across the physiologically plausible range of true rate values, we repeat the conditional MLE recovery (<span class="math inline">\(N = 50\)</span> replications, all parameters including <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> estimated jointly) and filter evaluation at each point of a <span class="math inline">\(5 \times 5\)</span> grid spanning <span class="math inline">\(\pm 50\%\)</span> of the reference values (<span class="math inline">\(a_p \in [1.0, 3.0]\)</span> Hz, <span class="math inline">\(a_s \in [0.1, 0.3]\)</span> Hz), subject to the constraint <span class="math inline">\(a_p &gt; a_s\)</span>. For the filter component, <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> are held at the grid values rather than re-estimated, quantifying robustness to rate misspecification as would occur if an erroneous prior were used to initialise the filter.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1663,7 +1674,7 @@ Table&nbsp;4: Filter performance summary. RMSE and mean absolute error of <span 
 <img src="index_files/figure-html/fig-results-main-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-main-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;15: Simulation of the autonomic response to a sustained stress protocol. <strong>Row 1:</strong> Exogenous input <span class="math inline">\(u(t)\)</span>. <strong>Row 2:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. <strong>Row 3:</strong> Individual latent states <span class="math inline">\(p(t)\)</span> (blue, vagal) and <span class="math inline">\(s(t)\)</span> (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. <strong>Row 4:</strong> Tachogram of observed R-R intervals (grey) with the instantaneous mean <span class="math inline">\(\mu(t) = \mu_0\exp(-\Delta(t))\)</span> overlaid (black).
+Figure&nbsp;15: Simulation of the autonomic response to a double-logistic stress protocol (<span class="math inline">\(t_{\rm on} = 300\)</span> s, <span class="math inline">\(t_{\rm off} = 420\)</span> s, <span class="math inline">\(k = 10\)</span> Hz). <strong>Row 1:</strong> Exogenous input <span class="math inline">\(u(t)\)</span>; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. <strong>Row 2:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. <strong>Row 3:</strong> Individual latent states <span class="math inline">\(p(t)\)</span> (blue, vagal) and <span class="math inline">\(s(t)\)</span> (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. <strong>Row 4:</strong> Tachogram of observed R-R intervals (grey) with the instantaneous mean <span class="math inline">\(\mu(t) = \mu_0\exp(-\Delta(t))\)</span> overlaid (black).
 </figcaption>
 </figure>
 </div>
@@ -1823,7 +1834,7 @@ Table&nbsp;5: Summary statistics for the time-rescaling residuals. A correctly s
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\text{Var}(\Lambda_k)\)</span></td>
 <td style="text-align: center;">1.000</td>
-<td style="text-align: center;">1.0631</td>
+<td style="text-align: center;">1.0632</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\text{E}[u_k]\)</span></td>

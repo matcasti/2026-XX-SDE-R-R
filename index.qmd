@@ -175,14 +175,14 @@ $$
 
 Because $a_p \neq a_s$, $\Delta(t)$ is not itself an OU process but a sum of two OU processes with distinct time constants. Its spectral density is
 
-The spectral density of $\Delta(t)$ is determined by the eigenvalues of $A$. Letting $\lambda_{1,2} = \tfrac{1}{2}\bigl[-(a_p + a_s) \mp \sqrt{(a_p - a_s)^2 + 4 a_{ps} a_{sp}}\bigr]$ (both negative when the stability condition holds), the spectral density takes the form of two Lorentzians centred at $|\lambda_1|/(2\pi)$ and $|\lambda_2|/(2\pi)$:
+The spectral density of $\Delta(t)$ is determined by the eigenvalues of $A$. Letting $\gamma_{1,2} = \tfrac{1}{2}\bigl[-(a_p + a_s) \mp \sqrt{(a_p - a_s)^2 + 4 a_{ps} a_{sp}}\bigr]$ (both negative when the stability condition holds), the spectral density takes the form of two Lorentzians centred at $|\gamma_1|/(2\pi)$ and $|\gamma_2|/(2\pi)$:
 
 $$
-S_\Delta(f) \;\approx\; \frac{A_1}{\lambda_1^2 + (2\pi f)^2}
-                      + \frac{A_2}{\lambda_2^2 + (2\pi f)^2}
+S_\Delta(f) \;\approx\; \frac{A_1}{\gamma_1^2 + (2\pi f)^2}
+                      + \frac{A_2}{\gamma_2^2 + (2\pi f)^2}
 $$
 
-where $A_1, A_2 > 0$ are amplitude coefficients that depend on all four rate parameters and the diffusion amplitudes. When $a_{ps} = a_{sp} = 0$, this collapses to the familiar two-Lorentzian form with poles at $a_s/(2\pi)$ and $a_p/(2\pi)$. Non-zero antagonism *spreads* the poles: $|\lambda_1|$ increases above $\max(a_p, a_s)$ and $|\lambda_2|$ decreases below $\min(a_p, a_s)$, producing a distinctive spectral signature from which all four rate parameters can, in principle, be identified. This spectrum is identifiable from the second-order properties of the RR interval series. The amplitude of each Lorentzian, determined by $\sigma_s^2/a_s$ and $\sigma_p^2/a_p$, corresponds to the spectral area in each frequency band, linking the model parameters directly to classical HRV spectral indices.
+where $A_1, A_2 > 0$ are amplitude coefficients that depend on all four rate parameters and the diffusion amplitudes. When $a_{ps} = a_{sp} = 0$, this collapses to the familiar two-Lorentzian form with poles at $a_s/(2\pi)$ and $a_p/(2\pi)$. Non-zero antagonism *spreads* the poles: $|\gamma_1|$ increases above $\max(a_p, a_s)$ and $|\gamma_2|$ decreases below $\min(a_p, a_s)$, producing a distinctive spectral signature from which all four rate parameters can, in principle, be identified. This spectrum is identifiable from the second-order properties of the RR interval series. The amplitude of each Lorentzian, determined by $\sigma_s^2/a_s$ and $\sigma_p^2/a_p$, corresponds to the spectral area in each frequency band, linking the model parameters directly to classical HRV spectral indices.
 
 ##  The Constrained Stochastic Differential Equations
 
@@ -195,7 +195,7 @@ ds(t) &= \bigl[-a_{sp}\, p(t) - a_s\, s(t) + c_s\, u(t)\bigr]\,dt + \sigma_s\,dW
 \end{aligned}
 $$
 
-where $W_p$ and $W_s$ are independent standard Wiener processes. Each branch is an Ornstein-Uhlenbeck process: mean-reverting to the homeostatic baseline (or to the input-driven equilibrium when $u(t) \neq 0$), with a time constant and noise amplitude set by its respective parameters. All six parameters $\{a_p,\, a_s,\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho\}$ are estimated from the RR interval series; the literature values $a_p \approx 2\,\text{Hz}$ and $a_s \approx 0.2\,\text{Hz}$ serve only as starting values for the optimiser [@sec-identifiability]. When a non-trivial external input is present, $c_p$ and $c_s$ are additionally identifiable.
+where $W_p$ and $W_s$ are independent standard Wiener processes. Each branch is an Ornstein-Uhlenbeck process: mean-reverting to the homeostatic baseline (or to the input-driven equilibrium when $u(t) \neq 0$), with a time constant and noise amplitude set by its respective parameters. The free parameter set is $\{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho\}$ (plus $c_p, c_s$ when input is present); all are estimated from the RR interval series. The values $a_p \approx 2\,\text{Hz}$ and $a_s \approx 0.2\,\text{Hz}$ from the autonomic neuroscience literature serve only as starting values for the optimizer; no physiological prior constrains the estimates [@sec-identifiability]. For the baseline uncoupled case ($a_{ps} = a_{sp} = 0$), the six-parameter active set $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ is the focus of the identifiability analysis; coupling identifiability is addressed in @sec-coupling. When a non-trivial external input is present, $c_p$ and $c_s$ are additionally identifiable.
 
 ###  Vagal Kinetics and the HF Band
 
@@ -634,7 +634,7 @@ The full simulation integrates the three components above into a single time-ind
 
 # Identifiability Analysis {#sec-identifiability}
 
-The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in §\ref{sec-coupling}. For the baseline uncoupled analysis ($a_{ps} = a_{sp} = 0$) the active set reduces to six structural and two protocol-conditional parameters. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal, the RR interval series, and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.
+The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in §\ref{sec-coupling}. For the baseline uncoupled analysis ($a_{ps} = a_{sp} = 0$) the active set reduces to six always-free parameters $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ and two protocol-conditional parameters $\{c_p, c_s\}$, identifiable only when $u(t) \not\equiv 0$. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal, the RR interval series, and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.
 
 ```{r}
 #| label: ident-setup
@@ -672,7 +672,7 @@ $$
 
 where $\hat\mu_k = \hat\mu_0 e^{-\Delta_k}$, and $\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}$ is recovered by the delta method. These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)$ when $\Delta_k = 0$ (no autonomic variation), confirming consistency with the renewal process literature.
 
-**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, c_p,\, \log a_s,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $3 \times 3$ OU blocks $({\log a_p,\, \log\sigma_p,\, c_p})$ and $({\log a_s,\, \log\sigma_s,\, c_s})$ and the $2 \times 2$ observation block. This block-diagonal structure holds for $a_{ps} = a_{sp} = 0$; when coupling is nonzero the OU blocks are linked and the FIM is computed as a single $10 \times 10$ numerical object [@sec-coupling].
+**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, c_p,\, \log a_s,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $3 \times 3$ OU blocks $({\log a_p,\, \log\sigma_p,\, c_p})$ and $({\log a_s,\, \log\sigma_s,\, c_s})$ and the $2 \times 2$ observation block. This block-diagonal structure holds for $a_{ps} = a_{sp} = 0$; when coupling is nonzero the blocks link and the FIM is computed as a single $10 \times 10$ numerical object over $({\log a_p, \log a_s, a_{ps}, a_{sp}, \log\sigma_p, \log\sigma_s, c_p, c_s, \log\mu_0, \log\rho})$ [@sec-coupling].
 
 ## Observed Fisher Information Matrix
 
@@ -712,7 +712,7 @@ grid(nx = NA, col = "lightgray", lty = 1)
 
 ```{r}
 #| label: tbl-fim
-#| tbl-cap: "Fisher information matrix diagnostics. Information values are reported on the log-scale for positive parameters. The condition number of each $2 \\times 2$ block and the full $6 \\times 6$ matrix are shown. A condition number below $10^4$ is generally considered well-conditioned for practical estimation."
+#| tbl-cap: "Fisher information matrix diagnostics. All quantities are in the log-parameterization: $(\\log a_p, \\log\\sigma_p, c_p, \\log a_s, \\log\\sigma_s, c_s, \\log\\mu_0, \\log\\rho)$. The condition number of each diagonal block and the full $8 \\times 8$ matrix are shown. A condition number below $10^4$ is considered well-conditioned for practical estimation."
 #| echo: false
 
 fim_tbl <- data.frame(
@@ -745,7 +745,7 @@ knitr::kable(fim_tbl, escape = FALSE,
                            "Condition number"))
 ```
 
-The OU blocks have large eigenvalues because the state trajectory provides $n \approx 60{,}000$ independent Gaussian observations of $(\sigma_p, c_p)$ and $(\sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 750$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $I(\log\mu_0)/I(\log\rho)$. Substituting the analytic expressions gives a ratio of $2/\rho^2$; for the reference parameters (with $\rho = `r round(PARAMS$free$rho, 4)`$, $N \approx `r round(720 / PARAMS$free$mu_0)`$ beats, $\bar{w} \approx 1$) this simplifies to $2/\rho^2 = `r round(2 / PARAMS$free$rho^2, 0)`$, well within the identifiable regime and far below $10^3$.
+The OU blocks have large eigenvalues because the state trajectory provides $n \approx 144{,}000$ independent Gaussian observations of $(a_p, \sigma_p, c_p)$ and $(a_s, \sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 720$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $I(\log\mu_0)/I(\log\rho)$. Substituting the analytic expressions gives a ratio of $2/\rho^2$; for the reference parameters (with $\rho = `r round(PARAMS$free$rho, 4)`$, $N \approx `r round(720 / PARAMS$free$mu_0)`$ beats, $\bar{w} \approx 1$) this simplifies to $2/\rho^2 = `r round(2 / PARAMS$free$rho^2, 0)`$, well within the identifiable regime and far below $10^3$.
 
 ## Simulation Recovery Study {#sec-recovery}
 
@@ -772,7 +772,8 @@ REC_STUDY <- recovery_study(
 
 ```{r}
 #| label: fig-recovery
-#| fig-cap: "Monte Carlo recovery study ($N = 500$ replications). Centre of each interval: relative bias $(\\hat\\theta - \\theta_\\text{true})/|\\theta_\\text{true}| \\times 100\\%$. Whiskers: $\\pm$ relative RMSE. Right margin: empirical 95\\% Wald CI coverage. A well-specified estimator shows bias near zero, modest RMSE, and coverage near 95\\%."
+#| fig-cap: >
+#|   "Monte Carlo recovery study ($N = 500$ replications, 300 s each with a 60-second double-logistic input at $t = 120$ s). Centre of each interval: relative bias $(\\hat\\theta - \\theta_\\text{true})/|\\theta_\\text{true}| \\times 100\\%$. Whiskers: $\\pm$ relative RMSE. Right margin: empirical 95\\% Wald CI coverage. All eight free parameters are estimated jointly by the conditional MLE. Well-calibrated estimation shows bias near zero and coverage near 95\\%."
 #| fig-height: 4.5
 
 plot_recovery(REC_STUDY$summary,
@@ -846,7 +847,7 @@ The analyses above impose $a_{ps} = a_{sp} = 0$ (the uncoupled baseline). Whethe
 
 # Physiologically motivated coupling values.
 # Stability requires det(A) = a_p*a_s - b_ps*b_sp > 0, i.e. b_ps*b_sp < 0.4.
-# Here b_ps*b_sp = 0.15 * (-0.10) = -0.015 << 0.4 (well within the stable region).
+# Stability check: det(A) = a_p*a_s - a_ps*a_sp = 2.0*0.2 - 0.15*0.10 = 0.385 > 0.
 PARAMS_COUPLED <- make_model_params(
   a_p = 2.0, a_s = 0.2,
   a_ps = 0.15, a_sp = 0.10,   # mutual inhibition: s→p and p→s, magnitudes both ≥ 0
@@ -913,7 +914,7 @@ The FIM eigenvalue spectrum for the coupled model provides the diagnostic summar
 
 ## Sensitivity to Structural Parameters {#sec-sensitivity}
 
-The decay rates $a_p$ and $a_s$ are free parameters estimated jointly with $\sigma_p$, $\sigma_s$, $\mu_0$, and $\rho$.  Their recovery depends on the spectral content of the recording: a short or narrowband protocol may not resolve $a_p$ from $\sigma_p$, or $a_s$ from $\sigma_s$, precisely.  To verify that recovery of the diffusion and observation parameters and filter performance are stable across the physiologically plausible range of true rate values, we repeat the conditional MLE recovery ($N = 50$ replications, all parameters including $a_p$ and $a_s$ estimated jointly) and filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to the constraint $a_p > a_s$.  For the filter component, $a_p$ and $a_s$ are held at the grid values rather than re-estimated, quantifying robustness to rate misspecification as would occur if an erroneous prior were used to initialise the filter.
+The decay rates $a_p$ and $a_s$ are estimated jointly with all other free parameters; their identifiability depends on the spectral content of the recording. A short or narrowband protocol may not resolve $a_p$ from $\sigma_p$, or $a_s$ from $\sigma_s$, with equal precision. Two questions arise: (i) across the physiologically plausible range of true rate values, how precisely are all eight free parameters recovered? and (ii) if the filter is initialised with misspecified decay rates, how much does $\hat\Delta(t)$ degrade? We address both by repeating the full conditional MLE recovery ($N = 50$ replications, all parameters estimated jointly) and filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to $a_p > a_s$ (required for interpretable LF/HF band separation). For the filter component, $a_p$ and $a_s$ are fixed at each grid value to isolate the sensitivity of $\hat\Delta(t)$ to rate misspecification independently of estimation error.
 
 ```{r}
 #| label: sensitivity-run
@@ -935,21 +936,23 @@ SENS <- run_sensitivity(
 ```{r}
 #| label: fig-sensitivity
 #| fig-cap: >
-#|   Sensitivity of estimation and filter performance to the fixed structural
-#|   parameters $a_p$ (vagal decay rate, x-axis) and $a_s$ (sympathetic decay
-#|   rate, y-axis). Each cell shows the relative RMSE (%) of the conditional MLE
-#|   or the filter RMSE on $\hat\Delta(t)$, averaged over $N = 50$ replications.
-#|   The reference configuration ($a_p = 2.0$ Hz, $a_s = 0.2$ Hz) is outlined in
-#|   black. All metrics remain within a factor of two of their reference values
-#|   across the entire grid, confirming that conclusions are not sensitive to
-#|   moderate misspecification of the structural rates.
+#|   Sensitivity of estimation and filter performance to the true values of the
+#|   free decay-rate parameters $a_p$ (x-axis) and $a_s$ (y-axis), varied over a
+#|   $\pm 50\%$ grid while all remaining parameters are held at reference values.
+#|   Each cell shows relative RMSE (\%) of the conditional MLE for the labelled
+#|   parameter, or the filter RMSE on $\hat\Delta(t)$, averaged over $N = 50$
+#|   replications in which all parameters including $a_p$ and $a_s$ are estimated
+#|   jointly. The reference configuration ($a_p = 2.0$ Hz, $a_s = 0.2$ Hz) is
+#|   outlined in black. Recovery of all parameters and filter RMSE remain within
+#|   a factor of two of their reference values across the grid, confirming robustness
+#|   to the specific decay-rate regime chosen for the main analysis.
 #| fig-height: 6
 
 plot_sensitivity(SENS, ref_ap = PARAMS$free$a_p,
                         ref_as = PARAMS$free$a_s)
 ```
 
-Relative RMSE for all free parameters remains below 5\% across the grid (Table in Supplementary), and filter RMSE on $\hat\Delta(t)$ increases by less than a factor of two at the boundary configurations. The largest sensitivity is for $\sigma_s$ when $a_s$ is overestimated, because a faster assumed sympathetic decay partially absorbs true slow variation into the noise amplitude. This is the expected direction of the bias and does not compromise parameter interpretability within the physiological range.
+Relative RMSE for all eight free parameters remains below 5\% across the grid, and filter RMSE on $\hat\Delta(t)$ increases by less than a factor of two at the boundary configurations. Recovery of $a_p$ and $a_s$ themselves is most affected at the grid corners where $a_p/a_s$ approaches its minimum (i.e.\ the two time constants are closest), as spectral overlap reduces the information available to distinguish the two poles. The largest secondary sensitivity is for $\sigma_s$ when the true $a_s$ is high, because rapid sympathetic decay pushes the LF power toward the HF band, partially confounding $\sigma_s$ with $\sigma_p$. Both effects are expected from the CARMA(2,1) spectral structure and do not compromise interpretability within the physiological range $a_p \gg a_s$.
 
 # Inference Engine {#sec-inference}
 
@@ -1216,7 +1219,13 @@ $$
 
 forms an i.i.d. $\text{Exp}(1)$ sequence. The transformation $u_k = 1 - e^{-\Lambda_k}$ then produces i.i.d. $\text{Uniform}(0,1)$ residuals, whose departure from uniformity quantifies model misspecification.
 
-The $\Lambda_k$ values are computed by numerical integration of the stored intensity trace using the trapezoidal rule. For each inter-beat interval $[t_{k-1}, t_k]$, we accumulate the discrete approximation $\Lambda_k \approx \sum_i (\lambda_i + \lambda_{i+1})/2 \cdot \Delta t$ over the grid points spanning that interval. This is the direct, genuine computation of the theoretical quantity, it is not a simulation from the assumed distributional form, which would constitute a circular assessment.
+The $\Lambda_k$ values are computed using the survival-function decomposition, exactly consistent with the event-generation algorithm in Section 3.3.3. For each inter-beat interval $[t_{k-1}, t_k]$, the rescaled hazard accumulated over one simulation step of length $\Delta t$ is
+
+$$
+\Delta\Lambda_j \;=\; \log S\!\left(\tau_j - \Delta t;\, \mu_j,\, \kappa\right) - \log S\!\left(\tau_j;\, \mu_j,\, \kappa\right) \;\geq\; 0,
+$$
+
+where $\tau_j = t_j - t_{k-1}$ is the elapsed time and $\mu_j = \mu_0 e^{-\Delta(t_j)}$ is the state-dependent mean at grid point $t_j$. Summing over all $j$ within $[t_{k-1}, t_k]$ gives $\Lambda_k$. This is a direct evaluation of the theoretical quantity and not a simulation from the assumed distributional form — the latter would constitute circular assessment.
 
 ```{r}
 #| label: fig-time-rescaling
