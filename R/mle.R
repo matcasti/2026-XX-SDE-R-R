@@ -530,8 +530,11 @@ full_conditional_fim <- function(sim_res) {
 # ---- Profile likelihood for each free parameter ----
 #
 # For each parameter, the profile is computed by maximizing over the
-# remaining parameters in its block. Thanks to block separability,
-# this reduces to a 1-D optimization in each case.
+# remaining parameters in its block.  Exception: profiles of sigma_p,
+# sigma_s, c_p, c_s hold a_p / a_s at the simulation reference value
+# (fp$a_p, fp$a_s) rather than profiling over them jointly.  This is a
+# close approximation because ou_mle() recovers the decay rates with <1%
+# relative bias, making fp$a_p ≈ mle$a_p.
 
 ou_log_lik_at <- function(x_vec, u_vec, a, sigma, c_gain, dt) {
   n       <- length(x_vec) - 1L

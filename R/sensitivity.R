@@ -1,10 +1,10 @@
 # ============================================================
 # R/sensitivity.R
 #
-# A3.3 — Structural parameter sensitivity analysis.
+# A3.3 — Decay-rate sensitivity analysis.
 # Tests whether conclusions about identifiability and filter
 # performance are stable across physiologically plausible
-# variation in the fixed structural parameters a_p and a_s.
+# variation in the free decay-rate parameters a_p and a_s.
 #
 # Design: a_p and a_s are each varied independently over a
 # ±50% grid around their reference values. For each grid point
@@ -49,7 +49,7 @@ sensitivity_one <- function(a_p_val, a_s_val,
                             dt       = 0.005,
                             input_fn = make_double_logistic(120, 180)) {
 
-  # Build modified parameter object — only structural rates change
+  # Build modified parameter object — vary true decay rates across the grid
   params_mod <- base_params
   params_mod$free$a_p <- a_p_val
   params_mod$free$a_s <- a_s_val
@@ -81,7 +81,10 @@ sensitivity_one <- function(a_p_val, a_s_val,
   })
   names(agg) <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
 
-  # (2) Filter RMSE on the reference simulation at modified structural params
+  # (2) Filter RMSE on the reference simulation with a_p / a_s FIXED to grid values.
+  # This is intentionally NOT a joint estimate: the goal is to isolate how much
+  # filter accuracy degrades when the decay rates are *misspecified*, independently
+  # of estimation variance.
   flt <- tryCatch({
     params_for_filter        <- base_params
     params_for_filter$free$a_p <- a_p_val
@@ -208,7 +211,7 @@ plot_sensitivity <- function(sens_df,
          ap_vals[ref_ci] + dap, as_vals[ref_ri] + das,
          border = "black", lwd = 2.5)
   }
-  mtext("Structural Parameter Sensitivity", outer = TRUE,
+  mtext("Decay-Rate Sensitivity (Free Parameters)", outer = TRUE,
         cex = 1.05, font = 2)
   par(op)
 }

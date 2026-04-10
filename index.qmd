@@ -18,7 +18,7 @@ format:
 
 # Abstract
 
-Heart rate variability is widely used to probe autonomic cardiovascular regulation, yet existing models are either descriptive spectral summaries or mechanistic point-process models whose time-varying parameters lack explicit stochastic dynamics. We introduce the SDE-Inverse Gaussian (SDE-IG) framework, which couples two Ornstein-Uhlenbeck processes representing parasympathetic and sympathetic drives to an Inverse Gaussian first-passage observation model for inter-beat intervals. The model is identifiable from a single RR interval stream: the Fisher information matrix is block-diagonal and full-rank, closed-form maximum likelihood estimators exist for all six free parameters, and a Monte Carlo recovery study ($N = 500$ replications) confirms sub-percent relative bias and nominal 95\% confidence interval coverage. A spike-to-spike Unscented Kalman Filter recovers the latent net autonomic drive in real time, with a root-mean-square error below 0.05 units and well-calibrated innovations <!-- TODO: insert real-data KS/AIC numbers -->. The architecture extends naturally to multi-stream data, adding a respiratory or blood pressure observation breaks the single-stream identifiability constraint and enables separate estimation of the two branches. This framework provides a principled, estimable, and interpretable generative model for beat-to-beat autonomic dynamics.
+Heart rate variability is widely used to probe autonomic cardiovascular regulation, yet existing models are either descriptive spectral summaries or mechanistic point-process models whose time-varying parameters lack explicit stochastic dynamics. We introduce the SDE-Inverse Gaussian (SDE-IG) framework, which couples two Ornstein-Uhlenbeck processes representing parasympathetic and sympathetic drives to an Inverse Gaussian first-passage observation model for inter-beat intervals. The model is identifiable from a single RR interval stream: the Fisher information matrix is block-diagonal and full-rank, closed-form and profile maximum likelihood estimators exist for all free parameters, and a Monte Carlo recovery study ($N = 500$ replications) confirms sub-percent relative bias and nominal 95\% confidence interval coverage. A spike-to-spike Unscented Kalman Filter recovers the latent net autonomic drive in real time, with a root-mean-square error below 0.05 units and well-calibrated innovations <!-- TODO: insert real-data KS/AIC numbers -->. The architecture extends naturally to multi-stream data, adding a respiratory or blood pressure observation breaks the single-stream identifiability constraint and enables separate estimation of the two branches. This framework provides a principled, estimable, and interpretable generative model for beat-to-beat autonomic dynamics.
 
 # Introduction
 
@@ -634,7 +634,7 @@ The full simulation integrates the three components above into a single time-ind
 
 # Identifiability Analysis {#sec-identifiability}
 
-The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in §\ref{sec-coupling}. For the baseline uncoupled analysis ($a_{ps} = a_{sp} = 0$) the active set reduces to six always-free parameters $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ and two protocol-conditional parameters $\{c_p, c_s\}$, identifiable only when $u(t) \not\equiv 0$. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal, the RR interval series, and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.
+The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in §\ref{sec-coupling}. For the baseline uncoupled analysis ($a_{ps} = a_{sp} = 0$) the active set comprises six always-free parameters $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ plus two protocol-conditional parameters $\{c_p, c_s\}$, identifiable only when $u(t) \not\equiv 0$; the stress protocol used here activates all eight.  The FIM analysis below therefore covers the full $8 \times 8$ system. Before applying the model to data, we must establish that these parameters are identifiable from the observable signal, the RR interval series, and that they can be recovered with quantified precision from realistic samples. This section provides three interlocking demonstrations: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study.
 
 ```{r}
 #| label: ident-setup
@@ -670,7 +670,15 @@ $$
 \hat\kappa = \frac{N}{\displaystyle\sum_k \frac{(\tau_k - \hat\mu_k)^2}{\hat\mu_k^2\,\tau_k}}
 $$
 
-where $\hat\mu_k = \hat\mu_0 e^{-\Delta_k}$, and $\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}$ is recovered by the delta method. These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)$ when $\Delta_k = 0$ (no autonomic variation), confirming consistency with the renewal process literature.
+where $\hat\mu_k = \hat\mu_0 e^{-\bar\Delta_k}$, and $\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}$ is recovered by the delta method.  Because the OU process evolves continuously within each IBI, using the instantaneous endpoint value $\Delta(t_k)$ as a proxy for the mean interval introduces a systematic bias in $\hat\kappa$ (and secondarily in $\hat\mu_0$) driven by the within-interval variance of $\Delta(t)$ — an errors-in-variables artefact that is most severe for the fast vagal branch ($a_p \approx 2$ Hz, $\tau_p \approx 0.5$ s, comparable to a typical IBI). The estimator therefore uses the **interval-averaged effective drive**
+
+$$
+\bar\Delta_k \;=\; -\log\!\left(\frac{1}{n_k}\sum_{j \in \text{IBI}_k} e^{-\Delta(t_j)}\right)
+$$
+
+computed from the stored latent trajectory over the $n_k$ grid points interior to $(t_{k-1}, t_k]$. This guarantees that $\hat\mu_k = \hat\mu_0\, \overline{\exp(-\Delta(t))}_{k}$, the interval-average of the instantaneous mean, eliminating the bias to within the discretization error of the $\Delta t = 0.005$ s grid (confirmed in the recovery study below).
+
+These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)$ when $\Delta_k = 0$ (no autonomic variation), confirming consistency with the renewal process literature.
 
 **Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, c_p,\, \log a_s,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $3 \times 3$ OU blocks $({\log a_p,\, \log\sigma_p,\, c_p})$ and $({\log a_s,\, \log\sigma_s,\, c_s})$ and the $2 \times 2$ observation block. This block-diagonal structure holds for $a_{ps} = a_{sp} = 0$; when coupling is nonzero the blocks link and the FIM is computed as a single $10 \times 10$ numerical object over $({\log a_p, \log a_s, a_{ps}, a_{sp}, \log\sigma_p, \log\sigma_s, c_p, c_s, \log\mu_0, \log\rho})$ [@sec-coupling].
 
@@ -745,7 +753,7 @@ knitr::kable(fim_tbl, escape = FALSE,
                            "Condition number"))
 ```
 
-The OU blocks have large eigenvalues because the state trajectory provides $n \approx 144{,}000$ independent Gaussian observations of $(a_p, \sigma_p, c_p)$ and $(a_s, \sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 720$ inter-beat intervals. The condition number of the IG block is the most sensitive: it equals $I(\log\mu_0)/I(\log\rho)$. Substituting the analytic expressions gives a ratio of $2/\rho^2$; for the reference parameters (with $\rho = `r round(PARAMS$free$rho, 4)`$, $N \approx `r round(720 / PARAMS$free$mu_0)`$ beats, $\bar{w} \approx 1$) this simplifies to $2/\rho^2 = `r round(2 / PARAMS$free$rho^2, 0)`$, well within the identifiable regime and far below $10^3$.
+The OU blocks have large eigenvalues because the state trajectory provides $n \approx 144{,}000$ independent Gaussian observations of $(a_p, \sigma_p, c_p)$ and $(a_s, \sigma_s, c_s)$ at each simulation step. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 720$ inter-beat intervals. The condition number of the IG block is the most sensitive. When the off-diagonal cross term $I(\log\mu_0,\log\rho)$ is negligible, it approximates $I(\log\mu_0)/I(\log\rho) \approx 2/\rho^2$; for the reference parameters (with $\rho = `r round(PARAMS$free$rho, 4)`$, $N \approx `r round(720 / PARAMS$free$mu_0)`$ beats, $\bar{w} \approx 1$) this simplifies to $2/\rho^2 = `r round(2 / PARAMS$free$rho^2, 0)`$, well within the identifiable regime and far below $10^3$.
 
 ## Simulation Recovery Study {#sec-recovery}
 
@@ -806,7 +814,7 @@ knitr::kable(rec_tbl, escape = FALSE,
                            "RMSE", "95\\% CI coverage"))
 ```
 
-Relative bias is below 0.5% for all OU parameters, consistent with the ${\sim}60{,}000$ state-transition observations available per replication. For the IG block, $\mu_0$ and $\kappa$ show sub-percent relative bias [@tbl-recovery], confirming that the interval-averaged $\bar\Delta_k$ estimator introduces no material distortion. RMSE scales as predicted by the Cramér–Rao bound, inversely with the square root of the block-specific observation count, and empirical 95\% Wald CI coverage is within 1–2 percentage points of the nominal level for all parameters, validating the analytic standard error expressions.
+Relative bias is below 0.5% for all OU parameters, consistent with the ${\sim}60{,}000$ state-transition observations available per replication. For the IG block, $\mu_0$ and $\rho$ show sub-percent relative bias [@tbl-recovery], confirming that the interval-averaged $\bar\Delta_k$ estimator introduces no material distortion. RMSE scales as predicted by the Cramér–Rao bound, inversely with the square root of the block-specific observation count, and empirical 95\% Wald CI coverage is within 1–2 percentage points of the nominal level for all parameters, validating the analytic standard error expressions.
 
 ## Profile Likelihood {#sec-profiles}
 
@@ -903,18 +911,18 @@ REC_COUPLED <- recovery_study(
 
 ```{r}
 #| label: fig-coupling-recovery
-#| fig-cap: "Monte Carlo recovery study ($N = 200$ replications) for the coupled model. The coupling terms $b_{ps}$ and $b_{sp}$ appear alongside the six uncoupled parameters. Narrow whiskers and coverage near 95\\% confirm conditional identifiability; wide whiskers or poor coverage would indicate that a single RR stream cannot resolve the coupling terms from the state trajectory."
+#| fig-cap: "Monte Carlo recovery study ($N = 200$ replications) for the coupled model.The coupling terms $a_{ps}$ and $a_{sp}$ appear alongside the eight uncoupled free parameters. Narrow whiskers and coverage near 95\\% confirm conditional identifiability; wide whiskers or poor coverage would indicate that a single RR stream cannot resolve the coupling terms from the state trajectory."
 #| fig-height: 5.5
 
 plot_recovery(REC_COUPLED$summary,
               main = "Coupled-Model Recovery Study (N = 200, 300 s each)")
 ```
 
-The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all eight eigenvalues strictly positive confirms local identifiability of the coupling terms *conditioned on the observed state trajectory*. Whether the marginal spike-train likelihood, which integrates over the unobserved latent states, carries sufficient information to identify $a_{ps}$ and $a_{sp}$ is a separate question addressed by the filter in @sec-inference.
+The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all ten eigenvalues strictly positive confirms local identifiability of the coupling terms *conditioned on the observed state trajectory*. Whether the marginal spike-train likelihood, which integrates over the unobserved latent states, carries sufficient information to identify $a_{ps}$ and $a_{sp}$ is a separate question addressed by the filter in @sec-inference.
 
-## Sensitivity to Structural Parameters {#sec-sensitivity}
+## Sensitivity to Decay-Rate Parameters {#sec-sensitivity}
 
-The decay rates $a_p$ and $a_s$ are estimated jointly with all other free parameters; their identifiability depends on the spectral content of the recording. A short or narrowband protocol may not resolve $a_p$ from $\sigma_p$, or $a_s$ from $\sigma_s$, with equal precision. Two questions arise: (i) across the physiologically plausible range of true rate values, how precisely are all eight free parameters recovered? and (ii) if the filter is initialised with misspecified decay rates, how much does $\hat\Delta(t)$ degrade? We address both by repeating the full conditional MLE recovery ($N = 50$ replications, all parameters estimated jointly) and filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to $a_p > a_s$ (required for interpretable LF/HF band separation). For the filter component, $a_p$ and $a_s$ are fixed at each grid value to isolate the sensitivity of $\hat\Delta(t)$ to rate misspecification independently of estimation error.
+The decay rates $a_p$ and $a_s$ are free parameters estimated jointly with all other parameters; their precision depends on the spectral content and duration of the recording.  A short or narrowband protocol may not resolve $a_p$ from $\sigma_p$, or $a_s$ from $\sigma_s$, with equal fidelity.  Two questions arise: (i) across the physiologically plausible range of true rate values, how precisely are all eight free parameters recovered? and (ii) if the filter is initialised with misspecified decay rates, how much does $\hat\Delta(t)$ degrade? We address both by repeating the full conditional MLE recovery ($N = 50$ replications, all parameters estimated jointly) and filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to $a_p > a_s$ (required for interpretable LF/HF band separation). For the filter component, $a_p$ and $a_s$ are fixed at each grid value to isolate the sensitivity of $\hat\Delta(t)$ to rate misspecification independently of estimation error.
 
 ```{r}
 #| label: sensitivity-run
@@ -940,9 +948,13 @@ SENS <- run_sensitivity(
 #|   free decay-rate parameters $a_p$ (x-axis) and $a_s$ (y-axis), varied over a
 #|   $\pm 50\%$ grid while all remaining parameters are held at reference values.
 #|   Each cell shows relative RMSE (\%) of the conditional MLE for the labelled
-#|   parameter, or the filter RMSE on $\hat\Delta(t)$, averaged over $N = 50$
-#|   replications in which all parameters including $a_p$ and $a_s$ are estimated
-#|   jointly. The reference configuration ($a_p = 2.0$ Hz, $a_s = 0.2$ Hz) is
+#|   parameter, averaged over $N = 50$ replications in which all parameters
+#|   including $a_p$ and $a_s$ are estimated jointly from the state trajectory.
+#|   The bottom-left panel shows filter RMSE on $\hat\Delta(t)$ evaluated by
+#|   running the UKF at the grid values of $a_p$ and $a_s$, with all other
+#|   parameters fixed at the reference MLE; this isolates sensitivity to
+#|   decay-rate misspecification independently of estimation error. 
+#|   The reference configuration ($a_p = 2.0$ Hz, $a_s = 0.2$ Hz) is
 #|   outlined in black. Recovery of all parameters and filter RMSE remain within
 #|   a factor of two of their reference values across the grid, confirming robustness
 #|   to the specific decay-rate regime chosen for the main analysis.
