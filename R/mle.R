@@ -171,7 +171,12 @@ ou_coupled_mle <- function(x_mat, u_vec, a_p_init, a_s_init,
   # Numerical MLE for all 8 coupled-OU free parameters:
   #   (log a_p, log a_s, a_ps, a_sp, log sigma_p, log sigma_s, c_p, c_s)
   # a_ps and a_sp are constrained >= 0 (inhibitory coupling magnitudes).
-  # Start from uncoupled estimates for sigma and c.
+  #
+  # Warm-start: run uncoupled ou_mle() for each branch separately to obtain
+  # MLE estimates of (a_p, sigma_p, c_p) and (a_s, sigma_s, c_s) as starting
+  # values for the joint coupled optimisation. This is not an approximation —
+  # it is a starting-point strategy; the coupled MLE converges to different
+  # values when a_ps/a_sp are non-zero.
   init_p <- ou_mle(x_mat[, 1L], u_vec, a_p_init, dt)
   init_s <- ou_mle(x_mat[, 2L], u_vec, a_s_init, dt)
 
@@ -276,7 +281,11 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   #   I(log mu_0) = kappa * sum(exp(delta_k)) / mu_0
   #   I(log kappa) = N / 2
   #   Cross term = 0 (block diagonal in log-space)
-  i_log_mu0   <- kappa_hat * denom_w / mu0_hat   # reuse denom_w from above
+  i_log_mu0   <- kappa_hat * sum(g) / mu0_hat
+  # Derivation: I(log mu_0) = E[-d²/d(log mu_0)² log f(tau; mu_0*g_k, kappa)]
+  # = (kappa/mu_0^2) * sum(mu_k) = (kappa/mu_0) * sum(g_k)
+  # where g_k = exp(-delta_k) = mu_k/mu_0.
+
   i_log_kappa <- n / 2
   # SEs are unreliable if kappa is at its cap; flag with NA
   mu0_se   <- if (kappa_hat >= 1e6 - 1) NA_real_ else mu0_hat   / sqrt(i_log_mu0)
@@ -401,9 +410,10 @@ ig_obs_fim <- function(mu0, rho_val, tau_vec, delta_vec, eps = 1e-5) {
 
 # ---- Observed information matrix for OU block ----
 #
-# Parameterization: theta = (log sigma, c_gain).
-# The cross-term is exactly zero at the MLE (by the score equation),
-# so the matrix is diagonal.
+# Parameterization: theta = (log a, log sigma, c_gain) — 3D, matching ou_mle's
+# internal H_logscale. The cross-terms between log(a) and (log σ, c) are NOT
+# exactly zero in general; ou_mle computes them numerically via finite differences.
+# The claim "matrix is diagonal" was incorrect; the full 3x3 is returned.
 
 ou_fim <- function(a_val, sigma_val, c_val, x_vec, u_vec, dt) {
   # Thin wrapper: re-runs ou_mle (which computes the Hessian internally)
@@ -632,7 +642,10 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
              if (v < 0) return(-Inf)
              x_mat <- cbind(sim_res$p, sim_res$s)
              # mle already passed by all_profile_likelihoods; th0 is a warm start from MLE
-             mle_v <- if (!is.null(mle)) mle else full_conditional_mle(sim_res)
+             if (is.null(mle)) {
+               stop("profile_lik_one: 'mle' is required; call full_conditional_mle() first.")
+             }
+             mle_v <- mle
              th0 <- c(log(mle_v$a_p), log(mle_v$a_s), max(mle_v$a_sp, 0),
                       log(max(mle_v$sigma_p, 1e-5)), log(max(mle_v$sigma_s, 1e-5)),
                       mle_v$c_p, mle_v$c_s)
@@ -654,7 +667,10 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
              # Fix a_sp = v; profile over (log a_p, log a_s, a_ps, log sig_p, log sig_s, c_p, c_s)
              if (v < 0) return(-Inf)
              x_mat <- cbind(sim_res$p, sim_res$s)
-             mle_v <- if (!is.null(mle)) mle else full_conditional_mle(sim_res)
+             if (is.null(mle)) {
+               stop("profile_lik_one: 'mle' is required; call full_conditional_mle() first.")
+             }
+             mle_v <- mle
              th0 <- c(log(mle_v$a_p), log(mle_v$a_s), max(mle_v$a_ps, 1e-6),
                       log(max(mle_v$sigma_p, 1e-5)), log(max(mle_v$sigma_s, 1e-5)),
                       mle_v$c_p, mle_v$c_s)

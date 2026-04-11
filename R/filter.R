@@ -326,14 +326,21 @@ pp_mle <- function(spikes,
 
 filter_to_grid <- function(ukf_result, time_grid) {
   bt <- ukf_result$beat_times
+
+  first_bt <- bt[1L]
+
+  interp <- function(y) {
+    out <- approx(bt, y, xout = time_grid, rule = 2)$y
+    out[time_grid < first_bt] <- NA_real_
+    out
+  }
+
   list(
-    delta = approx(bt, ukf_result$delta_filt,          xout = time_grid, rule = 2)$y,
-    p     = approx(bt, ukf_result$m_filt[, "p"],       xout = time_grid, rule = 2)$y,
-    s     = approx(bt, ukf_result$m_filt[, "s"],       xout = time_grid, rule = 2)$y,
-    mu    = approx(bt, ukf_result$mu_filt,              xout = time_grid, rule = 2)$y,
-    sd_delta = approx(bt,
-                      sqrt(sapply(ukf_result$P_filt,
-                                  function(P) P[1,1] + P[2,2] - 2*P[1,2])),
-                      xout = time_grid, rule = 2)$y
+    delta    = interp(ukf_result$delta_filt),
+    p        = interp(ukf_result$m_filt[, "p"]),
+    s        = interp(ukf_result$m_filt[, "s"]),
+    mu       = interp(ukf_result$mu_filt),
+    sd_delta = interp(sqrt(sapply(ukf_result$P_filt,
+                                  function(P) P[1,1] + P[2,2] - 2*P[1,2])))
   )
 }

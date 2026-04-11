@@ -67,7 +67,7 @@ sensitivity_one <- function(a_p_val, a_s_val,
   results <- Filter(Negate(is.null), results)
 
   # Aggregate bias and RMSE for the four IG + OU-amplitude parameters
-  agg <- lapply(c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho"), function(p) {
+  agg <- lapply(c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho", "c_p", "c_s"), function(p) {
     hat_v  <- sapply(results, function(r) r$hat[p])
     true_v <- sapply(results, function(r) r$true[p])
     ok     <- is.finite(hat_v) & is.finite(true_v)
@@ -79,7 +79,7 @@ sensitivity_one <- function(a_p_val, a_s_val,
     rel_rmse <- if (abs(t_bar) > 1e-10) 100 * rmse / abs(t_bar) else NA_real_
     c(bias = bias, rmse = rmse, rel_rmse_pct = rel_rmse)
   })
-  names(agg) <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
+  names(agg) <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho", "c_p", "c_s")
 
   # (2) Filter RMSE on the reference simulation with a_p / a_s FIXED to grid values.
   # This is intentionally NOT a joint estimate: the goal is to isolate how much
@@ -111,6 +111,8 @@ sensitivity_one <- function(a_p_val, a_s_val,
     rel_rmse_sigma_s  = agg$sigma_s["rel_rmse_pct"],
     rel_rmse_mu0      = agg$mu0["rel_rmse_pct"],
     rel_rmse_rho      = agg$rho["rel_rmse_pct"],
+    rel_rmse_c_p      = agg$c_p["rel_rmse_pct"],
+    rel_rmse_c_s      = agg$c_s["rel_rmse_pct"],
     filter_rmse_delta = flt_rmse,
     filter_ll         = flt_ll,
     n_valid           = length(results),
