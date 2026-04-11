@@ -174,7 +174,7 @@ ou_coupled_mle <- function(x_mat, u_vec, a_p_init, a_s_init,
   init_s <- ou_mle(x_mat[, 2L], u_vec, a_s_init, dt)
 
   th0 <- c(log(init_p$a), log(init_s$a),
-           max(a_ps_init, 1e-6), max(a_sp_init, 1e-6),
+           max(a_ps_init, 0), max(a_sp_init, 0),
            log(max(init_p$sigma, 1e-5)), log(max(init_s$sigma, 1e-5)),
            init_p$c_gain, init_s$c_gain)
 
@@ -283,9 +283,10 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   ll <- sum(log_ig_pdf(tau_vec, mu_k, kappa_hat))
 
   rho_hat <- sqrt(mu0_hat / kappa_hat)
-  # SE(rho) via delta method in log-space:
-  #   log(rho) = (1/2)(log(mu0) - log(kappa))
-  #   SE(log rho)^2 = (1/4)*(SE(log mu0)^2 + SE(log kappa)^2)
+  # SE(rho) via delta method: rho = sqrt(mu0/kappa), so log(rho) = (log(mu0) - log(kappa))/2.
+  # Since the FIM is block-diagonal in (log mu0, log kappa), the covariance term is zero, giving:
+  #   Var(log rho) = (1/4)*(Var(log mu0) + Var(log kappa))
+  #   SE(rho) = rho * SE(log rho)  [delta method]
   se_log_mu0   <- if (!is.na(mu0_se))   mu0_se   / mu0_hat   else NA_real_
   se_log_kappa <- if (!is.na(kappa_se)) kappa_se / kappa_hat else NA_real_
   rho_se <- if (!is.na(se_log_mu0) && !is.na(se_log_kappa))
@@ -623,11 +624,11 @@ profile_lik_one <- function(param, grid, sim_res, mle = NULL) {
              ou_log_lik_at(sim_res$s, u_vec, fp$a_s, sig_v, v, dt)
            },
            a_ps = {
-             # Fix a_ps = v; profile over (log a_p, log a_s, a_sp, log sig_p, log sig_s, c_p, c_s)
              if (v < 0) return(-Inf)
              x_mat <- cbind(sim_res$p, sim_res$s)
+             # mle already passed by all_profile_likelihoods; th0 is a warm start from MLE
              mle_v <- if (!is.null(mle)) mle else full_conditional_mle(sim_res)
-             th0 <- c(log(mle_v$a_p), log(mle_v$a_s), max(mle_v$a_sp, 1e-6),
+             th0 <- c(log(mle_v$a_p), log(mle_v$a_s), max(mle_v$a_sp, 0),
                       log(max(mle_v$sigma_p, 1e-5)), log(max(mle_v$sigma_s, 1e-5)),
                       mle_v$c_p, mle_v$c_s)
              nll <- function(th) {

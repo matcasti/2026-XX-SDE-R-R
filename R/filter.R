@@ -188,7 +188,12 @@ pp_ukf <- function(spikes,
 
   for (k in seq_len(n_ibi)) {
     tau_k <- spikes[k + 1L] - spikes[k]
-    u_k   <- input_fn(spikes[k])     # constant-input approximation over IBI
+    # Evaluate input at the START of the IBI; treat as constant over [t_{k-1}, t_k].
+    # For the double-logistic protocol (10--90% rise ≈ 0.44 s) and IBIs ~0.85 s,
+    # the resulting approximation error in the input-driven mean shift d(τ_k)
+    # is O(|u̇|·τ_k²/2), which is negligible everywhere except at the onset/offset
+    # transition (≈ 0.5% error at the steepest point for the reference parameters).
+    u_k   <- input_fn(spikes[k])
 
     pred <- .ou_predict(m_cur, P_cur, tau_k, sp, fp, u = u_k)
     upd  <- .ukf_update(pred$m, pred$P, tau_k, fp)

@@ -172,7 +172,20 @@ plot_recovery <- function(rec_summary,
   )
 
   np   <- nrow(df)
-  cols <- c("#0072B2", "#0072B2", "#D55E00", "#D55E00", "#2C5F2E", "#2C5F2E")
+  base_cols <- c(
+    a_p     = "#0072B2",
+    a_s     = "#56B4E9",   # lighter blue: same OU block, different branch
+    sigma_p = "#D55E00",
+    sigma_s = "#E69F00",   # amber: same OU block, different branch
+    mu0     = "#2C5F2E",
+    rho     = "#2C5F2E",
+    c_p     = "#CC79A7",
+    c_s     = "#009E73",
+    a_ps    = "#999999",
+    a_sp    = "#999999"
+  )
+  cols <- unname(base_cols[df$parameter])
+  cols[is.na(cols)] <- "black"
 
   par(mar = c(4.5, 6, 3, 5))
   plot(df$rel_bias_pct, seq_len(np), pch = 19, cex = 1.5,
