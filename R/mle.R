@@ -29,10 +29,12 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
       # This should not occur at dt = 0.005 s with physiological IBIs.
       # Using nearest-endpoint delta is equivalent to the old biased estimate;
       # flag it so the caller can investigate.
-      warning(sprintf(
-        "compute_effective_delta: no grid points in interval [%.4f, %.4f] (IBI=%.4f < dt). Using endpoint delta.",
-        t_start, t_end, t_end - t_start))
-      delta_vec[which.min(abs(time_vec - t_end))]
+      stop(sprintf(
+        "compute_effective_delta: no grid points in interval [%.4f, %.4f] (IBI=%.4f < dt = %.4f).",
+        "This is physiologically impossible at the chosen dt.",
+        "Reduce dt or check spike detection.",
+        t_start, t_end, t_end - t_start,
+        if (length(time_vec) > 1L) time_vec[2L] - time_vec[1L] else NA_real_))
     }
   }, numeric(1L))
 }
@@ -546,27 +548,30 @@ ou_log_lik_at <- function(x_vec, u_vec, a, sigma, c_gain, dt) {
   sum(dnorm(x_vec[idx + 1L], mean = means, sd = sqrt(var_v), log = TRUE))
 }
 
-profile_lik_one <- function(param, grid, sim_res, mle = NULL) {
+profile_lik_one <- function(param, grid, sim_res, mle) {
   dt    <- sim_res$time[2L] - sim_res$time[1L]
   u_vec <- extract_u_vec(sim_res)
   fp    <- sim_res$params$free      # a_p, a_s are now free parameters
 
-  # Parasympathetic block (conditional on fp$a_p = true/reference a_p)
+  # Parasympathetic block — conditioned on MLE decay rate, NOT on true fp$a_p
+  a_p_mle <- mle$a_p   # MLE estimate from full_conditional_mle
+  a_s_mle <- mle$a_s
+
   n_p  <- length(sim_res$p) - 1L
-  e_p  <- exp(-fp$a_p * dt)
-  z_p  <- u_vec[seq_len(n_p)] / fp$a_p * (-expm1(-fp$a_p * dt))
+  e_p  <- exp(-a_p_mle * dt)
+  z_p  <- u_vec[seq_len(n_p)] / a_p_mle * (-expm1(-a_p_mle * dt))
   y_p  <- sim_res$p[-1L] - sim_res$p[seq_len(n_p)] * e_p
-  C_ap <- (-expm1(-2 * fp$a_p * dt)) / (2 * fp$a_p)
+  C_ap <- (-expm1(-2 * a_p_mle * dt)) / (2 * a_p_mle)
   c_p_hat <- if (sum(z_p^2) > 1e-14) sum(y_p * z_p) / sum(z_p^2) else 0
   r_p_joint  <- y_p - c_p_hat * z_p
   sig_p_hat  <- sqrt(max(mean(r_p_joint^2) / C_ap, 1e-14))
 
-  # Sympathetic block (conditional on fp$a_s)
+  # Sympathetic block — conditioned on MLE decay rate, NOT on true fp$a_s
   n_s  <- length(sim_res$s) - 1L
-  e_s  <- exp(-fp$a_s * dt)
-  z_s  <- u_vec[seq_len(n_s)] / fp$a_s * (-expm1(-fp$a_s * dt))
+  e_s  <- exp(-a_s_mle * dt)
+  z_s  <- u_vec[seq_len(n_s)] / a_s_mle * (-expm1(-a_s_mle * dt))
   y_s  <- sim_res$s[-1L] - sim_res$s[seq_len(n_s)] * e_s
-  C_as <- (-expm1(-2 * fp$a_s * dt)) / (2 * fp$a_s)
+  C_as <- (-expm1(-2 * a_s_mle * dt)) / (2 * a_s_mle)
   c_s_hat <- if (sum(z_s^2) > 1e-14) sum(y_s * z_s) / sum(z_s^2) else 0
   r_s_joint  <- y_s - c_s_hat * z_s
   sig_s_hat  <- sqrt(max(mean(r_s_joint^2) / C_as, 1e-14))
@@ -606,22 +611,22 @@ profile_lik_one <- function(param, grid, sim_res, mle = NULL) {
            sigma_p = {
              # Profile c_p over fixed sigma_p = v (c_hat is sigma-independent)
              if (v <= 0) return(-Inf)
-             ou_log_lik_at(sim_res$p, u_vec, fp$a_p, v, c_p_hat, dt)
+             ou_log_lik_at(sim_res$p, u_vec, a_p_mle, v, c_p_hat, dt)
            },
            sigma_s = {
              if (v <= 0) return(-Inf)
-             ou_log_lik_at(sim_res$s, u_vec, fp$a_s, v, c_s_hat, dt)
+             ou_log_lik_at(sim_res$s, u_vec, a_s_mle, v, c_s_hat, dt)
            },
            c_p = {
              # Profile sigma_p over fixed c_p = v (sigma_hat DOES depend on v)
              r_v   <- y_p - v * z_p
              sig_v <- sqrt(max(mean(r_v^2) / C_ap, 1e-14))
-             ou_log_lik_at(sim_res$p, u_vec, fp$a_p, sig_v, v, dt)
+             ou_log_lik_at(sim_res$p, u_vec, a_p_mle, sig_v, v, dt)
            },
            c_s = {
              r_v   <- y_s - v * z_s
              sig_v <- sqrt(max(mean(r_v^2) / C_as, 1e-14))
-             ou_log_lik_at(sim_res$s, u_vec, fp$a_s, sig_v, v, dt)
+             ou_log_lik_at(sim_res$s, u_vec, a_s_mle, sig_v, v, dt)
            },
            a_ps = {
              if (v < 0) return(-Inf)
@@ -668,7 +673,8 @@ profile_lik_one <- function(param, grid, sim_res, mle = NULL) {
                     control = list(maxit = 150L, factr = 1e9))$value
            },
            a_p = {
-             # Profile (sigma_p, c_p) over fixed a_p = v
+             # Profile L_p over fixed a_p = v, maximizing (sigma_p, c_p) analytically at each grid point.
+             # This is the correct marginal profile LL for a_p, consistent with the block-separability.
              if (v <= 0) return(-Inf)
              pf <- profile_at_a_internal(sim_res$p, u_vec, v, dt)
              pf$ll
