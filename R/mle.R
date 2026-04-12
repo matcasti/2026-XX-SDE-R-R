@@ -420,18 +420,39 @@ ig_obs_fim <- function(mu0, rho_val, tau_vec, delta_vec, eps = 1e-5) {
 # The claim "matrix is diagonal" was incorrect; the full 3x3 is returned.
 
 ou_fim <- function(a_val, sigma_val, c_val, x_vec, u_vec, dt) {
-  # Thin wrapper: re-runs ou_mle (which computes the Hessian internally)
-  # and repackages as the FIM structure expected by full_conditional_fim().
-  result <- ou_mle(x_vec, u_vec, a_init = a_val, dt)
-  H      <- result$H_logscale    # 3x3 in (log a, log sigma, c)
-  fim_inv <- tryCatch(solve(H), error = function(e) matrix(NA_real_, 3, 3))
+  # Evaluate the 3x3 FIM at the SUPPLIED MLE point (a_val, sigma_val, c_val)
+  # rather than re-optimising, ensuring consistency with full_conditional_mle().
+  th0    <- c(log(a_val), log(sigma_val), c_val)
+  n      <- length(x_vec) - 1L
+  idx    <- seq_len(n)
+
+  nll_3d <- function(th) {
+    a_v   <- exp(th[1L]); sig_v <- exp(th[2L]); c_v <- th[3L]
+    if (a_v <= 0 || sig_v <= 0) return(1e10)
+    e_adt <- exp(-a_v * dt)
+    z_v   <- u_vec[idx] / a_v * (-expm1(-a_v * dt))
+    y_v   <- x_vec[-1L] - x_vec[idx] * e_adt - c_v * z_v
+    C_v   <- (-expm1(-2 * a_v * dt)) / (2 * a_v)
+    ll_v  <- tryCatch(sum(dnorm(y_v, 0, sig_v * sqrt(C_v), log = TRUE)),
+                      error = function(e) -Inf)
+    if (is.finite(ll_v)) -ll_v else 1e10
+  }
+
+  eps <- 1e-4; np <- 3L
+  H   <- matrix(0, np, np)
+  for (i in seq_len(np)) for (j in i:np) {
+    ei <- ej <- numeric(np); ei[i] <- eps; ej[j] <- eps
+    H[i, j] <- (nll_3d(th0+ei+ej) - nll_3d(th0+ei-ej) -
+                  nll_3d(th0-ei+ej) + nll_3d(th0-ei-ej)) / (4 * eps^2)
+    H[j, i] <- H[i, j]
+  }
+  fim_inv <- tryCatch(solve(H), error = function(e) matrix(NA_real_, np, np))
   list(
     fim   = H,
-    se    = sqrt(abs(diag(fim_inv))),  # (SE log a, SE log sigma, SE c)
+    se    = sqrt(abs(diag(fim_inv))),
     cond  = tryCatch(kappa(H), error = function(e) NA_real_),
     eig   = tryCatch(eigen(H, symmetric = TRUE, only.values = TRUE)$values,
-                     error = function(e) rep(NA_real_, 3)),
-    mle   = result
+                     error = function(e) rep(NA_real_, np))
   )
 }
 

@@ -38,7 +38,7 @@ Heart rate variability is widely used to probe autonomic cardiovascular regulati
 # Minimum viable version: grViz() call producing a left-to-right flowchart.
 # Required boxes: [OU_p, OU_s] → [Δ(t)] → [log link] → [IG hazard] → [spike train]
 # Required annotation: parameter labels on each component box.
-knitr::asis_output("*(Figure 1 placeholder — generative architecture diagram required before submission)*")
+knitr::include_graphics("fig/schematic-model.png")
 ```
 
 # Introduction
@@ -707,7 +707,7 @@ These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\ha
 
 ```{r}
 #| label: fig-fim
-#| fig-cap: "Observed Fisher information matrix and eigenvalue spectrum for the reference parameter set. **Left:** The normalized FIM (each entry divided by the maximum diagonal value) displayed as a heatmap. The three blocks along the diagonal correspond to the parasympathetic OU block $(\\log a_p,\\, \\log\\sigma_p,\\, c_p)$, sympathetic OU block $(\\log a_s,\\, \\log\\sigma_s,\\, c_s)$, and IG observation block $(\\log\\mu_0,\\, \\log\\rho)$. Off-diagonal blocks are exactly zero by construction, confirming the theoretical separability of the three log-likelihood components. **Right:** Eigenvalues on a log scale. All eight eigenvalues are strictly positive, confirming that the FIM is positive definite and all parameters are locally identified. The large spread reflects the differing amounts of information available from $n \\approx 60{,}000$ OU transitions versus $N \\approx 750$ beats."
+#| fig-cap: "Observed Fisher information matrix and eigenvalue spectrum for the reference parameter set. **Left:** The normalized FIM (each entry divided by the maximum diagonal value) displayed as a heatmap. The three blocks along the diagonal correspond to the parasympathetic OU block $(\\log a_p,\\, \\log\\sigma_p,\\, c_p)$, sympathetic OU block $(\\log a_s,\\, \\log\\sigma_s,\\, c_s)$, and IG observation block $(\\log\\mu_0,\\, \\log\\rho)$. Off-diagonal blocks are exactly zero by construction, confirming the theoretical separability of the three log-likelihood components. **Right:** Eigenvalues on a log scale. All eight eigenvalues are strictly positive, confirming that the FIM is positive definite and all parameters are locally identified. The large spread reflects the differing amounts of information available from $n \\approx 144{,}000$ OU transitions (720 s at $\\Delta t = 0.005$ s) versus $N \\approx `r length(RES$spikes)`$ beats."
 #| fig-height: 4.5
 
 fim_result <- full_conditional_fim(RES)
@@ -774,7 +774,7 @@ knitr::kable(fim_tbl, escape = FALSE,
                            "Condition number"))
 ```
 
-The FIM is evaluated on the 720-second reference simulation.  The OU blocks have large eigenvalues because the full trajectory provides $n \approx 144{,}000$ independent Gaussian transition observations of $(a_p, \sigma_p, c_p)$ and $(a_s, \sigma_s, c_s)$. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 720$ inter-beat intervals. The condition number of the IG block is the most sensitive. When the off-diagonal cross term $I(\log\mu_0,\log\rho)$ is negligible, it approximates $I(\log\mu_0)/I(\log\rho) \approx 2/\rho^2$; for the reference parameters (with $\rho = `r round(PARAMS$free$rho, 4)`$, $N \approx `r round(720 / PARAMS$free$mu_0)`$ beats, $\bar{w} \approx 1$) this simplifies to $2/\rho^2 = `r round(2 / PARAMS$free$rho^2, 0)`$, well within the identifiable regime and far below $10^3$.
+The FIM is evaluated on the 720-second reference simulation.  The OU blocks have large eigenvalues because the full trajectory provides $n \approx 144{,}000$ independent Gaussian transition observations of $(a_p, \sigma_p, c_p)$ and $(a_s, \sigma_s, c_s)$. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from $N \approx 720$ inter-beat intervals. The condition number of the IG block is the most sensitive. The condition number of the $2\times 2$ observation FIM approximates $\kappa/2 = 1/(2\rho^2)$; for the reference parameters (with $\rho = `r round(PARAMS$free$rho, 4)`$, $\kappa = `r round(KAPPA_REF)`$, $N \approx `r round(720 / PARAMS$free$mu_0)`$ beats) this evaluates to $\kappa/2 = `r round(KAPPA_REF/2, 0)`$, well within the identifiable regime and far below $10^3$.
 
 ## Simulation Recovery Study {#sec-recovery}
 
@@ -933,7 +933,7 @@ REC_COUPLED <- recovery_study(
 
 ```{r}
 #| label: fig-coupling-recovery
-#| fig-cap: "Monte Carlo recovery study ($N = 200$ replications) for the coupled model.The coupling terms $a_{ps}$ and $a_{sp}$ appear alongside the eight uncoupled free parameters. Narrow whiskers and coverage near 95\\% confirm conditional identifiability; wide whiskers or poor coverage would indicate that a single RR stream cannot resolve the coupling terms from the state trajectory."
+#| fig-cap: "Monte Carlo recovery study ($N = 500$ replications) for the coupled model.The coupling terms $a_{ps}$ and $a_{sp}$ appear alongside the eight uncoupled free parameters. Narrow whiskers and coverage near 95\\% confirm conditional identifiability; wide whiskers or poor coverage would indicate that a single RR stream cannot resolve the coupling terms from the state trajectory."
 #| fig-height: 5.5
 
 plot_recovery(REC_COUPLED$summary,
@@ -1139,9 +1139,9 @@ mtext("Time (s)", side = 1, outer = TRUE, line = 1.5)
 #| tbl-cap: >
 #|   Filter performance summary. RMSE and mean absolute error of
 #|   $\hat\Delta(t)$ relative to the true latent drive, computed on the
-#|   simulation grid. Innovation statistics assess the Gaussian approximation
-#|   quality: mean near zero and variance near 1 (after standardization by
-#|   $\sqrt{S_k}$) indicate a well-calibrated filter.
+#|   simulation grid. Innovation statistics assess the Gaussian approximation quality: 
+#|   mean near zero and SD near 1 (after standardisation by $\sqrt{S_k}$, 
+#|   yielding approximate $\mathcal{N}(0,1)$ residuals) indicate a well-calibrated filter.
 #| echo: false
 
 delta_err <- flt_grid$delta - RES$delta

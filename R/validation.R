@@ -86,7 +86,13 @@ sde_ig_model_stats <- function(fit_result, rr_vec,
   # fit_result: output of fit_sde_ig() (which wraps pp_mle)
   ll      <- fit_result$ll
   n_beats <- length(rr_vec)
-  n_params <- 4L
+
+  # pp_mle() with optimize_gains = FALSE estimates 6 parameters in log-space:
+  # (log a_p, log a_s, log sigma_p, log sigma_s, log mu_0, log rho).
+  # With optimize_gains = TRUE this becomes 8 (adding c_p, c_s).
+  # fit_sde_ig() passes optimize_gains = FALSE, so n_params = 6.
+  n_params <- 6L
+
   aic <- -2 * ll + 2 * n_params
   bic <- -2 * ll + log(n_beats) * n_params
 
