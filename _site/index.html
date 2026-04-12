@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Matías Castillo-Aguilar">
-<meta name="dcterms.date" content="2026-04-10">
+<meta name="dcterms.date" content="2026-04-12">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -390,7 +390,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">April 10, 2026</p>
+              <p class="date">April 12, 2026</p>
             </div>
           </div>
           
@@ -461,14 +461,19 @@ window.Quarto = {
   <li><a href="#static-parameter-estimation" id="toc-static-parameter-estimation" class="nav-link" data-scroll-target="#static-parameter-estimation"><span class="header-section-number">5.3</span> Static Parameter Estimation</a></li>
   <li><a href="#filter-validation-on-simulated-data" id="toc-filter-validation-on-simulated-data" class="nav-link" data-scroll-target="#filter-validation-on-simulated-data"><span class="header-section-number">5.4</span> Filter Validation on Simulated Data</a></li>
   </ul></li>
-  <li><a href="#simulation-results-and-discussion" id="toc-simulation-results-and-discussion" class="nav-link" data-scroll-target="#simulation-results-and-discussion"><span class="header-section-number">6</span> Simulation Results and Discussion</a>
+  <li><a href="#simulation-results" id="toc-simulation-results" class="nav-link" data-scroll-target="#simulation-results"><span class="header-section-number">6</span> Simulation Results</a>
   <ul class="collapse">
   <li><a href="#the-virtual-stress-protocol" id="toc-the-virtual-stress-protocol" class="nav-link" data-scroll-target="#the-virtual-stress-protocol"><span class="header-section-number">6.1</span> The Virtual Stress Protocol</a></li>
   <li><a href="#autonomic-state-dynamics-and-the-identifiable-net-drive" id="toc-autonomic-state-dynamics-and-the-identifiable-net-drive" class="nav-link" data-scroll-target="#autonomic-state-dynamics-and-the-identifiable-net-drive"><span class="header-section-number">6.2</span> Autonomic State Dynamics and the Identifiable Net Drive</a></li>
   <li><a href="#heteroscedasticity-and-variance-scaling" id="toc-heteroscedasticity-and-variance-scaling" class="nav-link" data-scroll-target="#heteroscedasticity-and-variance-scaling"><span class="header-section-number">6.3</span> Heteroscedasticity and Variance Scaling</a></li>
   <li><a href="#time-rescaling-goodness-of-fit" id="toc-time-rescaling-goodness-of-fit" class="nav-link" data-scroll-target="#time-rescaling-goodness-of-fit"><span class="header-section-number">6.4</span> Time-Rescaling Goodness-of-Fit</a></li>
   <li><a href="#stochastic-integrity" id="toc-stochastic-integrity" class="nav-link" data-scroll-target="#stochastic-integrity"><span class="header-section-number">6.5</span> Stochastic Integrity</a></li>
-  <li><a href="#extensibility-to-multiple-observation-streams" id="toc-extensibility-to-multiple-observation-streams" class="nav-link" data-scroll-target="#extensibility-to-multiple-observation-streams"><span class="header-section-number">6.6</span> Extensibility to Multiple Observation Streams</a></li>
+  </ul></li>
+  <li><a href="#discussion" id="toc-discussion" class="nav-link" data-scroll-target="#discussion"><span class="header-section-number">7</span> Discussion</a>
+  <ul class="collapse">
+  <li><a href="#relation-to-existing-point-process-hrv-models" id="toc-relation-to-existing-point-process-hrv-models" class="nav-link" data-scroll-target="#relation-to-existing-point-process-hrv-models"><span class="header-section-number">7.1</span> Relation to Existing Point-Process HRV Models</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="header-section-number">7.2</span> Limitations</a></li>
+  <li><a href="#extensibility-to-multiple-observation-streams" id="toc-extensibility-to-multiple-observation-streams" class="nav-link" data-scroll-target="#extensibility-to-multiple-observation-streams"><span class="header-section-number">7.3</span> Extensibility to Multiple Observation Streams</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -484,7 +489,19 @@ window.Quarto = {
 
 <section id="abstract" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Abstract</h1>
-<p>Heart rate variability is widely used to probe autonomic cardiovascular regulation, yet existing models are either descriptive spectral summaries or mechanistic point-process models whose time-varying parameters lack explicit stochastic dynamics. We introduce the SDE-Inverse Gaussian (SDE-IG) framework, which couples two Ornstein-Uhlenbeck processes representing parasympathetic and sympathetic drives to an Inverse Gaussian first-passage observation model for inter-beat intervals. The model is locally identifiable from a single RR interval stream: the Fisher information matrix is block-diagonal and positive definite, closed-form and profile maximum likelihood estimators exist for all free parameters, and a Monte Carlo recovery study (<span class="math inline">\(N = 500\)</span> replications) confirms sub-percent relative bias and nominal 95% confidence interval coverage. A spike-to-spike Unscented Kalman Filter recovers the latent net autonomic drive in real time, with a root-mean-square error below 0.05 units and well-calibrated innovations <!-- TODO: insert real-data KS/AIC numbers -->. The architecture extends naturally to multi-stream data, adding a respiratory or blood pressure observation breaks the single-stream identifiability constraint and enables separate estimation of the two branches. This framework provides a principled, estimable, and interpretable generative model for beat-to-beat autonomic dynamics.</p>
+<p>Heart rate variability is widely used to probe autonomic cardiovascular regulation, yet existing models are either descriptive spectral summaries or mechanistic point-process models whose time-varying parameters lack explicit stochastic dynamics. We introduce the SDE-Inverse Gaussian (SDE-IG) framework, which couples two Ornstein-Uhlenbeck processes representing parasympathetic and sympathetic drives to an Inverse Gaussian first-passage observation model for inter-beat intervals. All ten free parameters, including the decay rates, coupling magnitudes, diffusion amplitudes, and observation parameters, are locally identifiable from a single RR interval stream: the Fisher information matrix is block-diagonal and positive definite, closed-form and profile maximum likelihood estimators exist for all parameters, and a Monte Carlo recovery study (<span class="math inline">\(N = 500\)</span> replications) confirms sub-percent relative bias and nominal 95% confidence interval coverage. A spike-to-spike Unscented Kalman Filter recovers the net autonomic drive <span class="math inline">\(\hat\Delta(t)\)</span> and the individual branch estimates <span class="math inline">\([\hat p(t),\, \hat s(t)]\)</span> in real time; once parameters are estimated, forward simulation of the fitted OU model generates individual branch trajectories consistent with the identified spectral structure<!-- TODO: insert real-data RMSE/KS/AIC numbers -->. The architecture extends naturally to multi-stream data, where an additional physiological observation (respiratory, blood pressure) further constrains the common-mode direction, reducing branch-level posterior uncertainty. This framework provides a principled, estimable, and interpretable generative model for beat-to-beat autonomic dynamics.</p>
+<div class="cell">
+<div id="fig-model-schematic" class="cell-output-display quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-model-schematic-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<p><em>(Figure 1 placeholder — generative architecture diagram required before submission)</em></p>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-model-schematic-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Generative architecture of the SDE-IG model. Two coupled Ornstein-Uhlenbeck processes represent the parasympathetic (<span class="math inline">\(p(t)\)</span>, fast, HF) and sympathetic (<span class="math inline">\(s(t)\)</span>, slow, LF) autonomic drives. Their difference <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> enters the log link to produce the time-varying mean interval <span class="math inline">\(\mu(t) = \mu_0 \exp(-\Delta(t))\)</span>. At each moment, the elapsed time since the last beat serves as a running clock for an Inverse Gaussian first-passage hazard; a beat fires when the clock crosses a stochastic threshold. The resulting spike train is the sole observable; all ten free parameters are estimated from it via a spike-to-spike UKF (inference, right panel).
+</figcaption>
+</figure>
+</div>
+</div>
 </section>
 <section id="introduction" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Introduction</h1>
@@ -497,16 +514,22 @@ window.Quarto = {
 <p>Another unresolved issue concerns interpretability and identifiability. As HRV modeling has grown more sophisticated, the gap between statistical flexibility and physiological meaning has widened. Highly adaptive models can fit complex RR patterns but risk overparameterization and ambiguous parameter interpretation. Conversely, overly restrictive models may fail to capture essential dynamics. The current state of the art therefore demands frameworks that are both generative and constrained: generative in the sense of specifying a complete probabilistic mechanism for heartbeat production, and constrained in the sense that parameters correspond to physiologically meaningful quantities that can be interrogated and, where possible, validated.</p>
 <p>Within this landscape, the present work positions itself as an explicit synthesis of renewal-based point-process modeling and continuous-time stochastic state dynamics. It retains the inverse-Gaussian first-passage observation structure that anchors RR intervals in integrate-and-fire theory, while introducing coupled continuous-time latent processes to represent autonomic drives with distinct time constants and potential interactions. By formalizing these latent dynamics in continuous time and linking them directly to the event-level likelihood, the model aims to extend the methodological lineage initiated by renewal and point-process approaches, rather than to replace it. The central question is whether such a synthesis can provide additional interpretive power, through identifiable dynamical parameters, without sacrificing the statistical rigor and diagnostic tools that define the event-based HRV literature.</p>
 <p>In doing so, this work contributes to an ongoing effort to move HRV modeling beyond descriptive variability metrics toward mechanistic, testable representations of autonomic control. Its position relative to the existing literature is therefore not that of a new summary index or purely predictive algorithm, but that of a structured generative model built directly on established theoretical foundations in first-passage processes, point-process statistics, and stochastic dynamical systems.</p>
+<p>Here we show that this synthesis is achievable and productive. We introduce the SDE-IG framework, a continuous-time stochastic state-space model coupling two Ornstein-Uhlenbeck processes to an Inverse Gaussian point process, and demonstrate that all ten free parameters are locally identifiable from a single RR interval stream, recoverable with sub-percent bias in Monte Carlo simulation, and estimable in real time via a spike-to-spike Unscented Kalman Filter. Individual autonomic branch trajectories <span class="math inline">\([\hat{p}(t), \hat{s}(t)]\)</span> are reconstructed from the estimated parameters, providing physiologically interpretable outputs unavailable from existing point-process or spectral methods. The modular observation model extends naturally to multi-stream recordings, where additional physiological signals further constrain branch-level estimates. Taken together, these results establish the SDE-IG model as a principled, estimable, and interpretable generative framework for beat-to-beat autonomic dynamics.</p>
 </section>
 <section id="methods" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Methods</h1>
 <section id="latent-autonomic-dynamics" class="level2" data-number="3.1">
 <h2 data-number="3.1" class="anchored" data-anchor-id="latent-autonomic-dynamics"><span class="header-section-number">3.1</span> Latent Autonomic Dynamics</h2>
-<p>A fundamental constraint governs any state-space model driven by a single scalar observation stream: the data can identify only the <strong>projection</strong> of the latent state onto the observation space, not the full state vector. For the two-branch autonomic system defined here, the observable scalar process is the net autonomic drive</p>
+<p>The RR interval series constrains the latent autonomic state through a single scalar observable: the net autonomic drive</p>
 <p><span class="math display">\[
 \Delta(t) \;=\; s(t) \;-\; p(t),
 \]</span></p>
-<p>which enters the mean RR interval through the log link established in Section 4. The individual branches <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> are not separately identified from RR data alone; only their difference is. This is not a limitation of the estimation method but a structural property of the model: any additive constant shared by <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> cancels in <span class="math inline">\(\Delta(t)\)</span> and leaves the likelihood invariant.</p>
+<p>which enters the mean interval via the log link. The beat-to-beat likelihood is therefore most directly informative about <span class="math inline">\(\Delta(t)\)</span>, and the filter posterior contracts tightest along the differential direction <span class="math inline">\(\mathbf{e}_{-} = [-1,\,1]^\top/\!\sqrt{2}\)</span>. However, this does <strong>not</strong> mean the individual branches are fundamentally unrecoverable. The OU parameters <span class="math inline">\(\{a_p,\,a_s,\,\sigma_p,\,\sigma_s\}\)</span> — estimated from the same RR series — fully characterize the spectral structure of each branch: <span class="math inline">\(p(t)\)</span> contributes power near <span class="math inline">\(a_p/(2\pi)\)</span> Hz (the vagal, HF pole) and <span class="math inline">\(s(t)\)</span> near <span class="math inline">\(a_s/(2\pi)\)</span> Hz (the sympathetic, LF pole). Because <span class="math inline">\(a_p \gg a_s\)</span>, these poles are well-separated and individually identified from the spectral curvature of <span class="math inline">\(\Delta(t)\)</span>. Two reconstruction pathways are therefore available once parameters are estimated:</p>
+<ol type="1">
+<li><strong>Filter reconstruction.</strong> The UKF maintains a full 2D posterior <span class="math inline">\([\hat p_k,\,\hat s_k]\)</span> with per-branch posterior SDs; the common-mode uncertainty <span class="math inline">\(\sigma_{p+s}\)</span> is larger than the differential uncertainty <span class="math inline">\(\sigma_{p-s}\)</span> but remains bounded by the OU stationary variance.</li>
+<li><strong>Model-based forward simulation.</strong> Forward simulation of the fitted OU model with <span class="math inline">\(\hat\Theta\)</span> generates individual branch trajectories that are statistically consistent with the identified spectral structure and the observed <span class="math inline">\(\hat\Delta(t)\)</span>.</li>
+</ol>
+<p>The additive-constant non-identifiability (any constant added to both <span class="math inline">\(p\)</span> and <span class="math inline">\(s\)</span> cancels in <span class="math inline">\(\Delta\)</span>) is handled by the OU prior: both branches are mean-reverting to zero, so the common mode is bounded by <span class="math inline">\(\sigma_p^2/(2a_p) + \sigma_s^2/(2a_s)\)</span>. The result is that all dynamical parameters of both branches — decay rates, noise amplitudes, and coupling magnitudes — are recoverable from the single RR stream.</p>
 <p>An additional identifiability constraint arises from the observation gains. The original formulation contained free sensitivity coefficients <span class="math inline">\(k_\text{par}\)</span> and <span class="math inline">\(k_\text{sym}\)</span> that scaled the contribution of each branch to the mean interval. Because the data identifies only <span class="math inline">\(\Delta(t)\)</span>, the gains and the diffusion amplitudes <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span> share a common scale: multiplying <span class="math inline">\(k_\text{sym}\)</span> by <span class="math inline">\(\alpha\)</span> and dividing <span class="math inline">\(s(t)\)</span> and <span class="math inline">\(\sigma_s\)</span> by <span class="math inline">\(\alpha\)</span> leaves the likelihood unchanged for any <span class="math inline">\(\alpha &gt; 0\)</span>. This scale aliasing is resolved by normalizing <span class="math inline">\(k_\text{par} = k_\text{sym} = 1\)</span>, absorbing the effective scale into <span class="math inline">\(\sigma_p\)</span> and <span class="math inline">\(\sigma_s\)</span>. These are then interpretable as the amplitudes of autonomic noise in units directly linked to the log mean interval.</p>
 <p>The resulting net drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> is, under the constraints imposed here (Section 3.2), a linear combination of two independent Ornstein-Uhlenbeck processes. Its spectral density function has two poles: one in the low-frequency (LF) band determined by <span class="math inline">\(a_s\)</span>, and one in the high-frequency (HF) band determined by <span class="math inline">\(a_p\)</span>. This is precisely the continuous-time ARMA(2,1) [CARMA(2,1)] spectral structure that a single RR stream can identify. Its parameters are the LF and HF power amplitudes, corresponding to <span class="math inline">\(\sigma_s^2/(2a_s)\)</span> and <span class="math inline">\(\sigma_p^2/(2a_p)\)</span> respectively, together with the baseline mean interval <span class="math inline">\(\mu_0\)</span> and the shape parameter <span class="math inline">\(\kappa\)</span>.</p>
 <section id="structural-and-free-parameter-decomposition" class="level3" data-number="3.1.1">
@@ -516,7 +539,7 @@ window.Quarto = {
 A = \begin{pmatrix} -a_p &amp; -a_{ps} \\ -a_{sp} &amp; -a_s \end{pmatrix}
 \]</span></p>
 <p>with four non-negative rate parameters. The self-decay rates <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> govern the intrinsic time constants of each branch (<span class="math inline">\(\tau_p = 1/a_p\)</span>, <span class="math inline">\(\tau_s = 1/a_s\)</span>); the cross-inhibition rates <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> encode <em>accentuated antagonism</em>, the well-documented mechanism by which sympathetic activation actively withdraws vagal tone and vice versa. All four parameters are estimated from the RR interval series; neuroscientific literature provides physiologically plausible ranges that serve as prior information for starting values (<span class="math inline">\(a_p \approx 2\)</span> Hz, <span class="math inline">\(a_s \approx 0.2\)</span> Hz) but not as fixed constraints.</p>
-<p>Linear stability requires <span class="math inline">\(\det(A) = a_p a_s - a_{ps} a_{sp} &gt; 0\)</span>, which is enforced as a hard constraint during estimation. When the antagonism terms are zero (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>), the system reduces to two independent Ornstein-Uhlenbeck processes. Identifiability of the input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> additionally requires a non-trivial exogenous input <span class="math inline">\(u(t) \not\equiv 0\)</span>.</p>
+<p>Linear stability requires <span class="math inline">\(\det(A) = a_p a_s - a_{ps} a_{sp} &gt; 0\)</span>, which is enforced as a hard constraint during estimation. When the antagonism terms are zero (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>), the system reduces to two independent Ornstein-Uhlenbeck processes. Identifiability of the input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> additionally requires a non-trivial exogenous input <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling magnitudes <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are identified from the second-order spectral structure of <span class="math inline">\(\Delta(t)\)</span>: non-zero coupling shifts both eigenvalues of <span class="math inline">\(A\)</span> away from <span class="math inline">\(\{-a_p, -a_s\}\)</span>, producing a detectable change in the spectral peak positions. Their separate identification from the self-decay rates requires sufficient spectral resolution, which scales with recording duration (see <a href="#sec-sensitivity" class="quarto-xref">Section&nbsp;4.6</a>).</p>
 <p>The parameter set is therefore partitioned as follows.</p>
 <div class="cell">
 <div id="tbl-params" class="cell quarto-float quarto-figure quarto-figure-center anchored">
@@ -528,10 +551,10 @@ Table&nbsp;1: Model parameter taxonomy. Structural parameters are fixed by the n
 <div class="cell-output-display">
 <table class="do-not-create-environment cell caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 13%">
-<col style="width: 7%">
-<col style="width: 35%">
-<col style="width: 43%">
+<col style="width: 11%">
+<col style="width: 6%">
+<col style="width: 44%">
+<col style="width: 37%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -563,13 +586,13 @@ Table&nbsp;1: Model parameter taxonomy. Structural parameters are fixed by the n
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_{ps}\)</span></td>
 <td style="text-align: left;">Free</td>
-<td style="text-align: left;">Estimated (<span class="math inline">\(\geq 0\)</span>)</td>
+<td style="text-align: left;">Estimated (<span class="math inline">\(\geq 0\)</span>); the uncoupled model is the special case <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>, tested as a constrained sub-model</td>
 <td style="text-align: left;">Sympatho-vagal antagonism: <span class="math inline">\(s(t)\)</span> inhibits <span class="math inline">\(p(t)\)</span> (accentuated antagonism)</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(a_{sp}\)</span></td>
 <td style="text-align: left;">Free</td>
-<td style="text-align: left;">Estimated (<span class="math inline">\(\geq 0\)</span>) in coupled analysis (<a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>); fixed at <span class="math inline">\(0\)</span> in baseline</td>
+<td style="text-align: left;">Estimated (<span class="math inline">\(\geq 0\)</span>); jointly identified with <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> from the curvature of the <span class="math inline">\(\Delta(t)\)</span> spectral density</td>
 <td style="text-align: left;">Vagosympathetic antagonism: <span class="math inline">\(p(t)\)</span> inhibits <span class="math inline">\(s(t)\)</span> (accentuated antagonism)</td>
 </tr>
 <tr class="even">
@@ -619,28 +642,27 @@ d\Delta(t) \;=\; ds(t) - dp(t) \;=\;
 -\bigl[-a_p p(t) + c_p u(t)\bigr]dt - \sigma_p\,dW_p
 \]</span></p>
 <p>Because <span class="math inline">\(a_p \neq a_s\)</span>, <span class="math inline">\(\Delta(t)\)</span> is not itself an OU process but a difference of two OU processes with distinct time constants. When coupling is nonzero, the drift of <span class="math inline">\(\Delta(t)\)</span> involves a linear combination of both <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> individually <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>, and <span class="math inline">\(\Delta(t)\)</span> alone is no longer sufficient to summarize the full state; the two-dimensional filter of <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a> is required.</p>
-<p>Its spectral density is</p>
 <p>The spectral density of <span class="math inline">\(\Delta(t)\)</span> is determined by the eigenvalues of <span class="math inline">\(A\)</span>. Letting <span class="math inline">\(\gamma_{1,2} = \tfrac{1}{2}\bigl[-(a_p + a_s) \mp \sqrt{(a_p - a_s)^2 + 4 a_{ps} a_{sp}}\bigr]\)</span> (both negative when the stability condition holds), the spectral density takes the form of two Lorentzians centred at <span class="math inline">\(|\gamma_1|/(2\pi)\)</span> and <span class="math inline">\(|\gamma_2|/(2\pi)\)</span>:</p>
 <p><span class="math display">\[
 S_\Delta(f) \;\approx\; \frac{A_1}{\gamma_1^2 + (2\pi f)^2}
                       + \frac{A_2}{\gamma_2^2 + (2\pi f)^2}
 \]</span></p>
-<p>where <span class="math inline">\(A_1, A_2 &gt; 0\)</span> are amplitude coefficients that depend on all four rate parameters and the diffusion amplitudes. When <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>, this collapses to the familiar two-Lorentzian form with poles at <span class="math inline">\(a_s/(2\pi)\)</span> and <span class="math inline">\(a_p/(2\pi)\)</span>. Non-zero antagonism <em>spreads</em> the poles: <span class="math inline">\(|\gamma_1|\)</span> increases above <span class="math inline">\(\max(a_p, a_s)\)</span> and <span class="math inline">\(|\gamma_2|\)</span> decreases below <span class="math inline">\(\min(a_p, a_s)\)</span>, producing a distinctive spectral signature from which all four rate parameters can, in principle, be identified. This spectrum is identifiable from the second-order properties of the RR interval series. The amplitude of each Lorentzian, determined by <span class="math inline">\(\sigma_s^2/a_s\)</span> and <span class="math inline">\(\sigma_p^2/a_p\)</span>, corresponds to the spectral area in each frequency band, linking the model parameters directly to classical HRV spectral indices.</p>
+<p>where <span class="math inline">\(A_1, A_2 &gt; 0\)</span> are amplitude coefficients that depend on all four rate parameters and the diffusion amplitudes. When <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>, this collapses to the familiar two-Lorentzian form with poles at <span class="math inline">\(a_s/(2\pi)\)</span> and <span class="math inline">\(a_p/(2\pi)\)</span>. Non-zero antagonism <em>spreads</em> the poles: <span class="math inline">\(|\gamma_1|\)</span> increases above <span class="math inline">\(\max(a_p, a_s)\)</span> and <span class="math inline">\(|\gamma_2|\)</span> decreases below <span class="math inline">\(\min(a_p, a_s)\)</span>, producing a distinctive spectral signature from which all four rate parameters can, in principle, be identified. This spectrum is identifiable from the second-order properties of the RR interval series: the positions of the two spectral poles identify <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span>; the amplitudes of the two Lorentzians (proportional to <span class="math inline">\(\sigma_p^2/a_p\)</span> and <span class="math inline">\(\sigma_s^2/a_s\)</span>, the stationary variances of each branch) identify the diffusion amplitudes; and the non-zero coupling magnitudes <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> shift both poles away from <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span>, generating a distinctive spectral signature that distinguishes the coupled model from two independent OU processes. This directly links all ten free parameters to the spectral structure of the RR tachogram.</p>
 </section>
 </section>
 <section id="the-constrained-stochastic-differential-equations" class="level2" data-number="3.2">
 <h2 data-number="3.2" class="anchored" data-anchor-id="the-constrained-stochastic-differential-equations"><span class="header-section-number">3.2</span> The Constrained Stochastic Differential Equations</h2>
-<p>The autonomic state vector <span class="math inline">\(\mathbf{x}(t) = [p(t),\, s(t)]^\top\)</span> evolves according to a system of coupled linear SDEs. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are free parameters estimated from data alongside <span class="math inline">\(a_p\)</span>, <span class="math inline">\(a_s\)</span>, <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>, <span class="math inline">\(\mu_0\)</span>, and <span class="math inline">\(\rho\)</span>. For the baseline single-stream protocol with no exogenous input, the data provide sufficient curvature to estimate the coupling magnitudes conditioned on the observed state trajectory (§<span class="math inline">\(\ref{sec-coupling}\)</span>); the uncoupled constraint <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span> is a special case used for comparison and for the initial simulation demonstrations. When coupling is nonzero, the OU log-likelihood blocks are no longer separable, and joint numerical optimization replaces the closed-form estimates (Section~<span class="math inline">\(\ref{sec-identifiability}\)</span>). The full system is:</p>
+<p>The autonomic state vector <span class="math inline">\(\mathbf{x}(t) = [p(t),\, s(t)]^\top\)</span> evolves according to a system of coupled linear SDEs. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are free parameters estimated from data alongside <span class="math inline">\(a_p\)</span>, <span class="math inline">\(a_s\)</span>, <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>, <span class="math inline">\(\mu_0\)</span>, and <span class="math inline">\(\rho\)</span>. For the baseline single-stream protocol with no exogenous input, the data provide sufficient curvature to estimate the coupling magnitudes conditioned on the observed state trajectory <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>; the uncoupled constraint <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span> is a special case used for comparison and for the initial simulation demonstrations. When coupling is nonzero, the OU log-likelihood blocks are no longer separable, and joint numerical optimization replaces the closed-form estimates <a href="#sec-identifiability" class="quarto-xref">Section&nbsp;4</a>. The full system is:</p>
 <p><span class="math display">\[
 \begin{aligned}
 dp(t) &amp;= \bigl[-a_p\, p(t) - a_{ps}\, s(t) + c_p\, u(t)\bigr]\,dt + \sigma_p\,dW_p(t) \\
 ds(t) &amp;= \bigl[-a_{sp}\, p(t) - a_s\, s(t) + c_s\, u(t)\bigr]\,dt + \sigma_s\,dW_s(t)
 \end{aligned}
 \]</span></p>
-<p>where <span class="math inline">\(W_p\)</span> and <span class="math inline">\(W_s\)</span> are independent standard Wiener processes. Each branch is an Ornstein-Uhlenbeck process: mean-reverting to the homeostatic baseline (or to the input-driven equilibrium when <span class="math inline">\(u(t) \neq 0\)</span>), with a time constant and noise amplitude set by its respective parameters. The free parameter set is <span class="math inline">\(\{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho\}\)</span> (plus <span class="math inline">\(c_p, c_s\)</span> when input is present); all are estimated from the RR interval series. The values <span class="math inline">\(a_p \approx 2\,\text{Hz}\)</span> and <span class="math inline">\(a_s \approx 0.2\,\text{Hz}\)</span> from the autonomic neuroscience literature serve only as starting values for the optimizer; no physiological prior constrains the estimates <a href="#sec-identifiability" class="quarto-xref">Section&nbsp;4</a>. For the baseline uncoupled case (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>), the six-parameter active set <span class="math inline">\(\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> is the focus of the identifiability analysis; coupling identifiability is addressed in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>. When a non-trivial external input is present, <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are additionally identifiable.</p>
+<p>where <span class="math inline">\(W_p\)</span> and <span class="math inline">\(W_s\)</span> are independent standard Wiener processes. Each branch is an Ornstein-Uhlenbeck process: mean-reverting to the homeostatic baseline (or to the input-driven equilibrium when <span class="math inline">\(u(t) \neq 0\)</span>), with a time constant and noise amplitude set by its respective parameters. The free parameter set is <span class="math inline">\(\{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho\}\)</span> (plus <span class="math inline">\(c_p, c_s\)</span> when input is present); all are estimated from the RR interval series. The values <span class="math inline">\(a_p \approx 2\,\text{Hz}\)</span> and <span class="math inline">\(a_s \approx 0.2\,\text{Hz}\)</span> from the autonomic neuroscience literature serve only as starting values for the optimizer; no physiological prior constrains the estimates <a href="#sec-identifiability" class="quarto-xref">Section&nbsp;4</a>. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are always free parameters; their identifiability from the RR series is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>. When <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span> the system reduces to two independent OU processes — a constrained sub-model used in the initial demonstrations because it admits closed-form estimators and a block-diagonal FIM that simplify exposition. When a non-trivial external input is present, <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are additionally identifiable, bringing the full active set to ten parameters.</p>
 <section id="vagal-kinetics-and-the-hf-band" class="level3" data-number="3.2.1">
 <h3 data-number="3.2.1" class="anchored" data-anchor-id="vagal-kinetics-and-the-hf-band"><span class="header-section-number">3.2.1</span> Vagal Kinetics and the HF Band</h3>
-<p>The parasympathetic state <span class="math inline">\(p(t)\)</span>, governed by a self-decay rate <span class="math inline">\(a_p\)</span> estimated from data (simulation ground truth: <span class="math inline">\(a_p = 2.0\)</span> Hz, time constant <span class="math inline">\(\tau_p = 0.5\)</span> s), acts as a high-pass filter on the Wiener process noise. Its impulse response decays within approximately <span class="math inline">\(2\)</span>–<span class="math inline">\(3\)</span> s. This rapid recovery allows beat-to-beat vagal modulation and is responsible for the spectral power in the HF band (<span class="math inline">\(0.15\)</span>–<span class="math inline">\(0.4\)</span> Hz), classically associated with respiratory sinus arrhythmia <span class="citation" data-cites="malik1996heart">(<a href="#ref-malik1996heart" role="doc-biblioref">Malik 1996</a>)</span>.</p>
+<p>The parasympathetic state <span class="math inline">\(p(t)\)</span> acts as a high-pass filter on the Wiener process noise, with its spectral pole located at <span class="math inline">\(a_p/(2\pi)\)</span> Hz. The self-decay rate <span class="math inline">\(a_p\)</span> is a free parameter estimated from the RR series; values near <span class="math inline">\(2\)</span> Hz (time constant <span class="math inline">\(\tau_p \approx 0.5\)</span> s) are consistent with vagal physiology and are recovered in the simulation study below. The impulse response at these values decays within approximately <span class="math inline">\(2\)</span>–<span class="math inline">\(3\)</span> s, enabling beat-to-beat vagal modulation and generating spectral power in the HF band (<span class="math inline">\(0.15\)</span>–<span class="math inline">\(0.4\)</span> Hz) associated with respiratory sinus arrhythmia <span class="citation" data-cites="malik1996heart">(<a href="#ref-malik1996heart" role="doc-biblioref">Malik 1996</a>)</span>. The correspondence between the estimated <span class="math inline">\(\hat a_p\)</span> and the known physiological range provides an external validity check on the parameter recovery.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -672,7 +694,7 @@ ds(t) &amp;= \bigl[-a_{sp}\, p(t) - a_s\, s(t) + c_s\, u(t)\bigr]\,dt + \sigma_s
 <img src="index_files/figure-html/fig-impulse-response-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-impulse-response-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: Theoretical impulse response of the vagal (blue) and sympathetic (red) branches. A unit impulse at <span class="math inline">\(t = 1\)</span> s illustrates the order-of-magnitude difference in recovery time. The vagal response dissipates within seconds; the sympathetic response persists for tens of seconds.
+Figure&nbsp;2: Theoretical impulse response of the vagal (blue) and sympathetic (red) branches. A unit impulse at <span class="math inline">\(t = 1\)</span> s illustrates the order-of-magnitude difference in recovery time. The vagal response dissipates within seconds; the sympathetic response persists for tens of seconds.
 </figcaption>
 </figure>
 </div>
@@ -681,12 +703,12 @@ Figure&nbsp;1: Theoretical impulse response of the vagal (blue) and sympathetic 
 </section>
 <section id="sympathetic-inertia-and-the-lf-band" class="level3" data-number="3.2.2">
 <h3 data-number="3.2.2" class="anchored" data-anchor-id="sympathetic-inertia-and-the-lf-band"><span class="header-section-number">3.2.2</span> Sympathetic Inertia and the LF Band</h3>
-<p>The sympathetic state <span class="math inline">\(s(t)\)</span>, governed by a self-decay rate <span class="math inline">\(a_s\)</span> estimated from data (simulation ground truth: <span class="math inline">\(a_s = 0.2\)</span> Hz, time constant <span class="math inline">\(\tau_s = 5\)</span> s), acts as a low-pass filter. Its slow decay integrates inputs over a prolonged window, producing the smooth, trending components of autonomic regulation. The emergent spectral power is concentrated in the LF band (<span class="math inline">\(0.04\)</span>–<span class="math inline">\(0.15\)</span> Hz) without any explicit oscillatory forcing, arising purely from the interaction of OU dynamics and the Wiener process.</p>
+<p>The sympathetic state <span class="math inline">\(s(t)\)</span> acts as a low-pass filter, with its spectral pole at <span class="math inline">\(a_s/(2\pi)\)</span> Hz. The self-decay rate <span class="math inline">\(a_s\)</span> is estimated from data; values near <span class="math inline">\(0.2\)</span> Hz (time constant <span class="math inline">\(\tau_s \approx 5\)</span> s) are consistent with noradrenergic kinetics and recovered in the simulation study. Its slow decay integrates inputs over a prolonged window, producing the smooth, trending components of autonomic regulation. The emergent spectral power is concentrated in the LF band (<span class="math inline">\(0.04\)</span>–<span class="math inline">\(0.15\)</span> Hz) without any explicit oscillatory forcing, arising purely from the interaction of OU dynamics and the Wiener process.</p>
 </section>
 </section>
 <section id="visualization-of-the-latent-state-trajectories" class="level2" data-number="3.3">
 <h2 data-number="3.3" class="anchored" data-anchor-id="visualization-of-the-latent-state-trajectories"><span class="header-section-number">3.3</span> Visualization of the Latent State Trajectories</h2>
-<p>Figure <a href="#fig-latent-sde" class="quarto-xref">Figure&nbsp;2</a> shows simulated trajectories under baseline conditions, illustrating the distinct spectral signatures of the two branches and the identifiable net drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>.</p>
+<p>Figure <a href="#fig-latent-sde" class="quarto-xref">Figure&nbsp;3</a> shows simulated trajectories under baseline conditions, illustrating the distinct spectral signatures of the two branches and the identifiable net drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -698,16 +720,16 @@ Figure&nbsp;1: Theoretical impulse response of the vagal (blue) and sympathetic 
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(r0<span class="sc">$</span>time, r0<span class="sc">$</span>p, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>,</span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"p(t)"</span>, <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray70"</span>); <span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray70"</span>); </span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(r0<span class="sc">$</span>time, r0<span class="sc">$</span>s, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"s(t)"</span>, <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray70"</span>); <span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray70"</span>); </span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(r0<span class="sc">$</span>time, r0<span class="sc">$</span>delta, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#2C5F2E"</span>, <span class="at">lwd =</span> <span class="fl">1.8</span>,</span>
 <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">Delta</span>(t) <span class="sc">==</span> <span class="fu">s</span>(t) <span class="sc">-</span> <span class="fu">p</span>(t)),</span>
 <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray70"</span>); <span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray70"</span>); </span>
 <span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="fu">mtext</span>(<span class="st">"Time (s)"</span>, <span class="at">side =</span> <span class="dv">1</span>, <span class="at">outer =</span> <span class="cn">TRUE</span>, <span class="at">line =</span> <span class="fl">1.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -717,7 +739,7 @@ Figure&nbsp;1: Theoretical impulse response of the vagal (blue) and sympathetic 
 <img src="index_files/figure-html/fig-latent-sde-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-latent-sde-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2: Simulated trajectories of the latent autonomic states under baseline conditions (<span class="math inline">\(u(t) = 0\)</span>, all free parameters at their reference values). <strong>Top:</strong> Parasympathetic state <span class="math inline">\(p(t)\)</span>, high-frequency texture driven by the fast decay rate. <strong>Middle:</strong> Sympathetic state <span class="math inline">\(s(t)\)</span>, smooth, slow-trending trajectory. <strong>Bottom:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>, the quantity directly identified by the RR interval series. Positive values indicate sympathetic dominance; negative values indicate vagal dominance.
+Figure&nbsp;3: Simulated trajectories of the latent autonomic states under baseline conditions (<span class="math inline">\(u(t) = 0\)</span>, all free parameters at their reference values). <strong>Top:</strong> Parasympathetic state <span class="math inline">\(p(t)\)</span>, high-frequency texture driven by the fast decay rate. <strong>Middle:</strong> Sympathetic state <span class="math inline">\(s(t)\)</span>, smooth, slow-trending trajectory. <strong>Bottom:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>, the quantity directly identified by the RR interval series. Positive values indicate sympathetic dominance; negative values indicate vagal dominance.
 </figcaption>
 </figure>
 </div>
@@ -765,15 +787,13 @@ Figure&nbsp;2: Simulated trajectories of the latent autonomic states under basel
 <span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
 <span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(<span class="dv">10</span>, <span class="sc">-</span><span class="fl">0.25</span>, <span class="st">"Invalid domain</span><span class="sc">\n</span><span class="st">(clipping required)"</span>,</span>
 <span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>     <span class="at">col =</span> <span class="st">"firebrick"</span>, <span class="at">cex =</span> <span class="fl">0.8</span>, <span class="at">adj =</span> <span class="fl">0.5</span>)</span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Right: log link, always positive</span></span>
-<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(tt, mu_ln, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
-<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">mu</span>(t) <span class="sc">~</span> <span class="st">"[s]"</span>),</span>
-<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Log Link (this model)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="fl">1.0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
-<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(<span class="dv">1</span>, <span class="fl">1.1</span>, <span class="fu">expression</span>(mu[<span class="dv">0</span>] <span class="sc">==</span> <span class="fl">1.0</span> <span class="sc">~</span> s), <span class="at">adj =</span> <span class="dv">0</span>, <span class="at">col =</span> <span class="st">"gray40"</span>, <span class="at">cex =</span> <span class="fl">0.8</span>)</span>
-<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Right: log link, always positive</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(tt, mu_ln, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">mu</span>(t) <span class="sc">~</span> <span class="st">"[s]"</span>),</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Log Link (this model)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="fl">1.0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray50"</span>)</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(<span class="dv">1</span>, <span class="fl">0.8</span>, <span class="fu">expression</span>(mu[<span class="dv">0</span>] <span class="sc">==</span> <span class="fl">1.0</span> <span class="sc">~</span> s), <span class="at">adj =</span> <span class="dv">0</span>, <span class="at">col =</span> <span class="st">"gray40"</span>, <span class="at">cex =</span> <span class="fl">0.8</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-log-link" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -782,7 +802,7 @@ Figure&nbsp;2: Simulated trajectories of the latent autonomic states under basel
 <img src="index_files/figure-html/fig-log-link-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-log-link-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Comparison of the log link and the linear link for a simulated net drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>. <strong>Left:</strong> The linear link <span class="math inline">\(\mu(t) = 1/(\rho_0 + \Delta(t))\)</span> becomes undefined and negative when <span class="math inline">\(\Delta(t)\)</span> crosses below <span class="math inline">\(-\rho_0\)</span>, requiring clipping. <strong>Right:</strong> The log link <span class="math inline">\(\mu(t) = \mu_0 \exp(-\Delta(t))\)</span> is always positive and smooth. The shaded region on the left marks the invalid domain.
+Figure&nbsp;4: Comparison of the log link and the linear link for a simulated net drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>. <strong>Left:</strong> The linear link <span class="math inline">\(\mu(t) = 1/(\rho_0 + \Delta(t))\)</span> becomes undefined and negative when <span class="math inline">\(\Delta(t)\)</span> crosses below <span class="math inline">\(-\rho_0\)</span>, requiring clipping. <strong>Right:</strong> The log link <span class="math inline">\(\mu(t) = \mu_0 \exp(-\Delta(t))\)</span> is always positive and smooth. The shaded region on the left marks the invalid domain.
 </figcaption>
 </figure>
 </div>
@@ -857,17 +877,15 @@ F(\tau;\mu,\kappa) \;=\;
 <span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topright"</span>,</span>
 <span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">paste</span>(<span class="st">"\u03bc ="</span>, mu_v, <span class="st">"s"</span>),</span>
 <span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> cols, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Right: varying kappa</span></span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="cn">NA</span>, <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">2.2</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">6</span>),</span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Interval (s)"</span>, <span class="at">ylab =</span> <span class="st">"Density"</span>,</span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Effect of shape \u03ba"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>) <span class="fu">lines</span>(t_sq, <span class="fu">dig_v</span>(t_sq, <span class="fl">0.85</span>, k_v[i]), <span class="at">col =</span> cols[i], <span class="at">lwd =</span> <span class="dv">2</span>)</span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topright"</span>,</span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">paste</span>(<span class="st">"\u03ba ="</span>, k_v),</span>
-<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> cols, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
-<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Right: varying kappa</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="cn">NA</span>, <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">2.2</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">6</span>),</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Interval (s)"</span>, <span class="at">ylab =</span> <span class="st">"Density"</span>,</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Effect of shape \u03ba"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>) <span class="fu">lines</span>(t_sq, <span class="fu">dig_v</span>(t_sq, <span class="fl">0.85</span>, k_v[i]), <span class="at">col =</span> cols[i], <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topright"</span>,</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">paste</span>(<span class="st">"\u03ba ="</span>, k_v),</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> cols, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-ig-shapes" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -876,7 +894,7 @@ F(\tau;\mu,\kappa) \;=\;
 <img src="index_files/figure-html/fig-ig-shapes-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ig-shapes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4: The Inverse Gaussian probability density. <strong>Left:</strong> Effect of the mean interval <span class="math inline">\(\mu\)</span> (shape fixed at <span class="math inline">\(\kappa = 15\)</span>). As <span class="math inline">\(\mu\)</span> decreases (sympathetic dominance), the distribution shifts to earlier times. <strong>Right:</strong> Effect of the shape parameter <span class="math inline">\(\kappa\)</span> (mean fixed at <span class="math inline">\(\mu = 1.00\)</span> s). Higher <span class="math inline">\(\kappa\)</span> corresponds to lower variance, a more regular rhythm. The heteroscedastic property <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> links both panels: reducing <span class="math inline">\(\mu\)</span> reduces the variance even at fixed <span class="math inline">\(\kappa\)</span>.
+Figure&nbsp;5: The Inverse Gaussian probability density. <strong>Left:</strong> Effect of the mean interval <span class="math inline">\(\\mu\)</span> (shape fixed at <span class="math inline">\(\\kappa = 15\)</span>). As <span class="math inline">\(\\mu\)</span> decreases (sympathetic dominance), the distribution shifts to earlier times. <strong>Right:</strong> Effect of the shape parameter <span class="math inline">\(\\kappa\)</span> (mean fixed at <span class="math inline">\(\\mu = 1.00\)</span> s). Higher <span class="math inline">\(\\kappa\)</span> corresponds to lower variance, a more regular rhythm. The heteroscedastic property <span class="math inline">\(\\text{Var}(\\tau) = \\mu^3/\\kappa\)</span> links both panels: reducing <span class="math inline">\(\\mu\)</span> reduces the variance even at fixed <span class="math inline">\(\\kappa\)</span>. These are illustrative parameter values chosen to show the shape of the distribution across a physiological range; the reference simulation uses <span class="math inline">\(\\mu_0 = `r PARAMS\)</span>free<span class="math inline">\(mu_0`\)</span> s and <span class="math inline">\(\\kappa = `r round(kappa_from_rho(PARAMS\)</span>free<span class="math inline">\(mu_0, PARAMS\)</span>free<span class="math inline">\(rho))`\)</span>.
 </figcaption>
 </figure>
 </div>
@@ -917,16 +935,15 @@ Figure&nbsp;4: The Inverse Gaussian probability density. <strong>Left:</strong> 
 <span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">bquote</span>(mu <span class="sc">==</span> .(<span class="fu">round</span>(mu_base <span class="sc">*</span> <span class="fl">1.40</span>, <span class="dv">2</span>)) <span class="sc">~</span> s <span class="sc">~</span> <span class="st">"(vagal \u2191)"</span>)),</span>
 <span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#D55E00"</span>, <span class="st">"#0072B2"</span>),</span>
 <span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>       <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">lty =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
-<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(tau_ax, mu_ax, hgrid,</span>
-<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>      <span class="at">col  =</span> <span class="fu">hcl.colors</span>(<span class="dv">100</span>, <span class="st">"YlOrRd"</span>, <span class="at">rev =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>      <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
-<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>      <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="st">"Mean interval"</span> <span class="sc">~</span> <span class="fu">mu</span>(t) <span class="sc">~</span> <span class="st">"[s]"</span>),</span>
-<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Hazard Surface"</span>, <span class="at">axes =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a><span class="fu">axis</span>(<span class="dv">1</span>); <span class="fu">axis</span>(<span class="dv">2</span>)</span>
-<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a><span class="fu">contour</span>(tau_ax, mu_ax, hgrid, <span class="at">add =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">nlevels =</span> <span class="dv">5</span>, <span class="at">lwd =</span> <span class="fl">0.8</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(tau_ax, mu_ax, hgrid,</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>      <span class="at">col  =</span> <span class="fu">hcl.colors</span>(<span class="dv">100</span>, <span class="st">"YlOrRd"</span>, <span class="at">rev =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>      <span class="at">xlab =</span> <span class="st">"Time since last beat (s)"</span>,</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>      <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="st">"Mean interval"</span> <span class="sc">~</span> <span class="fu">mu</span>(t) <span class="sc">~</span> <span class="st">"[s]"</span>),</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Hazard Surface"</span>, <span class="at">axes =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a><span class="fu">axis</span>(<span class="dv">1</span>); <span class="fu">axis</span>(<span class="dv">2</span>)</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a><span class="fu">contour</span>(tau_ax, mu_ax, hgrid, <span class="at">add =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">nlevels =</span> <span class="dv">5</span>, <span class="at">lwd =</span> <span class="fl">0.8</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-hazard-function" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -935,7 +952,7 @@ Figure&nbsp;4: The Inverse Gaussian probability density. <strong>Left:</strong> 
 <img src="index_files/figure-html/fig-hazard-function-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hazard-function-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5: The Inverse Gaussian hazard function <span class="math inline">\(\lambda(\tau \mid \mathcal{H}_t)\)</span>, computed using the fully log-space algorithm. <strong>Left:</strong> Effect of sympathetic activation: reducing <span class="math inline">\(\mu(t)\)</span> shifts the hazard peak to the left, increasing the probability of an earlier beat. <strong>Right:</strong> The hazard surface as a function of both elapsed time and the current mean interval. Brighter colors indicate higher instantaneous firing probability.
+Figure&nbsp;6: The Inverse Gaussian hazard function <span class="math inline">\(\lambda(\tau \mid \mathcal{H}_t)\)</span>, computed using the fully log-space algorithm. <strong>Left:</strong> Effect of sympathetic activation: reducing <span class="math inline">\(\mu(t)\)</span> shifts the hazard peak to the left, increasing the probability of an earlier beat. <strong>Right:</strong> The hazard surface as a function of both elapsed time and the current mean interval. Brighter colors indicate higher instantaneous firing probability.
 </figcaption>
 </figure>
 </div>
@@ -1024,7 +1041,7 @@ x(t + \Delta t) \mid x(t) \;\sim\;
 <img src="index_files/figure-html/fig-ou-exact-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ou-exact-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Stationary variance bias of Euler-Maruyama (EM) versus the exact OU kernel, shown for the vagal branch (<span class="math inline">\(a_p = 2.0\)</span> Hz, <span class="math inline">\(\sigma_p = 0.20\)</span>). <strong>Left:</strong> Empirical stationary variance from 300 replicate trajectories (<span class="math inline">\(N = 10000\)</span> steps each); The exact kernel achieves the true value <span class="math inline">\(\sigma^2/(2a) = 0.01\)</span> at every step size. <strong>Right:</strong> Relative bias (%) as a function of step size, confirming the theoretical prediction <span class="math inline">\(\approx a\Delta t/2\)</span>.
+Figure&nbsp;7: Stationary variance bias of Euler-Maruyama (EM) versus the exact OU kernel, shown for the vagal branch (<span class="math inline">\(a_p = 2.0\)</span> Hz, <span class="math inline">\(\sigma_p = 0.20\)</span>). <strong>Left:</strong> Empirical stationary variance from 300 replicate trajectories (<span class="math inline">\(N = 10000\)</span> steps each); The exact kernel achieves the true value <span class="math inline">\(\sigma^2/(2a) = 0.01\)</span> at every step size. <strong>Right:</strong> Relative bias (%) as a function of step size, confirming the theoretical prediction <span class="math inline">\(\approx a\Delta t/2\)</span>.
 </figcaption>
 </figure>
 </div>
@@ -1089,7 +1106,7 @@ P \;=\; -\text{expm1}\!\bigl(\log S(\tau + \Delta t) - \log S(\tau)\bigr)
 <img src="index_files/figure-html/fig-bernoulli-vs-survival-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-bernoulli-vs-survival-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. <strong>Left:</strong> The IG hazard function for the baseline parameter set, with the hazard peak at <span class="math inline">\(\tau \approx 0.72\)</span> s. <strong>Right:</strong> Relative error <span class="math inline">\((P_\text{Bernoulli} - P_\text{exact})/P_\text{exact} \times 100\%\)</span> as a function of elapsed time <span class="math inline">\(\tau\)</span>. The error is negative for <span class="math inline">\(\tau &lt; \tau^*\)</span> (rising hazard: <span class="math inline">\(\lambda(\tau_i)\)</span> underestimates the step-average) and positive for <span class="math inline">\(\tau &gt; \tau^*\)</span> (falling hazard: <span class="math inline">\(\lambda(\tau_i)\)</span> overestimates). The maximum positive overestimate, annotated on the right panel, occurs just past the hazard peak where <span class="math inline">\(\lambda\)</span> is largest and the surplus <span class="math inline">\(\lambda(\tau_i)\Delta t - P_{\text{exact}}\)</span> peaks. Because most beats are generated in this post-peak regime, the net bias across a full simulation is a systematic overestimate of event counts.
+Figure&nbsp;8: Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. <strong>Left:</strong> The IG hazard function for the baseline parameter set, with the hazard peak at <span class="math inline">\(\tau \approx 0.72\)</span> s. <strong>Right:</strong> Relative error <span class="math inline">\((P_\text{Bernoulli} - P_\text{exact})/P_\text{exact} \times 100\%\)</span> as a function of elapsed time <span class="math inline">\(\tau\)</span>. The error is negative for <span class="math inline">\(\tau &lt; \tau^*\)</span> (rising hazard: <span class="math inline">\(\lambda(\tau_i)\)</span> underestimates the step-average) and positive for <span class="math inline">\(\tau &gt; \tau^*\)</span> (falling hazard: <span class="math inline">\(\lambda(\tau_i)\)</span> overestimates). The maximum positive overestimate, annotated on the right panel, occurs just past the hazard peak where <span class="math inline">\(\lambda\)</span> is largest and the surplus <span class="math inline">\(\lambda(\tau_i)\Delta t - P_{\text{exact}}\)</span> peaks. Because most beats are generated in this post-peak regime, the net bias across a full simulation is a systematic overestimate of event counts.
 </figcaption>
 </figure>
 </div>
@@ -1119,17 +1136,19 @@ u(t) \;=\; \sigma\!\bigl(k(t - t_{\rm on})\bigr)\cdot\sigma\!\bigl(k(t_{\rm off}
 </section>
 <section id="sec-identifiability" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Identifiability Analysis</h1>
-<p>The framework introduces up to ten free parameters: <span class="math inline">\(\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}\)</span>. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are identifiable only when <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are always free parameters; their conditional identifiability from a single RR stream is established in §<span class="math inline">\(\ref{sec-coupling}\)</span>. For the baseline uncoupled analysis (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>) the active set comprises six always-free parameters <span class="math inline">\(\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> plus two protocol-conditional parameters <span class="math inline">\(\{c_p, c_s\}\)</span>, identifiable only when <span class="math inline">\(u(t) \not\equiv 0\)</span>; the stress protocol used here activates all eight. The FIM analysis below therefore covers the full <span class="math inline">\(8 \times 8\)</span> system. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision. We address this in two stages. The present section establishes : given the latent state trajectory <span class="math inline">\(\{p(t), s(t)\}_{0 \le t \le T}\)</span>, the free parameters can be recovered from the resulting spike train with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed Fisher information matrix (FIM), and a Monte Carlo recovery study. — recovery from the spike train alone, integrating over the unobserved latent states — is established in <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a> via the UKF filter likelihood.</p>
+<p>The framework introduces up to ten free parameters: <span class="math inline">\(\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}\)</span>. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are identifiable only when <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are always free parameters; their conditional identifiability from a single RR stream is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>. For the baseline uncoupled analysis (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>) the active set comprises six always-free parameters <span class="math inline">\(\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> plus two protocol-conditional parameters <span class="math inline">\(\{c_p, c_s\}\)</span>, identifiable only when <span class="math inline">\(u(t) \not\equiv 0\)</span>; the stress protocol used here activates all eight. The FIM analysis below therefore covers the full <span class="math inline">\(8 \times 8\)</span> system. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision. We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory <span class="math inline">\(\{p(t), s(t)\}_{0 \le t \le T}\)</span>, the full parameter set <span class="math inline">\(\Theta\)</span> is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study (<span class="math inline">\(N = 500\)</span> replications). For the uncoupled sub-model (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>) with a non-trivial input (<span class="math inline">\(u(t) \not\equiv 0\)</span>), the FIM is <span class="math inline">\(8 \times 8\)</span> and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full <span class="math inline">\(10 \times 10\)</span> system, where the block-diagonal structure breaks down, is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a> via a numerical FIM and a dedicated recovery study. Marginal identifiability — recovery from the spike train alone, integrating over unobserved latent states — is established in <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a> via the UKF marginal likelihood.</p>
 <section id="separability-of-the-conditional-log-likelihood" class="level2" data-number="4.1">
 <h2 data-number="4.1" class="anchored" data-anchor-id="separability-of-the-conditional-log-likelihood"><span class="header-section-number">4.1</span> Separability of the Conditional Log-Likelihood</h2>
-<p>The conditional log-likelihood, conditioning on the latent state trajectory as observed in a simulation, separates into three independent blocks:</p>
+<p>For the uncoupled sub-model (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>), the conditional log-likelihood separates into three independent blocks:</p>
 <p><span class="math display">\[
 \log \mathcal{L}(\Theta \mid \mathbf{x}_{0:T},\, \{t_k\})
 = \underbrace{\log \mathcal{L}_p(a_p,\, \sigma_p,\, c_p)}_{\text{OU parasympathetic}}
 + \underbrace{\log \mathcal{L}_s(a_s,\, \sigma_s,\, c_s)}_{\text{OU sympathetic}}
 + \underbrace{\log \mathcal{L}_\text{obs}(\mu_0,\, \rho)}_{\text{IG observations}}
 \]</span></p>
-<p>where the three components arise from the OU transition densities of <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> and from the IG beat-time densities respectively. This separability has two important consequences.</p>
+<p>where the three components arise from the OU transition densities of <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> and from the IG beat-time densities respectively.</p>
+<p>When <span class="math inline">\(a_{ps}\)</span> or <span class="math inline">\(a_{sp}\)</span> is non-zero, the OU transition matrices couple <span class="math inline">\(p\)</span> and <span class="math inline">\(s\)</span>, and the first two terms no longer separate. In that case the OU log-likelihood must be maximized jointly over all eight OU parameters numerically (see <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>). The IG observation block <span class="math inline">\(\log\mathcal{L}_\text{obs}\)</span> retains its closed form regardless of coupling, because its sufficient statistics (i.e., the inter-beat intervals <span class="math inline">\(\tau_k\)</span> and the interval-averaged effective drives <span class="math inline">\(\bar\Delta_k\)</span>) are independent of whether the OU dynamics are coupled.</p>
+<p>This separability has two important consequences.</p>
 <p><strong>Consequence 1: closed-form MLEs.</strong> Each block admits an analytic maximum. For the OU blocks, the data generating structure is a Gaussian linear model with known design matrix:</p>
 <p><span class="math display">\[
 x_{i+1} = x_i e^{-a\Delta t} + \frac{c\, u_i}{a}(1 - e^{-a\Delta t}) + \varepsilon_i, \qquad
@@ -1140,7 +1159,7 @@ x_{i+1} = x_i e^{-a\Delta t} + \frac{c\, u_i}{a}(1 - e^{-a\Delta t}) + \varepsil
 \hat\mu_0 = \frac{\sum_k \tau_k\, e^{2\bar\Delta_k}}{\sum_k e^{\bar\Delta_k}}, \qquad
 \hat\kappa = \frac{N}{\displaystyle\sum_k \frac{(\tau_k - \hat\mu_k)^2}{\hat\mu_k^2\,\tau_k}}
 \]</span></p>
-<p>where <span class="math inline">\(\hat\mu_k = \hat\mu_0 e^{-\bar\Delta_k}\)</span>, and <span class="math inline">\(\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}\)</span> is recovered by the delta method. Because the OU process evolves continuously within each IBI, using the instantaneous endpoint value <span class="math inline">\(\Delta(t_k)\)</span> as a proxy for the mean interval introduces a systematic bias in <span class="math inline">\(\hat\kappa\)</span> (and secondarily in <span class="math inline">\(\hat\mu_0\)</span>) driven by the within-interval variance of <span class="math inline">\(\Delta(t)\)</span> — an errors-in-variables artefact that is most severe for the fast vagal branch (<span class="math inline">\(a_p \approx 2\)</span> Hz, <span class="math inline">\(\tau_p \approx 0.5\)</span> s, comparable to a typical IBI). The estimator therefore uses the <strong>interval-averaged effective drive</strong></p>
+<p>where <span class="math inline">\(\hat\mu_k = \hat\mu_0 e^{-\bar\Delta_k}\)</span>, and <span class="math inline">\(\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}\)</span> is recovered by the delta method. Because the OU process evolves continuously within each IBI, using the instantaneous endpoint value <span class="math inline">\(\Delta(t_k)\)</span> as a proxy for the mean interval introduces a systematic bias in <span class="math inline">\(\hat\kappa\)</span> (and secondarily in <span class="math inline">\(\hat\mu_0\)</span>) driven by the within-interval variance of <span class="math inline">\(\Delta(t)\)</span>, an errors-in-variables artefact that is most severe for the fast vagal branch (<span class="math inline">\(a_p \approx 2\)</span> Hz, <span class="math inline">\(\tau_p \approx 0.5\)</span> s, comparable to a typical IBI). The estimator therefore uses the <strong>interval-averaged effective drive</strong></p>
 <p><span class="math display">\[
 \bar\Delta_k \;=\; -\log\!\left(\frac{1}{n_k}\sum_{j \in \text{IBI}_k} e^{-\Delta(t_j)}\right)
 \]</span></p>
@@ -1188,7 +1207,7 @@ x_{i+1} = x_i e^{-a\Delta t} + \frac{c\, u_i}{a}(1 - e^{-a\Delta t}) + \varepsil
 <img src="index_files/figure-html/fig-fim-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fim-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: Observed Fisher information matrix and eigenvalue spectrum for the reference parameter set. <strong>Left:</strong> The normalized FIM (each entry divided by the maximum diagonal value) displayed as a heatmap. The three blocks along the diagonal correspond to the parasympathetic OU block <span class="math inline">\((\log a_p,\, \log\sigma_p,\, c_p)\)</span>, sympathetic OU block <span class="math inline">\((\log a_s,\, \log\sigma_s,\, c_s)\)</span>, and IG observation block <span class="math inline">\((\log\mu_0,\, \log\rho)\)</span>. Off-diagonal blocks are exactly zero by construction, confirming the theoretical separability of the three log-likelihood components. <strong>Right:</strong> Eigenvalues on a log scale. All eight eigenvalues are strictly positive, confirming that the FIM is positive definite and all parameters are locally identified. The large spread reflects the differing amounts of information available from <span class="math inline">\(n \approx 60{,}000\)</span> OU transitions versus <span class="math inline">\(N \approx 750\)</span> beats.
+Figure&nbsp;9: Observed Fisher information matrix and eigenvalue spectrum for the reference parameter set. <strong>Left:</strong> The normalized FIM (each entry divided by the maximum diagonal value) displayed as a heatmap. The three blocks along the diagonal correspond to the parasympathetic OU block <span class="math inline">\((\log a_p,\, \log\sigma_p,\, c_p)\)</span>, sympathetic OU block <span class="math inline">\((\log a_s,\, \log\sigma_s,\, c_s)\)</span>, and IG observation block <span class="math inline">\((\log\mu_0,\, \log\rho)\)</span>. Off-diagonal blocks are exactly zero by construction, confirming the theoretical separability of the three log-likelihood components. <strong>Right:</strong> Eigenvalues on a log scale. All eight eigenvalues are strictly positive, confirming that the FIM is positive definite and all parameters are locally identified. The large spread reflects the differing amounts of information available from <span class="math inline">\(n \approx 60{,}000\)</span> OU transitions versus <span class="math inline">\(N \approx 750\)</span> beats.
 </figcaption>
 </figure>
 </div>
@@ -1220,27 +1239,27 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">Parasympathetic OU <span class="math inline">\((\log a_p,\, \log\sigma_p,\, c_p)\)</span></td>
-<td style="text-align: left;">3.41e+02</td>
+<td style="text-align: left;">3.32e+02</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">1.40e+03</td>
+<td style="text-align: left;">1.46e+03</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Sympathetic OU <span class="math inline">\((\log a_s,\, \log\sigma_s,\, c_s)\)</span></td>
-<td style="text-align: left;">7.74e+01</td>
+<td style="text-align: left;">7.06e+01</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">4.14e+03</td>
+<td style="text-align: left;">4.58e+03</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">IG observations <span class="math inline">\((\log\mu_0,\, \log\rho)\)</span></td>
-<td style="text-align: left;">1.86e+03</td>
-<td style="text-align: left;">2.79e+04</td>
-<td style="text-align: left;">1.47e+01</td>
+<td style="text-align: left;">1.85e+03</td>
+<td style="text-align: left;">7.84e+04</td>
+<td style="text-align: left;">4.19e+01</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Full <span class="math inline">\(8 \times 8\)</span> matrix</td>
-<td style="text-align: left;">7.74e+01</td>
+<td style="text-align: left;">7.06e+01</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">3.72e+03</td>
+<td style="text-align: left;">4.08e+03</td>
 </tr>
 </tbody>
 </table>
@@ -1249,7 +1268,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 </figure>
 </div>
 </div>
-<p>The FIM is evaluated on the 720-second reference simulation. The OU blocks have large eigenvalues because the full trajectory provides <span class="math inline">\(n \approx 144{,}000\)</span> independent Gaussian transition observations of <span class="math inline">\((a_p, \sigma_p, c_p)\)</span> and <span class="math inline">\((a_s, \sigma_s, c_s)\)</span>. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 720\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive. When the off-diagonal cross term <span class="math inline">\(I(\log\mu_0,\log\rho)\)</span> is negligible, it approximates <span class="math inline">\(I(\log\mu_0)/I(\log\rho) \approx 2/\rho^2\)</span>; for the reference parameters (with <span class="math inline">\(\rho = 0.2236\)</span>, <span class="math inline">\(N \approx 720\)</span> beats, <span class="math inline">\(\bar{w} \approx 1\)</span>) this simplifies to <span class="math inline">\(2/\rho^2 = 40\)</span>, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>.</p>
+<p>The FIM is evaluated on the 720-second reference simulation. The OU blocks have large eigenvalues because the full trajectory provides <span class="math inline">\(n \approx 144{,}000\)</span> independent Gaussian transition observations of <span class="math inline">\((a_p, \sigma_p, c_p)\)</span> and <span class="math inline">\((a_s, \sigma_s, c_s)\)</span>. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 720\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive. When the off-diagonal cross term <span class="math inline">\(I(\log\mu_0,\log\rho)\)</span> is negligible, it approximates <span class="math inline">\(I(\log\mu_0)/I(\log\rho) \approx 2/\rho^2\)</span>; for the reference parameters (with <span class="math inline">\(\rho = 0.1\)</span>, <span class="math inline">\(N \approx 720\)</span> beats, <span class="math inline">\(\bar{w} \approx 1\)</span>) this simplifies to <span class="math inline">\(2/\rho^2 = 200\)</span>, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>.</p>
 </section>
 <section id="sec-recovery" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</h2>
@@ -1268,7 +1287,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 <img src="index_files/figure-html/fig-recovery-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: “Monte Carlo recovery study (<span class="math inline">\(N = 500\)</span> replications, 300 s each with a 60-second double-logistic input at <span class="math inline">\(t = 120\)</span> s). Centre of each interval: relative bias <span class="math inline">\((\\hat\\theta - \\theta_\\text{true})/|\\theta_\\text{true}| \\times 100\\%\)</span>. Whiskers: <span class="math inline">\(\\pm\)</span> relative RMSE. Right margin: empirical 95\% Wald CI coverage. All eight free parameters are estimated by the conditional MLE — in analytically separate blocks for the two OU branches and the IG observation component. Well-calibrated estimation shows bias near zero and coverage near 95%.”
+Figure&nbsp;10: “Monte Carlo recovery study (<span class="math inline">\(N = 500\)</span> replications, 300 s each with a 60-second double-logistic input at <span class="math inline">\(t = 120\)</span> s). Centre of each interval: relative bias <span class="math inline">\((\\hat\\theta - \\theta_\\text{true})/|\\theta_\\text{true}| \\times 100\\%\)</span>. Whiskers: <span class="math inline">\(\\pm\)</span> relative RMSE. Right margin: empirical 95\% Wald CI coverage. All eight free parameters are estimated by the conditional MLE, in analytically separate blocks for the two OU branches and the IG observation component. Well-calibrated estimation shows bias near zero and coverage near 95%.”
 </figcaption>
 </figure>
 </div>
@@ -1278,7 +1297,7 @@ Figure&nbsp;9: “Monte Carlo recovery study (<span class="math inline">\(N = 50
 <div id="tbl-recovery" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, mean estimates, absolute and relative bias, RMSE, and 95% Wald CI coverage are shown for each free parameter. Coverage values near 95% indicate that the asymptotic standard errors are well-calibrated.
+Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, mean estimates, absolute and relative bias, RMSE, and 95% Wald CI coverage are shown for each free parameter. Coverage values near 95% indicate that the asymptotic standard errors are well-calibrated. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are fixed at zero in this analysis and are not estimated; their recovery is reported separately in the coupled-model study of <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>.
 </figcaption>
 <div aria-describedby="tbl-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
@@ -1308,18 +1327,18 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <td style="text-align: left;"><span class="math inline">\(a_p\)</span></td>
 <td style="text-align: left;">2.000</td>
 <td style="text-align: left;">2.004</td>
-<td style="text-align: left;">0.0041</td>
-<td style="text-align: left;">0.21%</td>
-<td style="text-align: left;">0.1147</td>
-<td style="text-align: left;">95.2%</td>
+<td style="text-align: left;">0.0039</td>
+<td style="text-align: left;">0.19%</td>
+<td style="text-align: left;">0.1162</td>
+<td style="text-align: left;">94.8%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_s\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.209</td>
-<td style="text-align: left;">0.0095</td>
-<td style="text-align: left;">4.75%</td>
-<td style="text-align: left;">0.0342</td>
+<td style="text-align: left;">0.214</td>
+<td style="text-align: left;">0.0137</td>
+<td style="text-align: left;">6.85%</td>
+<td style="text-align: left;">0.0403</td>
 <td style="text-align: left;">94.6%</td>
 </tr>
 <tr class="odd">
@@ -1338,43 +1357,43 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <td style="text-align: left;">-0.0000</td>
 <td style="text-align: left;">-0.04%</td>
 <td style="text-align: left;">0.0002</td>
-<td style="text-align: left;">96.6%</td>
+<td style="text-align: left;">96.4%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">1.000</td>
-<td style="text-align: left;">1.002</td>
-<td style="text-align: left;">0.0022</td>
-<td style="text-align: left;">0.22%</td>
-<td style="text-align: left;">0.0082</td>
-<td style="text-align: left;">96.2%</td>
+<td style="text-align: left;">1.001</td>
+<td style="text-align: left;">0.0009</td>
+<td style="text-align: left;">0.09%</td>
+<td style="text-align: left;">0.0050</td>
+<td style="text-align: left;">99.8%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\rho\)</span></td>
-<td style="text-align: left;">0.224</td>
-<td style="text-align: left;">0.232</td>
-<td style="text-align: left;">0.0080</td>
-<td style="text-align: left;">3.59%</td>
-<td style="text-align: left;">0.0116</td>
-<td style="text-align: left;">84.8%</td>
+<td style="text-align: left;">0.100</td>
+<td style="text-align: left;">0.127</td>
+<td style="text-align: left;">0.0273</td>
+<td style="text-align: left;">27.26%</td>
+<td style="text-align: left;">0.0276</td>
+<td style="text-align: left;">0.0%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(c_p\)</span></td>
 <td style="text-align: left;">-1.000</td>
 <td style="text-align: left;">-1.003</td>
-<td style="text-align: left;">-0.0031</td>
-<td style="text-align: left;">-0.31%</td>
-<td style="text-align: left;">0.0622</td>
-<td style="text-align: left;">94.8%</td>
+<td style="text-align: left;">-0.0033</td>
+<td style="text-align: left;">-0.33%</td>
+<td style="text-align: left;">0.0656</td>
+<td style="text-align: left;">95.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(c_s\)</span></td>
 <td style="text-align: left;">0.100</td>
-<td style="text-align: left;">0.104</td>
-<td style="text-align: left;">0.0043</td>
-<td style="text-align: left;">4.31%</td>
-<td style="text-align: left;">0.0182</td>
-<td style="text-align: left;">95.6%</td>
+<td style="text-align: left;">0.107</td>
+<td style="text-align: left;">0.0069</td>
+<td style="text-align: left;">6.89%</td>
+<td style="text-align: left;">0.0230</td>
+<td style="text-align: left;">94.8%</td>
 </tr>
 </tbody>
 </table>
@@ -1407,7 +1426,7 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <img src="index_files/figure-html/fig-profiles-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-profiles-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Profile log-likelihoods for all eight free parameters (six always free; <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> identifiable with the boxcar input), normalized to zero at the MLE. The orange dashed line marks the <span class="math inline">\(\chi^2_1\)</span> 95% threshold (normalized profile LL <span class="math inline">\(= -1.92\)</span>); tick marks on the horizontal axis indicate the implied 95% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All profiles are unimodal and sharply peaked, confirming that each parameter is precisely identified.
+Figure&nbsp;11: Profile log-likelihoods for all eight free parameters (six always free; <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> identifiable with the boxcar input), normalized to zero at the MLE. The orange dashed line marks the <span class="math inline">\(\chi^2_1\)</span> 95% threshold (normalized profile LL <span class="math inline">\(= -1.92\)</span>); tick marks on the horizontal axis indicate the implied 95% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All profiles are unimodal and sharply peaked, confirming that each parameter is precisely identified.
 </figcaption>
 </figure>
 </div>
@@ -1417,7 +1436,7 @@ Figure&nbsp;10: Profile log-likelihoods for all eight free parameters (six alway
 </section>
 <section id="sec-coupling" class="level2" data-number="4.5">
 <h2 data-number="4.5" class="anchored" data-anchor-id="sec-coupling"><span class="header-section-number">4.5</span> Cross-Branch Coupling Identifiability</h2>
-<p>The analyses above impose <span class="math inline">\(a_{ps} = a_{sp} = 0\)</span> (the uncoupled baseline). Whether the coupling terms are identifiable from a single RR stream is an empirical question. We address it by simulating from a model with known non-zero coupling and then applying the same conditional MLE and profile likelihood machinery used for the six uncoupled parameters.</p>
+<p>The full model estimates ten free parameters: <span class="math inline">\(\{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}\)</span>. The previous sections demonstrated identifiability and recovery for all parameters in the uncoupled sub-model (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>); here we confirm that the coupling terms are identifiable in the full model, and that the uncoupled estimator is a correctly-specified special case. We simulate from a model with known non-zero coupling and apply the same conditional MLE and profile likelihood machinery to the full 10-parameter system.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1438,7 +1457,7 @@ Figure&nbsp;10: Profile log-likelihoods for all eight free parameters (six alway
 <img src="index_files/figure-html/fig-coupling-profiles-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-coupling-profiles-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Profile log-likelihoods for all eight free parameters under the coupled model (<span class="math inline">\(a_{ps} = 0.15\)</span>, <span class="math inline">\(a_{sp} = 0.10\)</span>). Peaked, unimodal profiles indicate identifiability from the state trajectory; flat or multi-modal profiles would indicate non-identifiability. The green vertical line marks the true value; the orange dashed line marks the <span class="math inline">\(\chi^2_1\)</span> 95% threshold. Profiles for <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> are obtained by re-optimising over all remaining OU parameters at each grid point.
+Figure&nbsp;12: Profile log-likelihoods for all eight free parameters under the coupled model (<span class="math inline">\(a_{ps} = 0.15\)</span>, <span class="math inline">\(a_{sp} = 0.10\)</span>). Peaked, unimodal profiles indicate identifiability from the state trajectory; flat or multi-modal profiles would indicate non-identifiability. The green vertical line marks the true value; the orange dashed line marks the <span class="math inline">\(\chi^2_1\)</span> 95% threshold. Profiles for <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> are obtained by re-optimising over all remaining OU parameters at each grid point.
 </figcaption>
 </figure>
 </div>
@@ -1457,7 +1476,7 @@ Figure&nbsp;11: Profile log-likelihoods for all eight free parameters under the 
 <img src="index_files/figure-html/fig-coupling-recovery-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-coupling-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: Monte Carlo recovery study (<span class="math inline">\(N = 200\)</span> replications) for the coupled model.The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> appear alongside the eight uncoupled free parameters. Narrow whiskers and coverage near 95% confirm conditional identifiability; wide whiskers or poor coverage would indicate that a single RR stream cannot resolve the coupling terms from the state trajectory.
+Figure&nbsp;13: Monte Carlo recovery study (<span class="math inline">\(N = 200\)</span> replications) for the coupled model.The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> appear alongside the eight uncoupled free parameters. Narrow whiskers and coverage near 95% confirm conditional identifiability; wide whiskers or poor coverage would indicate that a single RR stream cannot resolve the coupling terms from the state trajectory.
 </figcaption>
 </figure>
 </div>
@@ -1481,7 +1500,7 @@ Figure&nbsp;12: Monte Carlo recovery study (<span class="math inline">\(N = 200\
 <img src="index_files/figure-html/fig-sensitivity-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sensitivity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13: Sensitivity of estimation and filter performance to the true values of the free decay-rate parameters <span class="math inline">\(a_p\)</span> (x-axis) and <span class="math inline">\(a_s\)</span> (y-axis), varied over a <span class="math inline">\(\pm 50\%\)</span> grid while all remaining parameters are held at reference values. Each cell shows relative RMSE (%) of the conditional MLE for the labelled parameter, averaged over <span class="math inline">\(N = 50\)</span> replications in which all parameters including <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> are estimated jointly from the state trajectory. The bottom-left panel shows filter RMSE on <span class="math inline">\(\hat\Delta(t)\)</span> evaluated by running the UKF at the grid values of <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span>, with all other parameters fixed at the reference MLE; this isolates sensitivity to decay-rate misspecification independently of estimation error. The reference configuration (<span class="math inline">\(a_p = 2.0\)</span> Hz, <span class="math inline">\(a_s = 0.2\)</span> Hz) is outlined in black. Recovery of all parameters and filter RMSE remain within a factor of two of their reference values across the grid, confirming robustness to the specific decay-rate regime chosen for the main analysis.
+Figure&nbsp;14: Sensitivity of estimation and filter performance to the true values of the free decay-rate parameters <span class="math inline">\(a_p\)</span> (x-axis) and <span class="math inline">\(a_s\)</span> (y-axis), varied over a <span class="math inline">\(\pm 50\%\)</span> grid while all remaining parameters are held at reference values. Each cell shows relative RMSE (%) of the conditional MLE for the labelled parameter, averaged over <span class="math inline">\(N = 50\)</span> replications in which all parameters including <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> are estimated jointly from the state trajectory. The bottom-left panel shows filter RMSE on <span class="math inline">\(\hat\Delta(t)\)</span> evaluated by running the UKF at the grid values of <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span>, with all other parameters fixed at the reference MLE; this isolates sensitivity to decay-rate misspecification independently of estimation error. The reference configuration (<span class="math inline">\(a_p = 2.0\)</span> Hz, <span class="math inline">\(a_s = 0.2\)</span> Hz) is outlined in black. Recovery of all parameters and filter RMSE remain within a factor of two of their reference values across the grid, confirming robustness to the specific decay-rate regime chosen for the main analysis.
 </figcaption>
 </figure>
 </div>
@@ -1505,7 +1524,7 @@ m_{k|k-1} = F(\tau_k)\,m_{k-1|k-1} + d(\tau_k),
 \qquad
 P_{k|k-1} = F(\tau_k)\,P_{k-1|k-1}\,F(\tau_k)^\top + Q(\tau_k)
 \]</span></p>
-<p>where <span class="math inline">\(F(\tau) = \mathrm{diag}(e^{-a_p \ tau},\, e^{-a_s\tau})\)</span>, <span class="math inline">\(Q(\tau) = \mathrm{diag} \! \left(\t frac{\sigma_p^2}{2a_p}(1 - e^{-2a_p \ tau}),\, \tfrac{\sigma_s^2}{2a_s}(1 - e^{-2a_s \ tau}) \right)\)</span>, and <span class="math inline">\(d(\tau)\)</span> is the input-driven mean shift <span class="math inline">\(\bigl[\tfrac{c_p u}{a_p}(1 - e^{-a_p \ tau}),\, \tfrac{c_s u}{a_s}(1 - e^{-a_s \ tau})\bigr]^\top\)</span>. Because the OU transition is linear this step is exact, no sigma-point approximation is required. The exogenous input <span class="math inline">\(u\)</span> is evaluated at the start of each IBI and held constant over the prediction interval; the error in the input-driven mean shift <span class="math inline">\(d(\tau_k)\)</span> is <span class="math inline">\(\mathcal{O}(|\dot{u}|\tau_k^2)\)</span>, negligible for the smooth double-logistic protocol used here.</p>
+<p>where <span class="math inline">\(F(\tau) = \mathrm{diag} \left(e^{-a_p \tau}, e^{-a_s \tau}\right)\)</span>, <span class="math inline">\(Q(\tau) = \mathrm{diag} \left(\tfrac{\sigma_p^2}{2a_p}(1 - e^{-2a_p \tau}), \tfrac{\sigma_s^2}{2a_s}(1 - e^{-2a_s \tau})\right)\)</span>, and <span class="math inline">\(d(\tau)\)</span> is the input-driven mean shift <span class="math inline">\(\bigl[\tfrac{c_p u}{a_p}(1 - e^{-a_p \tau}), \tfrac{c_s u}{a_s}(1 - e^{-a_s \tau})\bigr]^\top\)</span>. Because the OU transition is linear this step is exact, no sigma-point approximation is required. The exogenous input <span class="math inline">\(u\)</span> is evaluated at the start of each IBI and held constant over the prediction interval; the error in the input-driven mean shift <span class="math inline">\(d(\tau_k)\)</span> is <span class="math inline">\(\mathcal{O}(|\dot{u}|\tau_k^2)\)</span>, negligible for the smooth double-logistic protocol used here.</p>
 <p><strong>Update.</strong> At spike time <span class="math inline">\(t_k\)</span> the observation is <span class="math inline">\(\tau_k \sim \mathrm{IG}\!\left(\mu_0 e^{-\Delta_k},\, \kappa\right)\)</span>. The observation function <span class="math inline">\(h(\mathbf{x}) = \mu_0 e^{p - s}\)</span> is nonlinear in <span class="math inline">\(\mathbf{x} = [p, s]^\top\)</span>, so the update uses UKF sigma-point quadrature with <span class="math inline">\(2L + 1 = 5\)</span> points (<span class="math inline">\(L=2\)</span>):</p>
 <p><span class="math display">\[
 \hat\mu_k = \sum_i W_i^m\, h(\boldsymbol{\sigma}_i)
@@ -1517,7 +1536,7 @@ S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 \log p(\tau_k \mid \Theta) \;\approx\; \log\mathcal{N}(\tau_k;\, \hat\mu_k,\, S_k)
 \]</span></p>
 <p>This Gaussian innovation approximation is the standard UKF marginal likelihood and provides a tractable, differentiable objective for static parameter estimation.</p>
-<p>The filter’s posterior geometry makes the identifiability constraint explicit: each update contracts uncertainty only along the direction <span class="math inline">\(\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}\)</span> (the <span class="math inline">\(\Delta = s - p\)</span> subspace), while variance along the common-mode direction <span class="math inline">\(\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}\)</span> remains governed by the OU prior. The individual branches <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> are therefore not separately identified from the single-stream spike train, consistent with the analytical result of <a href="#sec-identifiability" class="quarto-xref">Section&nbsp;4</a>.</p>
+<p>The filter’s posterior geometry reflects the single-stream observability: each IBI update contracts uncertainty primarily along the differential direction <span class="math inline">\(\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}\)</span> (the <span class="math inline">\(\Delta = s - p\)</span> subspace). Variance along the common-mode direction <span class="math inline">\(\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}\)</span> is governed by the OU prior and remains larger than the differential variance, but is bounded — not unbounded — because the OU prior confines both <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> to neighborhoods of zero with variances <span class="math inline">\(\sigma_p^2/(2a_p)\)</span> and <span class="math inline">\(\sigma_s^2/(2a_s)\)</span> respectively. Consequently, the filter delivers per-branch posterior means <span class="math inline">\([\hat p_k, \hat s_k]\)</span> with per-branch uncertainty (reported in <a href="#tbl-filter-summary" class="quarto-xref">Table&nbsp;4</a> and shown as branch-specific posterior SD bands in <a href="#fig-filter-recovery" class="quarto-xref">Figure&nbsp;15</a>), rather than purely a scalar <span class="math inline">\(\hat\Delta_k\)</span> estimate.</p>
 </section>
 <section id="static-parameter-estimation" class="level2" data-number="5.3">
 <h2 data-number="5.3" class="anchored" data-anchor-id="static-parameter-estimation"><span class="header-section-number">5.3</span> Static Parameter Estimation</h2>
@@ -1528,10 +1547,10 @@ S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">layout</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="dv">2</span>, <span class="dv">1</span>), <span class="at">heights =</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="fl">0.8</span>))</span>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">layout</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="dv">3</span>, <span class="dv">1</span>), <span class="at">heights =</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="fl">0.9</span>, <span class="fl">0.9</span>))</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">5</span>, <span class="fl">1.5</span>, <span class="dv">2</span>), <span class="at">oma =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>))</span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Top: Delta recovery ----</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Top: Delta recovery (unchanged) ----</span></span>
 <span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>delta, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>,</span>
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">Delta</span>(t)), <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>,</span>
 <span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> <span class="fu">range</span>(<span class="fu">c</span>(RES<span class="sc">$</span>delta,</span>
@@ -1549,15 +1568,48 @@ S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 <span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"#0072B2"</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="dv">2</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.85</span>)</span>
 <span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
 <span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Bottom: innovations ----</span></span>
-<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>bt <span class="ot">&lt;-</span> FLT<span class="sc">$</span>beat_times</span>
-<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bt, FLT<span class="sc">$</span>innov, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.4</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.35</span>),</span>
-<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Innovation (s)"</span>, <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a><span class="fu">segments</span>(bt, <span class="sc">-</span><span class="dv">2</span> <span class="sc">*</span> <span class="fu">sqrt</span>(FLT<span class="sc">$</span>S_innov), bt, <span class="dv">2</span> <span class="sc">*</span> <span class="fu">sqrt</span>(FLT<span class="sc">$</span>S_innov),</span>
-<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>         <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"#D55E00"</span>, <span class="fl">0.4</span>), <span class="at">lwd =</span> <span class="fl">0.8</span>)</span>
-<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
-<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
-<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a><span class="fu">mtext</span>(<span class="st">"Time (s)"</span>, <span class="at">side =</span> <span class="dv">1</span>, <span class="at">outer =</span> <span class="cn">TRUE</span>, <span class="at">line =</span> <span class="fl">1.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Middle: Individual branch reconstruction ----</span></span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Posterior SD per branch from the 2x2 covariance matrices</span></span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>sd_p <span class="ot">&lt;-</span> <span class="fu">approx</span>(FLT<span class="sc">$</span>beat_times,</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>               <span class="fu">sqrt</span>(<span class="fu">sapply</span>(FLT<span class="sc">$</span>P_filt, <span class="cf">function</span>(P) P[<span class="dv">1</span>L, <span class="dv">1</span>L])),</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>               <span class="at">xout =</span> RES<span class="sc">$</span>time, <span class="at">rule =</span> <span class="dv">2</span>)<span class="sc">$</span>y</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>sd_s <span class="ot">&lt;-</span> <span class="fu">approx</span>(FLT<span class="sc">$</span>beat_times,</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>               <span class="fu">sqrt</span>(<span class="fu">sapply</span>(FLT<span class="sc">$</span>P_filt, <span class="cf">function</span>(P) P[<span class="dv">2</span>L, <span class="dv">2</span>L])),</span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>               <span class="at">xout =</span> RES<span class="sc">$</span>time, <span class="at">rule =</span> <span class="dv">2</span>)<span class="sc">$</span>y</span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>ylim_branches <span class="ot">&lt;-</span> <span class="fu">range</span>(<span class="fu">c</span>(RES<span class="sc">$</span>p, RES<span class="sc">$</span>s,</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>                          flt_grid<span class="sc">$</span>p <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>sd_p, flt_grid<span class="sc">$</span>p <span class="sc">-</span> <span class="dv">2</span><span class="sc">*</span>sd_p,</span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>                          flt_grid<span class="sc">$</span>s <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>sd_s, flt_grid<span class="sc">$</span>s <span class="sc">-</span> <span class="dv">2</span><span class="sc">*</span>sd_s),</span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a>                       <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>p, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>,</span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Branch states"</span>, <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>, <span class="at">ylim =</span> ylim_branches)</span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a><span class="fu">polygon</span>(<span class="fu">c</span>(RES<span class="sc">$</span>time, <span class="fu">rev</span>(RES<span class="sc">$</span>time)),</span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a>        <span class="fu">c</span>(flt_grid<span class="sc">$</span>p <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>sd_p, <span class="fu">rev</span>(flt_grid<span class="sc">$</span>p <span class="sc">-</span> <span class="dv">2</span><span class="sc">*</span>sd_p)),</span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"#0072B2"</span>, <span class="fl">0.15</span>), <span class="at">border =</span> <span class="cn">NA</span>)</span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, flt_grid<span class="sc">$</span>p, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-42"><a href="#cb14-42" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>s, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>)</span>
+<span id="cb14-43"><a href="#cb14-43" aria-hidden="true" tabindex="-1"></a><span class="fu">polygon</span>(<span class="fu">c</span>(RES<span class="sc">$</span>time, <span class="fu">rev</span>(RES<span class="sc">$</span>time)),</span>
+<span id="cb14-44"><a href="#cb14-44" aria-hidden="true" tabindex="-1"></a>        <span class="fu">c</span>(flt_grid<span class="sc">$</span>s <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>sd_s, <span class="fu">rev</span>(flt_grid<span class="sc">$</span>s <span class="sc">-</span> <span class="dv">2</span><span class="sc">*</span>sd_s)),</span>
+<span id="cb14-45"><a href="#cb14-45" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"#D55E00"</span>, <span class="fl">0.15</span>), <span class="at">border =</span> <span class="cn">NA</span>)</span>
+<span id="cb14-46"><a href="#cb14-46" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, flt_grid<span class="sc">$</span>s, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb14-47"><a href="#cb14-47" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
+<span id="cb14-48"><a href="#cb14-48" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
+<span id="cb14-49"><a href="#cb14-49" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="fu">expression</span>(<span class="st">"True p(t)"</span>), <span class="fu">expression</span>(<span class="st">"True s(t)"</span>),</span>
+<span id="cb14-50"><a href="#cb14-50" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">expression</span>(<span class="fu">hat</span>(p)(t) <span class="sc">~</span> <span class="st">"\u00b1 2 SD"</span>), <span class="fu">expression</span>(<span class="fu">hat</span>(s)(t) <span class="sc">~</span> <span class="st">"\u00b1 2 SD"</span>)),</span>
+<span id="cb14-51"><a href="#cb14-51" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"#0072B2"</span>,<span class="st">"#D55E00"</span>,<span class="st">"#0072B2"</span>,<span class="st">"#D55E00"</span>),</span>
+<span id="cb14-52"><a href="#cb14-52" aria-hidden="true" tabindex="-1"></a>       <span class="at">lwd =</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="dv">2</span>, <span class="dv">2</span>), <span class="at">lty =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">2</span>), <span class="at">bty =</span> <span class="st">"n"</span>, <span class="at">cex =</span> <span class="fl">0.75</span>)</span>
+<span id="cb14-53"><a href="#cb14-53" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb14-54"><a href="#cb14-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-55"><a href="#cb14-55" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Bottom: innovations (unchanged) ----</span></span>
+<span id="cb14-56"><a href="#cb14-56" aria-hidden="true" tabindex="-1"></a>bt <span class="ot">&lt;-</span> FLT<span class="sc">$</span>beat_times</span>
+<span id="cb14-57"><a href="#cb14-57" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bt, FLT<span class="sc">$</span>innov, <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.4</span>, <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">0.35</span>),</span>
+<span id="cb14-58"><a href="#cb14-58" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Innovation (s)"</span>, <span class="at">xlab =</span> <span class="st">"Time (s)"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-59"><a href="#cb14-59" aria-hidden="true" tabindex="-1"></a><span class="fu">segments</span>(bt, <span class="sc">-</span><span class="dv">2</span> <span class="sc">*</span> <span class="fu">sqrt</span>(FLT<span class="sc">$</span>S_innov), bt, <span class="dv">2</span> <span class="sc">*</span> <span class="fu">sqrt</span>(FLT<span class="sc">$</span>S_innov),</span>
+<span id="cb14-60"><a href="#cb14-60" aria-hidden="true" tabindex="-1"></a>         <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"#D55E00"</span>, <span class="fl">0.4</span>), <span class="at">lwd =</span> <span class="fl">0.8</span>)</span>
+<span id="cb14-61"><a href="#cb14-61" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
+<span id="cb14-62"><a href="#cb14-62" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">col =</span> <span class="st">"lightgray"</span>, <span class="at">lty =</span> <span class="dv">1</span>)</span>
+<span id="cb14-63"><a href="#cb14-63" aria-hidden="true" tabindex="-1"></a><span class="fu">mtext</span>(<span class="st">"Time (s)"</span>, <span class="at">side =</span> <span class="dv">1</span>, <span class="at">outer =</span> <span class="cn">TRUE</span>, <span class="at">line =</span> <span class="fl">1.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-filter-recovery" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1566,7 +1618,7 @@ S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 <img src="index_files/figure-html/fig-filter-recovery-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-filter-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;14: Filter validation on simulated data. <strong>Top:</strong> True net drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> (black) versus the UKF posterior mean <span class="math inline">\(\hat\Delta(t)\)</span> (blue) with pointwise <span class="math inline">\(\pm 2\)</span> posterior SD band (shaded). The filter recovers the stress-onset and recovery dynamics from the spike train alone, without access to the latent states. <strong>Bottom:</strong> Innovation sequence <span class="math inline">\(\tau_k - \hat\mu_k\)</span> (grey) with <span class="math inline">\(\pm 2\sqrt{S_k}\)</span> bands (dashed); absence of systematic structure confirms that the filter is not leaving exploitable signal in the residuals.
+Figure&nbsp;15: Filter validation on simulated data. <strong>Top:</strong> True net drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> (black) versus the UKF posterior mean <span class="math inline">\(\hat\Delta(t)\)</span> (blue) with pointwise <span class="math inline">\(\pm 2\)</span> posterior SD band. <strong>Middle:</strong> Individual branch reconstruction. Solid lines: true <span class="math inline">\(p(t)\)</span> (blue) and <span class="math inline">\(s(t)\)</span> (red). Dashed lines with shaded bands: UKF posterior means <span class="math inline">\(\hat p(t)\)</span>, <span class="math inline">\(\hat s(t)\)</span> with <span class="math inline">\(\pm 2\)</span> posterior SD. The common-mode posterior uncertainty (visible as wider bands on individual branches than on <span class="math inline">\(\hat\Delta\)</span>) is bounded by the OU stationary prior and decreases as accumulated beat observations constrain the shared mean level. <strong>Bottom:</strong> Innovation sequence <span class="math inline">\(\tau_k - \hat\mu_k\)</span> with <span class="math inline">\(\pm 2\sqrt{S_k}\)</span> bands; absence of systematic structure confirms filter calibration.
 </figcaption>
 </figure>
 </div>
@@ -1590,23 +1642,31 @@ Table&nbsp;4: Filter performance summary. RMSE and mean absolute error of <span 
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">RMSE of <span class="math inline">\(\hat\Delta(t)\)</span></td>
-<td style="text-align: right;">0.1193</td>
+<td style="text-align: right;">0.0951</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">MAE of <span class="math inline">\(\hat\Delta(t)\)</span></td>
-<td style="text-align: right;">0.0946</td>
+<td style="text-align: right;">0.0753</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">RMSE of <span class="math inline">\(\hat p(t)\)</span></td>
+<td style="text-align: right;">0.0886</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">RMSE of <span class="math inline">\(\hat s(t)\)</span></td>
+<td style="text-align: right;">0.0726</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Mean standardized innovation</td>
-<td style="text-align: right;">-0.0931</td>
+<td style="text-align: right;">-0.1121</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">SD standardized innovation</td>
-<td style="text-align: right;">0.9971</td>
+<td style="text-align: right;">1.0078</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Filter log-likelihood</td>
-<td style="text-align: right;">364.1</td>
+<td style="text-align: right;">720.5</td>
 </tr>
 </tbody>
 </table>
@@ -1617,11 +1677,11 @@ Table&nbsp;4: Filter performance summary. RMSE and mean absolute error of <span 
 </div>
 </section>
 </section>
-<section id="simulation-results-and-discussion" class="level1" data-number="6">
-<h1 data-number="6"><span class="header-section-number">6</span> Simulation Results and Discussion</h1>
+<section id="simulation-results" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Simulation Results</h1>
 <section id="the-virtual-stress-protocol" class="level2" data-number="6.1">
 <h2 data-number="6.1" class="anchored" data-anchor-id="the-virtual-stress-protocol"><span class="header-section-number">6.1</span> The Virtual Stress Protocol</h2>
-<p>We examine model behaviour under a deterministic boxcar forcing <span class="math inline">\(u(t) = \mathbf{1}_{[300, 420]}(t)\)</span>, representing a sustained stress episode followed by passive recovery over a 720-second simulation.</p>
+<p>We examine model behaviour under a double-logistic input approximating a 120-second stress episode (<span class="math inline">\(t_{\rm on} = 300\)</span> s, <span class="math inline">\(t_{\rm off} = 420\)</span> s, <span class="math inline">\(k = 10\)</span> Hz) embedded in a 720-second rest–stress–recovery simulation. The recovery study in <a href="#sec-recovery" class="quarto-xref">Section&nbsp;4.3</a> uses an independent 60-second stress window in 300-second recordings; both protocols use the same double-logistic form.</p>
 </section>
 <section id="autonomic-state-dynamics-and-the-identifiable-net-drive" class="level2" data-number="6.2">
 <h2 data-number="6.2" class="anchored" data-anchor-id="autonomic-state-dynamics-and-the-identifiable-net-drive"><span class="header-section-number">6.2</span> Autonomic State Dynamics and the Identifiable Net Drive</h2>
@@ -1680,7 +1740,7 @@ Table&nbsp;4: Filter performance summary. RMSE and mean absolute error of <span 
 <img src="index_files/figure-html/fig-results-main-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-main-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;15: Simulation of the autonomic response to a double-logistic stress protocol (<span class="math inline">\(t_{\rm on} = 300\)</span> s, <span class="math inline">\(t_{\rm off} = 420\)</span> s, <span class="math inline">\(k = 10\)</span> Hz). <strong>Row 1:</strong> Exogenous input <span class="math inline">\(u(t)\)</span>; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. <strong>Row 2:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. <strong>Row 3:</strong> Individual latent states <span class="math inline">\(p(t)\)</span> (blue, vagal) and <span class="math inline">\(s(t)\)</span> (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. <strong>Row 4:</strong> Tachogram of observed R-R intervals (grey) with the instantaneous mean <span class="math inline">\(\mu(t) = \mu_0\exp(-\Delta(t))\)</span> overlaid (black).
+Figure&nbsp;16: Simulation of the autonomic response to a double-logistic stress protocol (<span class="math inline">\(t_{\rm on} = 300\)</span> s, <span class="math inline">\(t_{\rm off} = 420\)</span> s, <span class="math inline">\(k = 10\)</span> Hz). <strong>Row 1:</strong> Exogenous input <span class="math inline">\(u(t)\)</span>; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. <strong>Row 2:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. <strong>Row 3:</strong> Individual latent states <span class="math inline">\(p(t)\)</span> (blue, vagal) and <span class="math inline">\(s(t)\)</span> (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. <strong>Row 4:</strong> Tachogram of observed R-R intervals (grey) with the instantaneous mean <span class="math inline">\(\mu(t) = \mu_0\exp(-\Delta(t))\)</span> overlaid (black).
 </figcaption>
 </figure>
 </div>
@@ -1723,7 +1783,7 @@ Figure&nbsp;15: Simulation of the autonomic response to a double-logistic stress
 <img src="index_files/figure-html/fig-heteroscedasticity-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-heteroscedasticity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;16: Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> with the true <span class="math inline">\(\kappa = 20\)</span>. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
+Figure&nbsp;17: Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> with the true <span class="math inline">\(\kappa = 20\)</span>. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
 </figcaption>
 </figure>
 </div>
@@ -1741,7 +1801,7 @@ Figure&nbsp;16: Mean-variance scaling of the simulated R-R intervals, validating
 <p><span class="math display">\[
 \Delta\Lambda_j \;=\; \log S\!\left(\tau_j - \Delta t;\, \mu_j,\, \kappa\right) - \log S\!\left(\tau_j;\, \mu_j,\, \kappa\right) \;\geq\; 0,
 \]</span></p>
-<p>where <span class="math inline">\(\tau_j = t_j - t_{k-1}\)</span> is the elapsed time and <span class="math inline">\(\mu_j = \mu_0 e^{-\Delta(t_j)}\)</span> is the state-dependent mean at grid point <span class="math inline">\(t_j\)</span>. Summing over all <span class="math inline">\(j\)</span> within <span class="math inline">\([t_{k-1}, t_k]\)</span> gives <span class="math inline">\(\Lambda_k\)</span>. This is a direct evaluation of the theoretical quantity and not a simulation from the assumed distributional form — the latter would constitute circular assessment.</p>
+<p>where <span class="math inline">\(\tau_j = t_j - t_{k-1}\)</span> is the elapsed time and <span class="math inline">\(\mu_j = \mu_0 e^{-\Delta(t_j)}\)</span> is the state-dependent mean at grid point <span class="math inline">\(t_j\)</span>. Summing over all <span class="math inline">\(j\)</span> within <span class="math inline">\([t_{k-1}, t_k]\)</span> gives <span class="math inline">\(\Lambda_k\)</span>. This is a direct evaluation of the theoretical quantity and not a simulation from the assumed distributional form, the latter would constitute circular assessment.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1813,7 +1873,7 @@ Figure&nbsp;16: Mean-variance scaling of the simulated R-R intervals, validating
 <img src="index_files/figure-html/fig-time-rescaling-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-time-rescaling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17: Time-rescaling goodness-of-fit diagnostics implementing the Brown et al.&nbsp;(2002) diagnostic suite. <strong>Top-left:</strong> Uniform Q-Q plot of <span class="math inline">\(u_k = 1 - \exp(-\Lambda_k)\)</span> against theoretical <span class="math inline">\(\text{Uniform}(0,1)\)</span> quantiles, with 95% Kolmogorov-Smirnov confidence bands (dashed). <strong>Top-right:</strong> Normal-score Q-Q plot of <span class="math inline">\(v_k = \Phi^{-1}(u_k)\)</span>, testing normality of the transformed residuals. <strong>Bottom-left:</strong> Autocorrelation function of <span class="math inline">\(u_k\)</span>; no significant lags indicate that residuals are independent, as required. <strong>Bottom-right:</strong> Empirical CDF of <span class="math inline">\(\Lambda_k\)</span> (points) against <span class="math inline">\(\text{Exp}(1)\)</span> (red line), confirming that rescaled inter-beat intervals follow a unit-rate Poisson process.
+Figure&nbsp;18: Time-rescaling goodness-of-fit diagnostics implementing the Brown et al.&nbsp;(2002) diagnostic suite. <strong>Top-left:</strong> Uniform Q-Q plot of <span class="math inline">\(u_k = 1 - \exp(-\Lambda_k)\)</span> against theoretical <span class="math inline">\(\text{Uniform}(0,1)\)</span> quantiles, with 95% Kolmogorov-Smirnov confidence bands (dashed). <strong>Top-right:</strong> Normal-score Q-Q plot of <span class="math inline">\(v_k = \Phi^{-1}(u_k)\)</span>, testing normality of the transformed residuals. <strong>Bottom-left:</strong> Autocorrelation function of <span class="math inline">\(u_k\)</span>; no significant lags indicate that residuals are independent, as required. <strong>Bottom-right:</strong> Empirical CDF of <span class="math inline">\(\Lambda_k\)</span> (points) against <span class="math inline">\(\text{Exp}(1)\)</span> (red line), confirming that rescaled inter-beat intervals follow a unit-rate Poisson process.
 </figcaption>
 </figure>
 </div>
@@ -1839,32 +1899,32 @@ Table&nbsp;5: Summary statistics for the time-rescaling residuals. A correctly s
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\text{E}[\Lambda_k]\)</span></td>
 <td style="text-align: center;">1.000</td>
-<td style="text-align: center;">1.0107</td>
+<td style="text-align: center;">1.0134</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\text{Var}(\Lambda_k)\)</span></td>
 <td style="text-align: center;">1.000</td>
-<td style="text-align: center;">1.0632</td>
+<td style="text-align: center;">1.0440</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\text{E}[u_k]\)</span></td>
 <td style="text-align: center;">0.500</td>
-<td style="text-align: center;">0.4988</td>
+<td style="text-align: center;">0.5015</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">KS statistic</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">0.0226</td>
+<td style="text-align: center;">0.0157</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">KS <span class="math inline">\(p\)</span>-value</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">0.7207</td>
+<td style="text-align: center;">0.9754</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Significant ACF lags (of 20)</td>
 <td style="text-align: center;">0</td>
-<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
 </tr>
 </tbody>
 </table>
@@ -1878,8 +1938,19 @@ Table&nbsp;5: Summary statistics for the time-rescaling residuals. A correctly s
 <h2 data-number="6.5" class="anchored" data-anchor-id="stochastic-integrity"><span class="header-section-number">6.5</span> Stochastic Integrity</h2>
 <p>The simulated beat train is generated by a doubly stochastic process: process noise in the SDEs creates the wandering autonomic baseline, while the first-passage mechanism introduces an additional layer of interval variability at fixed <span class="math inline">\(\mu\)</span>. Even without SDE noise (<span class="math inline">\(\sigma_p = \sigma_s = 0\)</span>), the IG mechanism produces variance <span class="math inline">\(\mu^3/\kappa\)</span>. Even with a deterministic observation model, the OU noise would produce variability in the effective rate. These two sources are distinct and identifiable from the model’s spectral structure: the SDE noise determines the temporal autocorrelation of the tachogram, while <span class="math inline">\(\kappa\)</span> determines the conditional variance at each beat given the state trajectory.</p>
 </section>
-<section id="extensibility-to-multiple-observation-streams" class="level2" data-number="6.6">
-<h2 data-number="6.6" class="anchored" data-anchor-id="extensibility-to-multiple-observation-streams"><span class="header-section-number">6.6</span> Extensibility to Multiple Observation Streams</h2>
+</section>
+<section id="discussion" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Discussion</h1>
+<section id="relation-to-existing-point-process-hrv-models" class="level2" data-number="7.1">
+<h2 data-number="7.1" class="anchored" data-anchor-id="relation-to-existing-point-process-hrv-models"><span class="header-section-number">7.1</span> Relation to Existing Point-Process HRV Models</h2>
+<p>The Barbieri 2005 framework <span class="citation" data-cites="barbieri2005point">(<a href="#ref-barbieri2005point" role="doc-biblioref">Riccardo Barbieri et al. 2005</a>)</span> models instantaneous heart rate through a local-maximum-likelihood IG point process with a history-dependent rate function. The SDE-IG model extends this in three directions. First, the time-varying parameters are driven by an explicit latent SDE rather than being smoothed by a local likelihood window, so their dynamics have an interpretable spectral structure (two Lorentzians at frequencies <span class="math inline">\(a_p/2\pi\)</span> and <span class="math inline">\(a_s/2\pi\)</span>) rather than a bandwidth set by an arbitrary kernel. Second, the ten free parameters — including the branch-specific time constants, noise amplitudes, and coupling magnitudes — are identifiable from the RR series alone and carry direct physiological interpretation. Third, branch-level reconstruction <span class="math inline">\([\hat p(t), \hat s(t)]\)</span> is available from the filter posterior, not only the scalar net drive. Quantitative benchmarking against the Barbieri model on PhysioNet datasets (A3.2) is underway; preliminary AIC/BIC comparisons on simulated data are given in <strong>?@sec-validation</strong> <!-- TODO: add once validation.R is completed -->.</p>
+</section>
+<section id="limitations" class="level2" data-number="7.2">
+<h2 data-number="7.2" class="anchored" data-anchor-id="limitations"><span class="header-section-number">7.2</span> Limitations</h2>
+<p>The present analysis conditions on fixed exogenous input <span class="math inline">\(u(t)\)</span> and does not model respiratory phase explicitly; the OU parameters <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> subsume any rhythmic input (e.g., RSA) into the diffusion amplitude <span class="math inline">\(\sigma_p\)</span>. The shape parameter <span class="math inline">\(\kappa\)</span> is assumed constant across autonomic states, which implies that the coefficient of variation of intervals scales as <span class="math inline">\(\mu(t)^{1/2}/\sqrt{\kappa}\)</span>; empirical HRV data suggest mild state-dependence of <span class="math inline">\(\kappa\)</span> that would require a hierarchical extension. Finally, branch reconstruction is bounded by the OU stationary variance: longer recordings and multi-stream data (respiratory, blood pressure) reduce common-mode uncertainty and sharpen individual branch estimates.</p>
+</section>
+<section id="extensibility-to-multiple-observation-streams" class="level2" data-number="7.3">
+<h2 data-number="7.3" class="anchored" data-anchor-id="extensibility-to-multiple-observation-streams"><span class="header-section-number">7.3</span> Extensibility to Multiple Observation Streams</h2>
 <p>The modular observation model interface defined in this framework supports the addition of further physiological streams without altering the state equation. Each new stream registers as an observation model with a <code>$log_intensity</code> method, for example, a Gaussian linear observation of <span class="math inline">\(p(t)\)</span> through respiratory sinus arrhythmia amplitude, or of <span class="math inline">\(s(t)\)</span> through blood pressure. When such a stream is available, the scale aliasing between <span class="math inline">\(k_\text{sym}\)</span> and <span class="math inline">\(\sigma_s\)</span> is broken: the additional observation provides an independent measurement of an individual state, making <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> separately identified and enabling the coupling terms <span class="math inline">\(b_{ps}\)</span> and <span class="math inline">\(b_{sp}\)</span> to be estimated. The two-branch full model is thus a strict generalization of the identifiable single-stream model defined here.</p>
 
 

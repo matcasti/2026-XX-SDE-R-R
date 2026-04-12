@@ -405,17 +405,17 @@ The two branches use the most numerically stable form for each range, avoiding c
 ```{r}
 #| label: fig-ig-shapes
 #| fig-cap: >
-#| "The Inverse Gaussian probability density. **Left:** Effect of the 
-#| mean interval $\\mu$ (shape fixed at $\\kappa = 15$). As $\\mu$ decreases 
-#| (sympathetic dominance), the distribution shifts to earlier times. 
-#| **Right:** Effect of the shape parameter $\\kappa$ (mean fixed at 
-#| $\\mu = 1.00$ s). Higher $\\kappa$ corresponds to lower variance, 
-#| a more regular rhythm. The heteroscedastic property 
-#| $\\text{Var}(\\tau) = \\mu^3/\\kappa$ links both panels: 
-#| reducing $\\mu$ reduces the variance even at fixed $\\kappa$.
-#| These are illustrative parameter values chosen to show the shape of the distribution
-#| across a physiological range; the reference simulation uses $\mu_0 = `r PARAMS$free$mu_0`$ s
-#| and $\kappa = `r round(kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho))`$."
+#|   The Inverse Gaussian probability density. **Left:** Effect of the 
+#|   mean interval $\\mu$ (shape fixed at $\\kappa = 15$). As $\\mu$ decreases 
+#|   (sympathetic dominance), the distribution shifts to earlier times. 
+#|   **Right:** Effect of the shape parameter $\\kappa$ (mean fixed at 
+#|   $\\mu = 1.00$ s). Higher $\\kappa$ corresponds to lower variance, 
+#|   a more regular rhythm. The heteroscedastic property 
+#|   $\\text{Var}(\\tau) = \\mu^3/\\kappa$ links both panels: 
+#|   reducing $\\mu$ reduces the variance even at fixed $\\kappa$.
+#|   These are illustrative parameter values chosen to show the shape of the distribution
+#|   across a physiological range; the reference simulation uses $\\mu_0 = `r PARAMS$free$mu_0`$ s
+#|   and $\\kappa = `r round(kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho))`$.
 #| fig-height: 4
 
 t_sq  <- seq(0.01, 2.2, length.out = 400)
