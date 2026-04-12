@@ -78,14 +78,14 @@ PARAMS <- make_model_params(
   a_p = 2.0, a_s = 0.2,          # decay rates (now free; these are sim ground truth)
   a_ps = 0.0, a_sp = 0.0,        # uncoupled baseline
   sigma_p = 0.20, sigma_s = 0.07,
-  mu_0 = 1.0, rho = 0.10,      # rho = sqrt(1.0/20): preserves kappa=20 baseline
+  mu_0 = 1.0, rho = 0.2236068,        # rho = sqrt(mu_0/kappa): gives kappa = mu_0/rho^2 = 20
   c_p = -1.0, c_s = 0.1
 )
 # Derived quantity for inline use:
 KAPPA_REF <- kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)  # = 20
 
 
-INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 0.1)
+INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 10)
 
 set.seed(1234)
 RES <- sim_sde_ig(720, 0.005, PARAMS, INPUT_FN)
@@ -106,10 +106,7 @@ $$
 \Delta(t) \;=\; s(t) \;-\; p(t),
 $$
 
-which enters the mean interval via the log link. The beat-to-beat likelihood is therefore most directly informative about $\Delta(t)$, and the filter posterior contracts tightest along the differential direction $\mathbf{e}_{-} = [-1,\,1]^\top/\!\sqrt{2}$. However, this does **not** mean the individual branches are fundamentally unrecoverable. The OU parameters $\{a_p,\,a_s,\,\sigma_p,\,\sigma_s\}$ — estimated from the same RR series — fully characterize the spectral structure of each branch: $p(t)$ contributes power near $a_p/(2\pi)$ Hz (the vagal, HF pole) and $s(t)$ near $a_s/(2\pi)$ Hz (the sympathetic, LF pole). Because $a_p \gg a_s$, these poles are well-separated and individually identified from the spectral curvature of $\Delta(t)$. Two reconstruction pathways are therefore available once parameters are estimated:
-
-1. **Filter reconstruction.** The UKF maintains a full 2D posterior $[\hat p_k,\,\hat s_k]$ with per-branch posterior SDs; the common-mode uncertainty $\sigma_{p+s}$ is larger than the differential uncertainty $\sigma_{p-s}$ but remains bounded by the OU stationary variance.
-2. **Model-based forward simulation.** Forward simulation of the fitted OU model with $\hat\Theta$ generates individual branch trajectories that are statistically consistent with the identified spectral structure and the observed $\hat\Delta(t)$.
+which enters the mean interval via the log link. The beat-to-beat likelihood is therefore most directly informative about $\Delta(t)$, and the filter posterior contracts tightest along the differential direction $\mathbf{e}_{-} = [-1,\,1]^\top/\!\sqrt{2}$. However, this does **not** mean the individual branches are fundamentally unrecoverable. The OU parameters $\{a_p,\,a_s,\,\sigma_p,\,\sigma_s\}$ — estimated from the same RR series — fully characterize the spectral structure of each branch: $p(t)$ contributes power near $a_p/(2\pi)$ Hz (the vagal, HF pole) and $s(t)$ near $a_s/(2\pi)$ Hz (the sympathetic, LF pole). Because $a_p \gg a_s$, these poles are well-separated and individually identified from the spectral curvature of $\Delta(t)$. Two reconstruction pathways are therefore available once parameters are estimated: (1) The UKF maintains a full 2D posterior $[\hat p_k,\,\hat s_k]$ with per-branch posterior SDs; the common-mode uncertainty $\sigma_{p+s}$ is larger than the differential uncertainty $\sigma_{p-s}$ but remains bounded by the OU stationary variance. (2) Forward simulation of the fitted OU model with $\hat\Theta$ generates individual branch trajectories that are statistically consistent with the identified spectral structure and the observed $\hat\Delta(t)$.
 
 The additive-constant non-identifiability (any constant added to both $p$ and $s$ cancels in $\Delta$) is handled by the OU prior: both branches are mean-reverting to zero, so the common mode is bounded by $\sigma_p^2/(2a_p) + \sigma_s^2/(2a_s)$. The result is that all dynamical parameters of both branches — decay rates, noise amplitudes, and coupling magnitudes — are recoverable from the single RR stream.
 
@@ -200,7 +197,7 @@ S_\Delta(f) \;\approx\; \frac{A_1}{\gamma_1^2 + (2\pi f)^2}
                       + \frac{A_2}{\gamma_2^2 + (2\pi f)^2}
 $$
 
-where $A_1, A_2 > 0$ are amplitude coefficients that depend on all four rate parameters and the diffusion amplitudes. When $a_{ps} = a_{sp} = 0$, this collapses to the familiar two-Lorentzian form with poles at $a_s/(2\pi)$ and $a_p/(2\pi)$. Non-zero antagonism *spreads* the poles: $|\gamma_1|$ increases above $\max(a_p, a_s)$ and $|\gamma_2|$ decreases below $\min(a_p, a_s)$, producing a distinctive spectral signature from which all four rate parameters can, in principle, be identified. This spectrum is identifiable from the second-order properties of the RR interval series: the positions of the two spectral poles identify $a_p$ and $a_s$; the amplitudes of the two Lorentzians (proportional to $\sigma_p^2/a_p$ and $\sigma_s^2/a_s$, the stationary variances of each branch) identify the diffusion amplitudes; and the non-zero coupling magnitudes $a_{ps}$ and $a_{sp}$ shift both poles away from $a_p$ and $a_s$, generating a distinctive spectral signature that distinguishes the coupled model from two independent OU processes. This directly links all ten free parameters to the spectral structure of the RR tachogram.
+where $A_1, A_2 > 0$ are amplitude coefficients that depend on all four rate parameters and the diffusion amplitudes. When $a_{ps} = a_{sp} = 0$, this collapses to the familiar two-Lorentzian form with poles at $a_s/(2\pi)$ and $a_p/(2\pi)$. Non-zero antagonism *spreads* the poles: $|\gamma_1|$ increases above $\max(a_p, a_s)$ and $|\gamma_2|$ decreases below $\min(a_p, a_s)$, producing a distinctive spectral signature from which all four rate parameters can, in principle, be identified. This spectrum is identifiable from the second-order properties of the RR interval series: the positions of the two spectral poles identify $a_p$ and $a_s$; the amplitudes of the two Lorentzians (proportional to $\sigma_p^2/a_p$ and $\sigma_s^2/a_s$ in the uncoupled limit; functions of all four rate parameters and both diffusion amplitudes when coupling is nonzero) encode the effective spectral power of each branch; and the non-zero coupling magnitudes $a_{ps}$ and $a_{sp}$ shift both poles away from $a_p$ and $a_s$, generating a distinctive spectral signature that distinguishes the coupled model from two independent OU processes. This directly links all ten free parameters to the spectral structure of the RR tachogram.
 
 ##  The Constrained Stochastic Differential Equations
 
@@ -299,7 +296,7 @@ where $\mu_0 > 0$ is the baseline mean interval at autonomic neutrality ($p = s 
 
 First, $\mu(t) > 0$ for all state values without exception, by construction. No clipping, flooring, or soft constraint is required. The linear link $\mu(t) = 1/(\rho_0 + k_\text{sym}s - k_\text{par}p)$ can produce negative or undefined values when autonomic state fluctuations push the rate below zero, requiring ad hoc correction that biases the likelihood.
 
-Second, the log link is the **canonical link for positive continuous outcomes** and encodes the physiologically appropriate multiplicative structure of autonomic modulation. Autonomic tone acts multiplicatively on the depolarization drift of the SA node [@ghali2020mechanisms]; a unit increase in sympathetic tone does not add a fixed increment to heart rate but scales it by a constant factor. The log link captures this precisely: $\mu(t) = \mu_0 e^{-\Delta(t)}$, so each unit of $\Delta(t)$ scales the mean interval by $e^{-1} \approx 0.37$.
+Second, the log link is the canonical link for positive continuous outcomes and encodes the physiologically appropriate multiplicative structure of autonomic modulation. Autonomic tone acts multiplicatively on the depolarization drift of the SA node [@ghali2020mechanisms]; a unit increase in sympathetic tone does not add a fixed increment to heart rate but scales it by a constant factor. The log link captures this precisely: $\mu(t) = \mu_0 e^{-\Delta(t)}$, so each unit of $\Delta(t)$ scales the mean interval by $e^{-1} \approx 0.37$.
 
 Third, the log link renders $\log\mu(t) = \log\mu_0 - \Delta(t)$ a linear function of the latent state. This is the observation equation for a Gaussian state-space model, which simplifies the linearization step in the extended Kalman filter (Phase 4) and makes the connection to existing state-space HRV methods transparent.
 
@@ -352,10 +349,10 @@ $$
 
 where $\tau = t - u_k$ is the elapsed time since the last beat and $\kappa = \mu_0/\rho^2 > 0$ is the derived shape parameter and $\rho = \sqrt{\mu_0/\kappa}$ is the baseline coefficient of variation estimated directly from the data. In the first-passage interpretation, $\rho$ is proportional to the threshold-to-noise ratio of the SA node membrane: small $\rho$ corresponds to a near-deterministic rhythm; large $\rho$ to a highly variable, noise-dominated one. Typical resting values are $\rho \approx 0.15$--$0.30$.
 
-The shape parameter $\kappa > 0$ controls interval regularity but is not directly interpretable in variance units. We therefore work with the **baseline coefficient of variation**
+The shape parameter $\kappa > 0$ controls interval regularity but is not directly interpretable in variance units. We therefore work with the baseline coefficient of variation
 
 $$
-\rho \;=\; \sqrt{\mu_0/\kappa},
+\rho \;=\; \sqrt{\mu_0/\kappa}
 $$
 
 so that $\kappa = \mu_0/\rho^2$ and $\operatorname{Var}(\tau_0) = \rho^2 \mu_0^2$ at autonomic neutrality ($\Delta = 0$). For a general state, $\operatorname{Var}(\tau) = \rho^2 \mu(t)^3/\mu_0$, preserving the heteroscedastic property while making the baseline variability directly readable: $\rho \approx 0.22$ corresponds to a coefficient of variation of 22\%, typical of resting HRV. The free parameter estimated from data is $\rho$; all likelihood computations use $\kappa = \mu_0/\rho^2$ internally.
@@ -562,7 +559,6 @@ legend("topleft",
        legend = c("Euler-Maruyama", "Exact OU"),
        col = c("#D55E00", "#0072B2"), pch = c(19, 17), lwd = 2,
        bty = "n", cex = 0.85)
-grid(col = "lightgray", lty = 1)
 
 # Right: relative bias
 em_bias    <- 100 * (em_var    / true_var - 1)
@@ -573,7 +569,6 @@ plot(dt_vals * 1000, em_bias, type = "b", pch = 19, lwd = 2, col = "#D55E00",
      ylim = range(c(em_bias, exact_bias)))
 lines(dt_vals * 1000, exact_bias, type = "b", pch = 17, lwd = 2, col = "#0072B2")
 abline(h = 0, lty = 2, col = "gray50")
-grid(col = "lightgray", lty = 1)
 ```
 
 ###  Log-Space Intensity Evaluation
@@ -619,7 +614,6 @@ lmx <- max(fs$lambda)
 abline(v = pk, lty = 2, col = "gray50")
 text(pk + 0.04, lmx * 0.95, sprintf("\u03c4* = %.2f s", pk),
      adj = 0, cex = 0.8, col = "gray40")
-grid(col = "lightgray", lty = 1)
 
 plot(fs$tau, fs$rel_error_pct, type = "l", lwd = 2.5, col = "#D55E00",
      xlab = "Time since last beat (s)",
@@ -632,7 +626,6 @@ pk_tau <- fs$tau[which.max((fs$rel_error_pct))]
 points(pk_tau, pk_err, pch = 19, col = "#D55E00", cex = 1.5)
 text(pk_tau + 0.06, pk_err,
      sprintf("Peak overestimate: +%.2f%%", pk_err), adj = 0, cex = 0.8, col = "#D55E00")
-grid(col = "lightgray", lty = 1)
 ```
 
 ###  Exogenous Input Protocol
@@ -792,7 +785,7 @@ We generated $N = 500$ independent realizations from the reference parameter set
 #| cache: true
 #| include: false
 
-REC_INPUT <- make_double_logistic(t_on = 120, t_off = 180, k = 0.1)
+REC_INPUT <- make_double_logistic(t_on = 120, t_off = 180, k = 10)
 
 # Recovery uses PARAMS defined in the setup chunk.
 # Input sensitivities c_p, c_s are non-zero, enabling identification.
@@ -1098,7 +1091,6 @@ legend("topleft",
        legend = c(expression("True" ~ Delta(t)),
                   expression("UKF" ~ hat(Delta)(t) ~ "\u00b1 2 SD")),
        col = c("black", "#0072B2"), lwd = c(1.2, 2), bty = "n", cex = 0.85)
-grid(col = "lightgray", lty = 1)
 
 # ---- Middle: Individual branch reconstruction ----
 # Posterior SD per branch from the 2x2 covariance matrices
@@ -1131,7 +1123,6 @@ legend("topleft",
                   expression(hat(p)(t) ~ "\u00b1 2 SD"), expression(hat(s)(t) ~ "\u00b1 2 SD")),
        col = c("#0072B2","#D55E00","#0072B2","#D55E00"),
        lwd = c(1.2, 1.2, 2, 2), lty = c(1,1,2,2), bty = "n", cex = 0.75)
-grid(col = "lightgray", lty = 1)
 
 # ---- Bottom: innovations (unchanged) ----
 bt <- FLT$beat_times
@@ -1140,7 +1131,6 @@ plot(bt, FLT$innov, pch = 20, cex = 0.4, col = rgb(0,0,0,0.35),
 segments(bt, -2 * sqrt(FLT$S_innov), bt, 2 * sqrt(FLT$S_innov),
          col = adjustcolor("#D55E00", 0.4), lwd = 0.8)
 abline(h = 0, lty = 2, col = "gray60")
-grid(col = "lightgray", lty = 1)
 mtext("Time (s)", side = 1, outer = TRUE, line = 1.5)
 ```
 
@@ -1217,7 +1207,6 @@ plot(RES$time, sapply(RES$time, INPUT_FN), type = "l", lwd = 2,
      col = "black", ylim = c(-0.1, 1.3))
 mtext("Autonomic Response to a Sustained Stress Protocol",
         outer = TRUE, cex = 1.05, font = 2)
-grid(col = "lightgray", lty = 1)
 
 # Row 2: Net drive Delta(t), identifiable quantity
 plot(RES$time, RES$delta, type = "l", col = "#2C5F2E", lwd = 1.5,
@@ -1228,7 +1217,6 @@ legend("topleft",
        legend = c("Net drive (identified from RR data)",
                   "Sympathetic dominant \u2191  |  Vagal dominant \u2193"),
        col = c("#2C5F2E", NA), lwd = c(2, NA), bty = "n", cex = 0.8)
-grid(col = "lightgray", lty = 1)
 
 # Row 3: Individual states (mechanistic interpretation)
 ylims <- range(c(RES$p, RES$s))
@@ -1239,7 +1227,6 @@ legend("topleft",
        legend = c(expression("Sympathetic" ~ s(t) ~ "(LF component)"),
                   expression("Parasympathetic" ~ p(t) ~ "(HF component)")),
        col = c("#D55E00", "#0072B2"), lwd = c(2, 1.5), bty = "n", cex = 0.8)
-grid(col = "lightgray", lty = 1)
 
 # Row 4: Tachogram
 plot(beat_t, rr, type = "o", pch = 20, cex = 0.45, col = "darkgray",
@@ -1250,7 +1237,6 @@ legend("bottomleft",
                   expression(mu(t) == mu[0] %.% exp(-Delta(t)))),
        col = c("darkgray", "black"), pch = c(20, NA),
        lty = c(1, 1), lwd = c(1, 2.5), bty = "n", cex = 0.8)
-grid(col = "lightgray", lty = 1)
 mtext("Time (s)", side = 1, outer = TRUE, line = 2)
 ```
 
@@ -1285,7 +1271,6 @@ legend("topleft",
            bquote(Var(tau) == rho^2 * mu^3 / mu[0] ~ (rho == .(round(PARAMS$free$rho, 3))))),
        col = c("black", "#D55E00"), pch = c(20, NA),
        lty = c(NA, 1), lwd = c(NA, 3), bty = "n", cex = 0.85)
-grid(col = "lightgray", lty = 1)
 ```
 
 ##  Time-Rescaling Goodness-of-Fit
@@ -1338,7 +1323,6 @@ lines(theo, theo - band, lty = 2, col = "#D55E00")
 legend("topleft",
        legend = sprintf("KS p = %.3f", ks$p.value),
        bty = "n", cex = 0.85)
-grid(col = "lightgray", lty = 1)
 
 # --- Normal-score QQ ---
 qqnorm(vk_f, pch = 20, cex = 0.4, col = rgb(0,0,0,0.4),
@@ -1347,14 +1331,12 @@ qqnorm(vk_f, pch = 20, cex = 0.4, col = rgb(0,0,0,0.4),
        ylab = expression(v[k] == Phi^{-1}(u[k])),
        frame.plot = FALSE)
 qqline(vk_f, col = "#D55E00", lwd = 2)
-grid(col = "lightgray", lty = 1)
 
 # --- ACF of uk ---
 acf(uk, lag.max = 25, col = "#0072B2", lwd = 2,
     ci.col = "#D55E00",
     main = "Residual Autocorrelation",
     xlab = "Lag", frame.plot = FALSE)
-grid(col = "lightgray", lty = 1)
 
 # --- Lambda_k vs Exp(1) ECDF ---
 lk_s  <- sort(Lk)
@@ -1370,7 +1352,6 @@ legend("bottomright",
        legend = c("Empirical", "Exp(1)"),
        col = c("black", "#D55E00"),
        pch = c(20, NA), lty = c(NA, 1), lwd = c(NA, 2), bty = "n", cex = 0.85)
-grid(col = "lightgray", lty = 1)
 ```
 
 ```{r}
@@ -1413,7 +1394,7 @@ The simulated beat train is generated by a doubly stochastic process: process no
 
 ## Relation to Existing Point-Process HRV Models
 
-The Barbieri 2005 framework [@barbieri2005point] models instantaneous heart rate through a local-maximum-likelihood IG point process with a history-dependent rate function. The SDE-IG model extends this in three directions. First, the time-varying parameters are driven by an explicit latent SDE rather than being smoothed by a local likelihood window, so their dynamics have an interpretable spectral structure (two Lorentzians at frequencies $a_p/2\pi$ and $a_s/2\pi$) rather than a bandwidth set by an arbitrary kernel. Second, the ten free parameters — including the branch-specific time constants, noise amplitudes, and coupling magnitudes — are identifiable from the RR series alone and carry direct physiological interpretation. Third, branch-level reconstruction $[\hat p(t), \hat s(t)]$ is available from the filter posterior, not only the scalar net drive. Quantitative benchmarking against the Barbieri model on PhysioNet datasets (A3.2) is underway; preliminary AIC/BIC comparisons on simulated data are given in @sec-validation <!-- TODO: add once validation.R is completed -->.
+The Barbieri 2005 framework [@barbieri2005point] models instantaneous heart rate through a local-maximum-likelihood IG point process with a history-dependent rate function. The SDE-IG model extends this in three directions. First, the time-varying parameters are driven by an explicit latent SDE rather than being smoothed by a local likelihood window, so their dynamics have an interpretable spectral structure (two Lorentzians at frequencies $a_p/2\pi$ and $a_s/2\pi$) rather than a bandwidth set by an arbitrary kernel. Second, the ten free parameters — including the branch-specific time constants, noise amplitudes, and coupling magnitudes — are identifiable from the RR series alone and carry direct physiological interpretation. Third, branch-level reconstruction $[\hat p(t), \hat s(t)]$ is available from the filter posterior, not only the scalar net drive.<!-- Quantitative benchmarking against the Barbieri model on PhysioNet datasets (A3.2) is underway; preliminary AIC/BIC comparisons on simulated data are given in @sec-validation << TODO: add once validation.R is completed >> -->.
 
 ## Limitations
 
@@ -1421,5 +1402,5 @@ The present analysis conditions on fixed exogenous input $u(t)$ and does not mod
 
 ##  Extensibility to Multiple Observation Streams
 
-The modular observation model interface defined in this framework supports the addition of further physiological streams without altering the state equation. Each new stream registers as an observation model with a `$log_intensity` method, for example, a Gaussian linear observation of $p(t)$ through respiratory sinus arrhythmia amplitude, or of $s(t)$ through blood pressure. When such a stream is available, the scale aliasing between $k_\text{sym}$ and $\sigma_s$ is broken: the additional observation provides an independent measurement of an individual state, making $p(t)$ and $s(t)$ separately identified and enabling the coupling terms $b_{ps}$ and $b_{sp}$ to be estimated. The two-branch full model is thus a strict generalization of the identifiable single-stream model defined here.
+The modular observation model interface defined in this framework supports the addition of further physiological streams without altering the state equation. Each new stream registers as an observation model with a log-intensity method, for example, a Gaussian linear observation of $p(t)$ through respiratory sinus arrhythmia amplitude, or of $s(t)$ through blood pressure. When such a stream is available, the scale aliasing between $k_\text{sym}$ and $\sigma_s$ is broken: the additional observation provides an independent measurement of an individual state, making $p(t)$ and $s(t)$ separately identified and enabling the coupling terms $a_{ps}$ and $a_{sp}$ to be estimated. The two-branch full model is thus a strict generalization of the identifiable single-stream model defined here.
 

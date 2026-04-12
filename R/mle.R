@@ -30,11 +30,16 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
       # Using nearest-endpoint delta is equivalent to the old biased estimate;
       # flag it so the caller can investigate.
       stop(sprintf(
-        "compute_effective_delta: no grid points in interval [%.4f, %.4f] (IBI=%.4f < dt = %.4f).",
-        "This is physiologically impossible at the chosen dt.",
-        "Reduce dt or check spike detection.",
-        t_start, t_end, t_end - t_start,
-        if (length(time_vec) > 1L) time_vec[2L] - time_vec[1L] else NA_real_))
+        paste0(
+          "compute_effective_delta: no grid points in interval [%.4f, %.4f] ",
+          "(IBI = %.4f s < dt = %.4f s). ",
+          "This is physiologically impossible at dt = 0.005 s. ",
+          "Reduce dt or check spike detection."
+        ),
+        t_start, t_end,
+        t_end - t_start,
+        if (length(time_vec) > 1L) time_vec[2L] - time_vec[1L] else NA_real_
+      ))
     }
   }, numeric(1L))
 }
@@ -281,10 +286,9 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   #   I(log mu_0) = kappa * sum(exp(delta_k)) / mu_0
   #   I(log kappa) = N / 2
   #   Cross term = 0 (block diagonal in log-space)
-  i_log_mu0   <- kappa_hat * sum(g) / mu0_hat
-  # Derivation: I(log mu_0) = E[-d²/d(log mu_0)² log f(tau; mu_0*g_k, kappa)]
-  # = (kappa/mu_0^2) * sum(mu_k) = (kappa/mu_0) * sum(g_k)
-  # where g_k = exp(-delta_k) = mu_k/mu_0.
+  i_log_mu0   <- kappa_hat * sum(w) / mu0_hat
+  # Derivation: I(log mu_0) = kappa * sum(1/mu_k) = (kappa/mu_0) * sum(exp(delta_k))
+  # where w_k = exp(delta_k) = mu_0/mu_k.  Reduces to N*kappa/mu_0 when delta=0 everywhere
 
   i_log_kappa <- n / 2
   # SEs are unreliable if kappa is at its cap; flag with NA
