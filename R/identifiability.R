@@ -274,3 +274,90 @@ plot_profiles <- function(profiles,
   mtext(main, outer = TRUE, cex = 1.05, font = 2)
   par(op)
 }
+
+# ---- Marginal recovery experiment ----
+# Full pipeline: simulate → pp_mle (marginal MLE from spike train) → filter
+# This is the key validation of the fully marginal identifiability claim.
+
+marginal_recovery_one <- function(true_params, duration = 300, dt = 0.005,
+                                  input_fn = make_double_logistic(120, 180),
+                                  seed = NULL) {
+  sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
+
+  # MLE from spike train alone (marginal, not conditional)
+  mle_result <- tryCatch(
+    pp_mle(sim_res$spikes, true_params, input_fn,
+           optimize_gains = FALSE, verbose = FALSE),
+    error = function(e) NULL
+  )
+  if (is.null(mle_result) || mle_result$convergence != 0L) return(NULL)
+
+  # Filter at MLE (practical filter)
+  flt      <- mle_result$filter
+  flt_grid <- filter_to_grid(flt, sim_res$time)
+
+  # State recovery: RMSE of Delta(t)
+  delta_err  <- flt_grid$delta - sim_res$delta
+  rmse_delta <- sqrt(mean(delta_err^2, na.rm = TRUE))
+
+  # Parameter recovery
+  fp_hat <- mle_result$free_hat
+  fp_true <- true_params$free
+  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu_0", "rho")
+  true_vec <- c(fp_true$a_p, fp_true$a_s, fp_true$sigma_p, fp_true$sigma_s,
+                fp_true$mu_0, fp_true$rho)
+  hat_vec  <- c(fp_hat$a_p, fp_hat$a_s, fp_hat$sigma_p, fp_hat$sigma_s,
+                fp_hat$mu_0, fp_hat$rho)
+  names(true_vec) <- names(hat_vec) <- param_names
+
+  list(
+    true      = true_vec,
+    hat       = hat_vec,
+    rmse_delta = rmse_delta,
+    ll_marginal = mle_result$ll,
+    n_beats   = flt$n_beats
+  )
+}
+
+marginal_recovery_study <- function(N = 100L, true_params, duration = 300,
+                                    dt = 0.005,
+                                    input_fn = make_double_logistic(120, 180),
+                                    use_parallel = TRUE) {
+  set.seed(RECOVERY_MASTER_SEED + 1L)   # distinct from conditional study
+  seeds <- sample.int(1e6L, N)
+  run_one <- function(i)
+    tryCatch(marginal_recovery_one(true_params, duration, dt, input_fn,
+                                   seed = seeds[i]),
+             error = function(e) NULL)
+
+  if (use_parallel && .Platform$OS.type == "unix" &&
+      requireNamespace("parallel", quietly = TRUE)) {
+    n_cores <- max(1L, parallel::detectCores() - 1L)
+    results <- parallel::mclapply(seq_len(N), run_one,
+                                  mc.cores = n_cores, mc.set.seed = FALSE)
+  } else {
+    results <- lapply(seq_len(N), run_one)
+  }
+  results <- Filter(Negate(is.null), results)
+
+  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu_0", "rho")
+  summary_df <- do.call(rbind, lapply(param_names, function(p) {
+    hat_v  <- sapply(results, function(r) r$hat[p])
+    true_v <- sapply(results, function(r) r$true[p])
+    ok     <- is.finite(hat_v) & is.finite(true_v)
+    if (!any(ok)) return(NULL)
+    bias <- mean(hat_v[ok] - true_v[ok])
+    rmse <- sqrt(mean((hat_v[ok] - true_v[ok])^2))
+    t_bar <- mean(true_v[ok])
+    data.frame(parameter = p, true_value = t_bar,
+               bias = bias, rel_bias_pct = 100 * bias / abs(t_bar),
+               rmse = rmse, rmse_rel_pct = 100 * rmse / abs(t_bar),
+               n_valid = sum(ok), stringsAsFactors = FALSE)
+  }))
+
+  rmse_delta_vec <- sapply(results, `[[`, "rmse_delta")
+  list(results    = results,
+       summary    = summary_df,
+       rmse_delta = rmse_delta_vec,
+       N_total    = N, N_valid = length(results))
+}

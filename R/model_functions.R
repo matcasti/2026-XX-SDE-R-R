@@ -316,8 +316,9 @@ sim_sde_ig <- function(duration, dt, params,
   }
 
   mu_v <- numeric(n); dlt <- numeric(n); loglam <- numeric(n)
-
-  loglam[1L] <- -Inf   # hazard at tau=0 is zero by IG first-passage construction
+  loglam[1L] <- -Inf
+  mu_v[1L]   <- compute_mu(p[1L], s[1L], fp$mu_0)
+  dlt[1L]    <- compute_delta(p[1L], s[1L])
 
   max_spikes <- n
   spikes     <- numeric(max_spikes)

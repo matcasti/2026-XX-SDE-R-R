@@ -112,6 +112,7 @@ sde_ig_model_stats <- function(fit_result, rr_vec,
   )
 
   Lk  <- compute_time_rescaling(res_proxy)
+  Lk  <- Lk[!is.na(Lk) & is.finite(Lk)]   # drop first IBI (mu is NA before bt[1])
   uk  <- 1 - exp(-Lk[is.finite(Lk)])
   ks  <- ks.test(uk, "punif")
 

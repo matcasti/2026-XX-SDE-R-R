@@ -115,9 +115,8 @@
 #
 # Returns: list(m, P, innov, S, mu_hat, ll)
 
-.ukf_update <- function(m1, P1, tau_k, fp) {
+.ukf_update <- function(m1, P1, tau_k, fp, kappa) {
   mu_0  <- fp$mu_0
-  kappa <- kappa_from_rho(fp$mu_0, fp$rho)
 
   pts    <- .sigma_points(m1, P1)
   h_pts  <- mu_0 * exp(pts[1L, ] - pts[2L, ])   # h(sigma_i)
@@ -172,6 +171,7 @@ pp_ukf <- function(spikes,
                    P0       = NULL) {
   sp <- params$structural
   fp <- params$free
+  kap_const <- kappa_from_rho(fp$mu_0, fp$rho)
   N  <- length(spikes)
   if (N < 2L) stop("pp_ukf: need at least 2 spikes.")
 
@@ -196,7 +196,7 @@ pp_ukf <- function(spikes,
     u_k   <- input_fn(spikes[k])
 
     pred <- .ou_predict(m_cur, P_cur, tau_k, sp, fp, u = u_k)
-    upd  <- .ukf_update(pred$m, pred$P, tau_k, fp)
+    upd  <- .ukf_update(pred$m, pred$P, tau_k, fp, kap_const)
 
     m_filt[k, ]   <- upd$m
     P_filt[[k]]   <- upd$P

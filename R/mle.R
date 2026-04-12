@@ -644,13 +644,23 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
              sum(log_ig_pdf(tau_vec, mu_k, k))
            },
            sigma_p = {
-             # Profile c_p over fixed sigma_p = v (c_hat is sigma-independent)
              if (v <= 0) return(-Inf)
-             ou_log_lik_at(sim_res$p, u_vec, a_p_mle, v, c_p_hat, dt)
+             # Re-optimize c_p at each sigma_p value (true profile)
+             # z_p, y_p, C_ap are pre-computed above (at a_p_mle)
+             ssz <- sum(z_p^2)
+             if (ssz > 1e-14) {
+               # Closed-form c_p given sigma_p = v: OLS is sigma-independent
+               c_p_v <- sum(y_p * z_p) / ssz
+             } else {
+               c_p_v <- 0
+             }
+             ou_log_lik_at(sim_res$p, u_vec, a_p_mle, v, c_p_v, dt)
            },
            sigma_s = {
              if (v <= 0) return(-Inf)
-             ou_log_lik_at(sim_res$s, u_vec, a_s_mle, v, c_s_hat, dt)
+             ssz <- sum(z_s^2)
+             c_s_v <- if (ssz > 1e-14) sum(y_s * z_s) / ssz else 0
+             ou_log_lik_at(sim_res$s, u_vec, a_s_mle, v, c_s_v, dt)
            },
            c_p = {
              # Profile sigma_p over fixed c_p = v (sigma_hat DOES depend on v)
