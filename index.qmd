@@ -801,7 +801,13 @@ REC_STUDY <- recovery_study(
 ```{r}
 #| label: fig-recovery
 #| fig-cap: >
-#|   "Monte Carlo recovery study ($N = 250$ replications, 300 s each with a 60-second double-logistic input at $t = 120$ s). Centre of each interval: relative bias $(\\hat\\theta - \\theta_\\text{true})/|\\theta_\\text{true}| \\times 100\\%$. Whiskers: $\\pm$ relative RMSE. Right margin: empirical 95\\% Wald CI coverage. All eight free parameters are estimated by the conditional MLE, in analytically separate blocks for the two OU branches and the IG observation component. Well-calibrated estimation shows bias near zero and coverage near 95\%."
+#|   Monte Carlo recovery study ($N = 250$ replications, 300 s each with a 
+#|   60-second double-logistic input at $t = 120$ s). Centre of each interval: 
+#|   relative bias $(\hat\theta - \theta_\text{true})/|\theta_\text{true}| \times 100\%$. 
+#|   Whiskers: $\pm$ relative RMSE. Right margin: empirical 95\% Wald CI coverage. 
+#|   All eight free parameters are estimated by the conditional MLE, in analytically 
+#|   separate blocks for the two OU branches and the IG observation component. 
+#|   Well-calibrated estimation shows bias near zero and coverage near 95\%.
 #| fig-height: 4.5
 
 plot_recovery(REC_STUDY$summary,
