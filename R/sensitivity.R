@@ -161,6 +161,7 @@ plot_sensitivity <- function(sens_df,
   metrics <- c("rel_rmse_a_p",    "rel_rmse_a_s",
                "rel_rmse_sigma_p","rel_rmse_sigma_s",
                "rel_rmse_mu0",    "rel_rmse_rho",
+               "rel_rmse_c_p",    "rel_rmse_c_s",
                "filter_rmse_delta")
   labels  <- c(expression("Rel. RMSE" ~ a[p] ~ "(%)"),
                expression("Rel. RMSE" ~ a[s] ~ "(%)"),
@@ -168,6 +169,8 @@ plot_sensitivity <- function(sens_df,
                expression("Rel. RMSE" ~ sigma[s] ~ "(%)"),
                expression("Rel. RMSE" ~ mu[0] ~ "(%)"),
                expression("Rel. RMSE" ~ rho ~ "(%)"),
+               expression("Rel. RMSE" ~ c[p] ~ "(%)"),
+               expression("Rel. RMSE" ~ c[s] ~ "(%)"),
                expression("Filter RMSE" ~ hat(Delta)(t)))
 
   ap_vals <- sort(unique(sens_df$a_p))

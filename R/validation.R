@@ -35,14 +35,15 @@ load_tilt_rr <- function(subject_id, path = getOption("sde_ig.tilt_path")) {
 
 # ---- SDE-IG fit to a real RR vector ----
 
-fit_sde_ig <- function(rr_vec,
-                       params_init = make_model_params(),
-                       input_fn    = function(t) 0,
-                       verbose     = FALSE) {
-  # Reconstruct spike times from RR intervals
+fit_sde_ig <- function(rr_vec, params_init = make_model_params(),
+                       input_fn = function(t) 0,
+                       optimize_gains = FALSE, verbose = FALSE) {
   spikes <- c(0, cumsum(rr_vec))
-  pp_mle(spikes, params_init, input_fn,
-         optimize_gains = FALSE, verbose = verbose)
+  result <- pp_mle(spikes, params_init, input_fn,
+                   optimize_gains = optimize_gains, verbose = verbose)
+  result$n_params_estimated <- 6L + 2L * optimize_gains +
+    2L * ((abs(params_init$free$a_ps) + abs(params_init$free$a_sp)) > 1e-12)
+  result
 }
 
 
@@ -82,16 +83,11 @@ barbieri_ig_fit <- function(rr_vec) {
 # ---- SDE-IG model selection statistics ----
 
 sde_ig_model_stats <- function(fit_result, rr_vec,
-                               grid_dt = 0.005) {
+                               grid_dt = 0.005,
+                               n_params = 6L) {
   # fit_result: output of fit_sde_ig() (which wraps pp_mle)
   ll      <- fit_result$ll
   n_beats <- length(rr_vec)
-
-  # pp_mle() with optimize_gains = FALSE estimates 6 parameters in log-space:
-  # (log a_p, log a_s, log sigma_p, log sigma_s, log mu_0, log rho).
-  # With optimize_gains = TRUE this becomes 8 (adding c_p, c_s).
-  # fit_sde_ig() passes optimize_gains = FALSE, so n_params = 6.
-  n_params <- 6L
 
   aic <- -2 * ll + 2 * n_params
   bic <- -2 * ll + log(n_beats) * n_params

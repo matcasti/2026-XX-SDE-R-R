@@ -225,6 +225,106 @@ plot_recovery <- function(rec_summary,
   grid(ny = NA, col = "lightgray", lty = 1)
 }
 
+# ---- Marginal vs conditional recovery comparison plot ----
+#
+# Two-panel dot plot: left = conditional MLE (given states),
+# right = marginal MLE (spike train only). Same x-axis scale on both
+# panels to make the information cost of latent state integration
+# directly visible. Parameters without coverage (marginal study does
+# not compute Wald CIs) show only bias and RMSE whiskers.
+
+plot_marginal_vs_conditional <- function(cond_summary, marg_summary,
+                                         main = "Conditional vs Marginal MLE Recovery") {
+
+  par_labels <- c(
+    a_p     = expression(a[p]),
+    a_s     = expression(a[s]),
+    sigma_p = expression(sigma[p]),
+    sigma_s = expression(sigma[s]),
+    mu0     = expression(mu[0]),
+    mu_0    = expression(mu[0]),     # handle both naming conventions
+    rho     = expression(rho),
+    c_p     = expression(c[p]),
+    c_s     = expression(c[s])
+  )
+  cols_map <- c(
+    a_p     = "#0072B2", a_s     = "#56B4E9",
+    sigma_p = "#D55E00", sigma_s = "#E69F00",
+    mu0     = "#2C5F2E", mu_0    = "#2C5F2E",
+    rho     = "#2C5F2E",
+    c_p     = "#CC79A7", c_s     = "#009E73"
+  )
+
+  # Align rows by parameter name (marginal may have fewer if some failed)
+  params_cond <- cond_summary$parameter
+  params_marg <- marg_summary$parameter
+  params_both <- intersect(params_cond, params_marg)
+
+  cond_df <- cond_summary[match(params_both, params_cond), ]
+  marg_df <- marg_summary[match(params_both, params_marg), ]
+  np      <- length(params_both)
+
+  cols <- unname(cols_map[params_both])
+  cols[is.na(cols)] <- "black"
+
+  # Shared x range across both panels
+  all_vals <- c(
+    cond_df$rel_bias_pct - cond_df$rmse_rel_pct,
+    cond_df$rel_bias_pct + cond_df$rmse_rel_pct,
+    marg_df$rel_bias_pct - marg_df$rmse_rel_pct,
+    marg_df$rel_bias_pct + marg_df$rmse_rel_pct
+  )
+  xlim <- range(all_vals, na.rm = TRUE) * 1.2
+  ylim <- c(0.5, np + 0.5)
+
+  op <- par(mfrow = c(1, 2),
+            mar   = c(4.5, 6.5, 3, 1),
+            oma   = c(0, 0, 2.5, 0))
+
+  for (panel in 1:2) {
+    df    <- if (panel == 1L) cond_df else marg_df
+    title <- if (panel == 1L) "Conditional MLE\n(states known)"
+    else            "Marginal MLE\n(spike train only)"
+
+    plot(df$rel_bias_pct, seq_len(np), pch = 19, cex = 1.5,
+         col = cols,
+         xlim = xlim, ylim = ylim,
+         xlab = "Relative error (%)", ylab = "",
+         yaxt = "n", main = title,
+         frame.plot = FALSE)
+    abline(v = 0, lty = 2, col = "gray50")
+    for (i in seq_len(np)) {
+      segments(df$rel_bias_pct[i] - df$rmse_rel_pct[i], i,
+               df$rel_bias_pct[i] + df$rmse_rel_pct[i], i,
+               col = cols[i], lwd = 2)
+    }
+
+    axis_labels <- sapply(params_both, function(p) {
+      lbl <- par_labels[[p]]
+      if (is.null(lbl)) as.expression(p) else lbl
+    })
+    axis(2, at = seq_len(np), labels = axis_labels,
+         las = 2, cex.axis = 1.05)
+
+    # Right-margin annotation: coverage (cond) or n_valid (marg)
+    if (panel == 1L && "coverage_95" %in% names(df)) {
+      mtext(sprintf("%.0f%%", df$coverage_95), side = 4,
+            at = seq_len(np), las = 2, cex = 0.72, col = "gray30", line = 0.4)
+      mtext("95% CI\ncoverage", side = 4, at = np + 0.85,
+            las = 2, cex = 0.65, col = "gray30", line = 0.4)
+    } else {
+      mtext(sprintf("n=%d", df$n_valid), side = 4,
+            at = seq_len(np), las = 2, cex = 0.72, col = "gray30", line = 0.4)
+      mtext("valid\nreps", side = 4, at = np + 0.85,
+            las = 2, cex = 0.65, col = "gray30", line = 0.4)
+    }
+    grid(ny = NA, col = "lightgray", lty = 1)
+  }
+
+  mtext(main, outer = TRUE, cex = 1.05, font = 2)
+  par(op)
+}
+
 # ---- Profile likelihood 2x3 panel ----
 #
 # Plots all six profile likelihoods on a common normalized scale.
@@ -284,12 +384,15 @@ marginal_recovery_one <- function(true_params, duration = 300, dt = 0.005,
                                   seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
 
-  # MLE from spike train alone (marginal, not conditional)
+  # Check whether the input is non-trivial (any u(t) > 1e-6 in the simulation window)
+  has_input <- any(abs(sapply(seq(0, duration, length.out = 200L),
+                              input_fn)) > 1e-6)
   mle_result <- tryCatch(
     pp_mle(sim_res$spikes, true_params, input_fn,
-           optimize_gains = FALSE, verbose = FALSE),
+           optimize_gains = has_input, verbose = FALSE),
     error = function(e) NULL
   )
+
   if (is.null(mle_result) || mle_result$convergence != 0L) return(NULL)
 
   # Filter at MLE (practical filter)
@@ -303,11 +406,11 @@ marginal_recovery_one <- function(true_params, duration = 300, dt = 0.005,
   # Parameter recovery
   fp_hat <- mle_result$free_hat
   fp_true <- true_params$free
-  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu_0", "rho")
+  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu_0", "rho", "c_p", "c_s")
   true_vec <- c(fp_true$a_p, fp_true$a_s, fp_true$sigma_p, fp_true$sigma_s,
-                fp_true$mu_0, fp_true$rho)
+                fp_true$mu_0, fp_true$rho, fp_true$c_p, fp_true$c_s)
   hat_vec  <- c(fp_hat$a_p, fp_hat$a_s, fp_hat$sigma_p, fp_hat$sigma_s,
-                fp_hat$mu_0, fp_hat$rho)
+                fp_hat$mu_0, fp_hat$rho, fp_hat$c_p, fp_hat$c_s)
   names(true_vec) <- names(hat_vec) <- param_names
 
   list(
@@ -340,19 +443,25 @@ marginal_recovery_study <- function(N = 100L, true_params, duration = 300,
   }
   results <- Filter(Negate(is.null), results)
 
-  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu_0", "rho")
+  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu_0", "rho", "c_p", "c_s")
   summary_df <- do.call(rbind, lapply(param_names, function(p) {
     hat_v  <- sapply(results, function(r) r$hat[p])
     true_v <- sapply(results, function(r) r$true[p])
     ok     <- is.finite(hat_v) & is.finite(true_v)
     if (!any(ok)) return(NULL)
-    bias <- mean(hat_v[ok] - true_v[ok])
-    rmse <- sqrt(mean((hat_v[ok] - true_v[ok])^2))
-    t_bar <- mean(true_v[ok])
-    data.frame(parameter = p, true_value = t_bar,
-               bias = bias, rel_bias_pct = 100 * bias / abs(t_bar),
-               rmse = rmse, rmse_rel_pct = 100 * rmse / abs(t_bar),
-               n_valid = sum(ok), stringsAsFactors = FALSE)
+    t_bar  <- mean(true_v[ok])
+    h_bar  <- mean(hat_v[ok])
+    bias   <- h_bar - t_bar
+    rmse   <- sqrt(mean((hat_v[ok] - true_v[ok])^2))
+    data.frame(parameter    = p,
+               true_value   = t_bar,
+               mean_hat     = h_bar,           # added
+               bias         = bias,
+               rel_bias_pct = 100 * bias / abs(t_bar),
+               rmse         = rmse,
+               rmse_rel_pct = 100 * rmse / abs(t_bar),
+               n_valid      = sum(ok),
+               stringsAsFactors = FALSE)
   }))
 
   rmse_delta_vec <- sapply(results, `[[`, "rmse_delta")

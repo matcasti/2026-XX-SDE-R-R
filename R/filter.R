@@ -78,7 +78,7 @@
   if ((abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12) {
     A_mat <- matrix(c(-a_p, -fp$a_sp, -fp$a_ps, -a_s), 2L, 2L)
     F_mat <- mat2x2_exp(A_mat, tau)
-    Q_mat <- ou_coupled_Q(A_mat, fp$sigma_p, fp$sigma_s, tau, n_steps = 20L)
+    Q_mat <- ou_coupled_Q(A_mat, fp$sigma_p, fp$sigma_s, tau, n_steps = 40L)
 
     d_vec <- c(0, 0)
     if (u != 0) {
