@@ -34,16 +34,13 @@ single_recovery <- function(true_params,
   use_coupled  <- (abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12
   true_vec <- c(a_p = fp$a_p, a_s = fp$a_s,
                 sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
-                mu0 = fp$mu_0, rho = fp$rho,
-                c_p = fp$c_p, c_s = fp$c_s)
-  hat_vec  <- c(a_p = mle$a_p, a_s = mle$a_s,
+                mu0 = fp$mu_0, rho = fp$rho)
+  hat_vec  <- c(a_p = mle$a_p,  a_s = mle$a_s,
                 sigma_p = mle$sigma_p, sigma_s = mle$sigma_s,
-                mu0 = mle$mu0, rho = mle$rho,
-                c_p = mle$c_p, c_s = mle$c_s)
+                mu0 = mle$mu0, rho = mle$rho)
   se_vec   <- c(a_p = mle$a_p_se, a_s = mle$a_s_se,
                 sigma_p = mle$sigma_p_se, sigma_s = mle$sigma_s_se,
-                mu0 = mle$mu0_se, rho = mle$rho_se,
-                c_p = mle$c_p_se, c_s = mle$c_s_se)
+                mu0 = mle$mu0_se, rho = mle$rho_se)
   if (use_coupled) {
     true_vec <- c(true_vec, a_ps = fp$a_ps, a_sp = fp$a_sp)
     hat_vec  <- c(hat_vec,  a_ps = mle$a_ps, a_sp = mle$a_sp)
@@ -91,11 +88,10 @@ recovery_study <- function(N = 200L,
   results <- Filter(Negate(is.null), results)
 
   use_coupled <- (abs(true_params$free$a_ps) + abs(true_params$free$a_sp)) > 1e-12
-  params <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho", "c_p", "c_s")
+  params <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
   labels <- c(expression(a[p]), expression(a[s]),
               expression(sigma[p]), expression(sigma[s]),
-              expression(mu[0]), expression(rho),
-              expression(c[p]), expression(c[s]))
+              expression(mu[0]), expression(rho))
   if (use_coupled) {
     params <- c(params, "a_ps", "a_sp")
     labels <- c(labels, expression(a[ps]), expression(a[sp]))
@@ -174,13 +170,11 @@ plot_recovery <- function(rec_summary,
   np   <- nrow(df)
   base_cols <- c(
     a_p     = "#0072B2",
-    a_s     = "#56B4E9",   # lighter blue: same OU block, different branch
+    a_s     = "#56B4E9",
     sigma_p = "#D55E00",
-    sigma_s = "#E69F00",   # amber: same OU block, different branch
+    sigma_s = "#E69F00",
     mu0     = "#2C5F2E",
     rho     = "#2C5F2E",
-    c_p     = "#CC79A7",
-    c_s     = "#009E73",
     a_ps    = "#999999",
     a_sp    = "#999999"
   )

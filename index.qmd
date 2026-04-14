@@ -74,17 +74,17 @@ source("R/model_functions.R")
 # ---- Shared simulation parameters ----
 
 PARAMS <- make_model_params(
-  a_p = 2.0, a_s = 0.2,          # decay rates (now free; these are sim ground truth)
-  a_ps = 0.0, a_sp = 0.0,        # uncoupled baseline
+  a_p = 2.0, a_s = 0.2,               # decay rates (now free; these are sim ground truth)
+  a_ps = 0.0, a_sp = 0.0,             # uncoupled baseline
   sigma_p = 0.20, sigma_s = 0.07,
   mu_0 = 1.0, rho = 0.2236068,        # rho = sqrt(mu_0/kappa): gives kappa = mu_0/rho^2 = 20
-  c_p = -1.0, c_s = 0.1
+  c_p = -1.0, c_s = 0.1               # simulation-only; inference always uses c_p = c_s = 0
 )
 # Derived quantity for inline use:
 KAPPA_REF <- kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)  # = 20
 
 
-INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 10)
+INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 0.1)
 
 set.seed(1234)
 RES <- sim_sde_ig(720, 0.005, PARAMS, INPUT_FN)
@@ -146,7 +146,7 @@ param_table <- data.frame(
     "Structural",
     "Free", "Free", "Free", "Free",
     "Free", "Free", "Free", "Free",
-    "Free (with input)"
+    "Simulation-only"
   ),
   Value = c(
     "1 (fixed)",
@@ -155,7 +155,7 @@ param_table <- data.frame(
     "Estimated ($\\geq 0$); jointly identified with $a_p$ and $a_s$ from the curvature of the $\\Delta(t)$ spectral density",
     "Estimated", "Estimated",
     "Estimated", "Estimated",
-    "Estimated when $u(t) \\not\\equiv 0$, else 0"
+    "Fixed to 0 for inference; free in simulation"
   ),
   Interpretation = c(
     "Observation gains (normalized; scale absorbed into $\\sigma$)",
@@ -167,7 +167,7 @@ param_table <- data.frame(
     "Sympathetic noise amplitude $\\to$ spectral power near $a_s/(2\\pi)$",
     "Baseline mean RR interval at autonomic neutrality",
     "$\\rho = \\sqrt{\\mu_0/\\kappa}$: baseline coefficient of variation of intervals; $\\kappa = \\mu_0/\\rho^2$",
-    "Branch sensitivities to exogenous input $u(t)$"
+    "Branch sensitivities to the generative input $u(t)$; unobserved in practice, so dynamical variation is absorbed by $\\{\\sigma_p, \\sigma_s, a_p, a_s\\}$"
   ),
   stringsAsFactors = FALSE
 )
@@ -636,7 +636,7 @@ u(t) \;=\; \sigma\!\bigl(k(t - t_{\rm on})\bigr)\cdot\sigma\!\bigl(k(t_{\rm off}
 \qquad \sigma(x) = (1 + e^{-x})^{-1}
 $$
 
-with $t_{\rm on} = 300$ s, $t_{\rm off} = 420$ s, and steepness $k = 10$ Hz. At $k = 10$ the 10–90\% rise time is $\ln(81)/k \approx 0.44$ s, which is negligible relative to both the vagal time constant ($\tau_p = 0.5$ s) and the sympathetic time constant ($\tau_s = 5$ s), so the transient is physiologically abrupt while remaining smooth and differentiable at all $t$. The boxcar $\mathbf{1}_{[t_{\rm on}, t_{\rm off})}(t)$ is the $k \to \infty$ limit; its breakpoint discontinuities create non-smooth gradients in the OU input-driven mean shift, which impairs profile likelihood computations and MLE convergence. The double-logistic eliminates this artifact without altering the qualitative autonomic response.
+with $t_{\rm on} = 300$ s, $t_{\rm off} = 420$ s, and steepness $k = 0.1$ Hz. At $k = 0.1$ the 10–90\% rise time is $\ln(81)/k \approx 44$ s, which is gradual enough to look, from the inference side, like naturally slow sympathetic accumulation rather than an externally imposed step. Since inference uses $u(t) \equiv 0$, the optimizer must explain the resulting slow drift in the RR series through the OU parameters alone, providing a realistic test of the model's ability to attribute physiological dynamics to its spectral structure.
 
 ###  Complete Simulation Algorithm
 
@@ -649,7 +649,9 @@ The full simulation integrates the three components above into a single time-ind
 
 # Identifiability Analysis {#sec-identifiability}
 
-The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. For the baseline uncoupled analysis ($a_{ps} = a_{sp} = 0$) the active set comprises six always-free parameters $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ plus two protocol-conditional parameters $\{c_p, c_s\}$, identifiable only when $u(t) \not\equiv 0$; the stress protocol used here activates all eight.  The FIM analysis below therefore covers the full $8 \times 8$ system. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision.  We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory $\{p(t), s(t)\}_{0 \le t \le T}$, the full parameter set $\Theta$ is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study ($N = 500$ replications). For the uncoupled sub-model ($a_{ps} = a_{sp} = 0$) with a non-trivial input ($u(t) \not\equiv 0$), the FIM is $8 \times 8$ and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full $10 \times 10$ system, where the block-diagonal structure breaks down, is established in @sec-coupling via a numerical FIM and a dedicated recovery study. Marginal identifiability — recovery from the spike train alone, integrating over unobserved latent states — is established in @sec-inference via the UKF marginal likelihood.
+The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are used exclusively for simulation: they allow the generative model to produce physiologically realistic sympathetic activation dynamics via a slow double-logistic input ($k = 0.1$, 10–90% rise time $\approx 44$ s). Since $u(t)$ is never observed in practice, inference always treats $c_p = c_s = 0$ and attributes all dynamical variation to the OU spectral structure.
+
+The FIM analysis below therefore covers the full $8 \times 8$ system. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision.  We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory $\{p(t), s(t)\}_{0 \le t \le T}$, the full parameter set $\Theta$ is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study ($N = 500$ replications). For the uncoupled sub-model ($a_{ps} = a_{sp} = 0$) with a non-trivial input ($u(t) \not\equiv 0$), the FIM is $8 \times 8$ and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full $10 \times 10$ system, where the block-diagonal structure breaks down, is established in @sec-coupling via a numerical FIM and a dedicated recovery study. Marginal identifiability — recovery from the spike train alone, integrating over unobserved latent states — is established in @sec-inference via the UKF marginal likelihood.
 
 ```{r}
 #| label: ident-setup
@@ -727,10 +729,11 @@ box()
 
 # Right: eigenvalue spectrum
 eig_sorted <- sort(fim_result$eigenvalues, decreasing = TRUE)
-barplot(log10(eig_sorted),
+barplot(eig_sorted+1,
         names.arg = paste0("\u03bb", seq_along(eig_sorted)),
         col = "#0072B2",
         xlab = "Eigenvalue index",
+        log = "y",
         ylab = expression(log[10](lambda[i])),
         main = "FIM Eigenvalue Spectrum",
         border = NA)
@@ -784,7 +787,7 @@ We generated $N = 250$ independent realizations from the reference parameter set
 #| cache: true
 #| include: false
 
-REC_INPUT <- make_double_logistic(t_on = 120, t_off = 180, k = 10)
+REC_INPUT <- make_double_logistic(t_on = 120, t_off = 180, k = 0.1)
 
 # Recovery uses PARAMS defined in the setup chunk.
 # Input sensitivities c_p, c_s are non-zero, enabling identification.
@@ -823,8 +826,7 @@ df <- REC_STUDY$summary
 rec_tbl <- data.frame(
   Parameter   = c("$a_p$", "$a_s$",
                   "$\\sigma_p$", "$\\sigma_s$",
-                  "$\\mu_0$", "$\\rho$",
-                  "$c_p$", "$c_s$"),
+                  "$\\mu_0$", "$\\rho$"),
   True        = sprintf("%.3f", df$true_value),
   Mean_hat    = sprintf("%.3f", df$mean_hat),
   Bias        = sprintf("%.4f", df$bias),
@@ -887,11 +889,18 @@ PARAMS_COUPLED <- make_model_params(
   sigma_p = 0.20, sigma_s = 0.07,
   mu_0 = PARAMS$free$mu_0,       # inherit baseline from reference params
   rho  = PARAMS$free$rho,        # same kappa as uncoupled study
-  c_p = -1.0, c_s = 0.1
+  c_p = -1.0, c_s = 0.1          # simulation-only; inference always uses c_p = c_s = 0
 )
 
 set.seed(5678)
 RES_COUPLED <- sim_sde_ig(300, 0.005, PARAMS_COUPLED, REC_INPUT)
+
+if (FALSE) {
+  par(mfrow = c(1,3))
+  plot(RES_COUPLED$time, RES_COUPLED$p, type = "l")
+  plot(RES_COUPLED$time, RES_COUPLED$s, type = "l")
+  plot(RES_COUPLED$time, RES_COUPLED$mu, type = "l")
+}
 ```
 
 ```{r}
@@ -1351,7 +1360,7 @@ The RMSE inflation ratio for $\hat\Delta(t)$, the ratio of the marginal filter R
 
 ##  The Virtual Stress Protocol
 
-We examine model behaviour under a double-logistic input approximating a 120-second stress episode ($t_{\rm on} = 300$ s, $t_{\rm off} = 420$ s, $k = 10$ Hz) embedded in a 720-second rest–stress–recovery simulation. The recovery study in @sec-recovery uses an independent 60-second stress window in 300-second recordings; both protocols use the same double-logistic form.
+We examine model behaviour under a double-logistic input approximating a 120-second stress episode ($t_{\rm on} = 300$ s, $t_{\rm off} = 420$ s, $k = 0.1$ Hz) embedded in a 720-second rest–stress–recovery simulation. The recovery study in @sec-recovery uses an independent 60-second stress window in 300-second recordings; both protocols use the same double-logistic form.
 
 ```{r}
 #| label: code-sim-run
@@ -1367,7 +1376,7 @@ mu_beats <- approx(RES$time, RES$mu, xout = beat_t)$y
 
 ```{r}
 #| label: fig-results-main
-#| fig-cap: "Simulation of the autonomic response to a double-logistic stress protocol ($t_{\\rm on} = 300$ s, $t_{\\rm off} = 420$ s, $k = 10$ Hz). **Row 1:** Exogenous input $u(t)$; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
+#| fig-cap: "Simulation of the autonomic response to a double-logistic stress protocol ($t_{\\rm on} = 300$ s, $t_{\\rm off} = 420$ s, $k = 0.1$ Hz). **Row 1:** Exogenous input $u(t)$; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
 #| fig-height: 9
 
 layout(matrix(1:4, 4, 1), heights = c(0.6, 0.9, 0.9, 1.4))

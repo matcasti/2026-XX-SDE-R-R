@@ -90,24 +90,30 @@ mat2x2_exp <- function(A, t) {
   }
 }
 
-# ---- Process noise covariance for the coupled OU system ----
-# Q(dt) = ∫₀^dt e^{As} ΣΣᵀ e^{Aᵀs} ds, computed by trapezoidal quadrature.
-# n_steps = 40 keeps relative error well below 0.1% for all physiological IBIs.
+# ---- Exact stationary covariance for the 2×2 coupled OU system ----
+# Analytic solution of A P∞ + P∞ Aᵀ + ΣΣᵀ = 0 (algebraic Lyapunov equation).
+# Reduces to diag(σ_p²/2a_p, σ_s²/2a_s) when a_ps = a_sp = 0.
+ou_stationary_cov <- function(a_p, a_s, a_ps, a_sp, sigma_p, sigma_s) {
+  D  <- a_p * a_s - a_ps * a_sp    # det(−A) > 0 by stability
+  Tr <- a_p + a_s                  # tr(−A) > 0
+  p11 <- ((a_s^2 + D) * sigma_p^2 + a_ps^2 * sigma_s^2) / (2 * D * Tr)
+  p22 <- ((a_p^2 + D) * sigma_s^2 + a_sp^2 * sigma_p^2) / (2 * D * Tr)
+  p12 <- -(a_ps * p22 + a_sp * p11) / Tr
+  matrix(c(p11, p12, p12, p22), 2L, 2L)
+}
 
+# Exact process noise covariance via the stationary-covariance identity:
+#   Q(Δt) = P∞ − F(Δt) P∞ F(Δt)ᵀ
+# Proof: d/dτ [F P∞ Fᵀ] = −F ΣΣᵀ Fᵀ (from the Lyapunov equation),
+# so ∫₀^Δt F(s)ΣΣᵀF(s)ᵀ ds = P∞ − F(Δt)P∞F(Δt)ᵀ  (exact for all Δt).
+# n_steps retained in signature for backward compatibility; no longer used.
 ou_coupled_Q <- function(A_mat, sigma_p, sigma_s, dt, n_steps = 40L) {
-  SS    <- diag(c(sigma_p^2, sigma_s^2))
-  h     <- dt / n_steps
-  t_pts <- seq(0, dt, length.out = n_steps + 1L)
-
-  f_prev <- SS                      # e^{A*0} = I, so integrand at t=0 is SS
-  Q      <- matrix(0, 2L, 2L)
-  for (i in seq_len(n_steps)) {
-    Ft     <- mat2x2_exp(A_mat, t_pts[i + 1L])
-    f_next <- Ft %*% SS %*% t(Ft)
-    Q      <- Q + (h / 2) * (f_prev + f_next)
-    f_prev <- f_next
-  }
-  0.5 * (Q + t(Q))                  # symmetrize against floating-point drift
+  a_p  <- -A_mat[1L, 1L];  a_s  <- -A_mat[2L, 2L]
+  a_ps <- -A_mat[1L, 2L];  a_sp <- -A_mat[2L, 1L]
+  P_inf <- ou_stationary_cov(a_p, a_s, a_ps, a_sp, sigma_p, sigma_s)
+  F_dt  <- mat2x2_exp(A_mat, dt)
+  Q     <- P_inf - F_dt %*% P_inf %*% t(F_dt)
+  0.5 * (Q + t(Q))          # symmetrize against floating-point drift
 }
 
 # ---- Pre-compute all objects needed for simulation and likelihood ----
@@ -303,8 +309,18 @@ sim_sde_ig <- function(duration, dt, params,
   # transient that would bias short simulations.
   p  <- numeric(n)
   s  <- numeric(n)
-  p[1L] <- rnorm(1, 0, sqrt(fp$sigma_p^2 / (2 * fp$a_p)))
-  s[1L] <- rnorm(1, 0, sqrt(fp$sigma_s^2 / (2 * fp$a_s)))
+
+
+  # Draw from the exact bivariate stationary distribution.
+  # Uses the closed-form P∞; reduces to independent draws when a_ps = a_sp = 0.
+  P_stat <- ou_stationary_cov(fp$a_p, fp$a_s, fp$a_ps, fp$a_sp,
+                              fp$sigma_p, fp$sigma_s)
+  x0 <- tryCatch(
+    as.vector(t(chol(P_stat)) %*% rnorm(2L)),
+    error = function(e) c(rnorm(1L, 0, sqrt(fp$sigma_p^2 / (2 * fp$a_p))),
+                          rnorm(1L, 0, sqrt(fp$sigma_s^2 / (2 * fp$a_s))))
+  )
+  p[1L] <- x0[1L];  s[1L] <- x0[2L]
 
   # Pre-compute coupled transition matrices once if coupling is non-zero.
   # Falls back to the scalar exact-step fast path when b_ps = b_sp = 0.

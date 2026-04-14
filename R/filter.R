@@ -176,8 +176,8 @@ pp_ukf <- function(spikes,
   if (N < 2L) stop("pp_ukf: need at least 2 spikes.")
 
   if (is.null(m0)) m0 <- c(0, 0)
-  if (is.null(P0)) P0 <- diag(c(fp$sigma_p^2 / (2 * fp$a_p),
-                                fp$sigma_s^2 / (2 * fp$a_s)))
+  if (is.null(P0)) P0 <- ou_stationary_cov(fp$a_p, fp$a_s, fp$a_ps, fp$a_sp,
+                                           fp$sigma_p, fp$sigma_s)
 
   n_ibi      <- N - 1L
   m_filt     <- matrix(0, n_ibi, 2L, dimnames = list(NULL, c("p", "s")))
