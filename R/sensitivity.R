@@ -67,7 +67,7 @@ sensitivity_one <- function(a_p_val, a_s_val,
   results <- Filter(Negate(is.null), results)
 
   # Aggregate bias and RMSE for the four IG + OU-amplitude parameters
-  agg <- lapply(c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho", "c_p", "c_s"), function(p) {
+  agg <- lapply(c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho"), function(p) {
     hat_v  <- sapply(results, function(r) r$hat[p])
     true_v <- sapply(results, function(r) r$true[p])
     ok     <- is.finite(hat_v) & is.finite(true_v)
@@ -79,7 +79,7 @@ sensitivity_one <- function(a_p_val, a_s_val,
     rel_rmse <- if (abs(t_bar) > 1e-10) 100 * rmse / abs(t_bar) else NA_real_
     c(bias = bias, rmse = rmse, rel_rmse_pct = rel_rmse)
   })
-  names(agg) <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho", "c_p", "c_s")
+  names(agg) <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
 
   # (2) Filter RMSE on the reference simulation with a_p / a_s FIXED to grid values.
   # This is intentionally NOT a joint estimate: the goal is to isolate how much
@@ -111,8 +111,6 @@ sensitivity_one <- function(a_p_val, a_s_val,
     rel_rmse_sigma_s  = agg$sigma_s["rel_rmse_pct"],
     rel_rmse_mu0      = agg$mu0["rel_rmse_pct"],
     rel_rmse_rho      = agg$rho["rel_rmse_pct"],
-    rel_rmse_c_p      = agg$c_p["rel_rmse_pct"],
-    rel_rmse_c_s      = agg$c_s["rel_rmse_pct"],
     filter_rmse_delta = flt_rmse,
     filter_ll         = flt_ll,
     n_valid           = length(results),
@@ -161,7 +159,6 @@ plot_sensitivity <- function(sens_df,
   metrics <- c("rel_rmse_a_p",    "rel_rmse_a_s",
                "rel_rmse_sigma_p","rel_rmse_sigma_s",
                "rel_rmse_mu0",    "rel_rmse_rho",
-               "rel_rmse_c_p",    "rel_rmse_c_s",
                "filter_rmse_delta")
   labels  <- c(expression("Rel. RMSE" ~ a[p] ~ "(%)"),
                expression("Rel. RMSE" ~ a[s] ~ "(%)"),
@@ -169,8 +166,6 @@ plot_sensitivity <- function(sens_df,
                expression("Rel. RMSE" ~ sigma[s] ~ "(%)"),
                expression("Rel. RMSE" ~ mu[0] ~ "(%)"),
                expression("Rel. RMSE" ~ rho ~ "(%)"),
-               expression("Rel. RMSE" ~ c[p] ~ "(%)"),
-               expression("Rel. RMSE" ~ c[s] ~ "(%)"),
                expression("Filter RMSE" ~ hat(Delta)(t)))
 
   ap_vals <- sort(unique(sens_df$a_p))
@@ -178,7 +173,7 @@ plot_sensitivity <- function(sens_df,
   n_ap    <- length(ap_vals)
   n_as    <- length(as_vals)
 
-  op <- par(mfrow = c(3, 3), mar = c(4, 4.5, 2.5, 3),
+  op <- par(mfrow = c(2, 4), mar = c(4, 4.5, 2.5, 3),
             oma  = c(0, 0, 2.5, 0))
 
   for (mi in seq_along(metrics)) {

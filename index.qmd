@@ -702,13 +702,13 @@ computed from the stored latent trajectory over the $n_k$ grid points interior t
 
 These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)$ when $\Delta_k = 0$ (no autonomic variation), confirming consistency with the renewal process literature.
 
-**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, c_p,\, \log a_s,\, \log\sigma_s,\, c_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $3 \times 3$ OU blocks $({\log a_p,\, \log\sigma_p,\, c_p})$ and $({\log a_s,\, \log\sigma_s,\, c_s})$ and the $2 \times 2$ observation block. This block-diagonal structure holds for $a_{ps} = a_{sp} = 0$; when coupling is nonzero the blocks link and the FIM is computed as a single $10 \times 10$ numerical object over $({\log a_p, \log a_s, a_{ps}, a_{sp}, \log\sigma_p, \log\sigma_s, c_p, c_s, \log\mu_0, \log\rho})$ [@sec-coupling].
+**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, \log a_s,\, \log\sigma_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $2 \times 2$ OU blocks $(\log a_p,\, \log\sigma_p)$ and $(\log a_s,\, \log\sigma_s)$ and the $2 \times 2$ observation block. This block-diagonal structure holds for $a_{ps} = a_{sp} = 0$; when coupling is nonzero the blocks link and the FIM is computed as a single $8 \times 8$ numerical object over $(\log a_p, \log a_s, a_{ps}, a_{sp}, \log\sigma_p, \log\sigma_s, \log\mu_0, \log\rho)$ [@sec-coupling].
 
 ## Observed Fisher Information Matrix
 
 ```{r}
 #| label: fig-fim
-#| fig-cap: "Observed Fisher information matrix and eigenvalue spectrum for the reference parameter set. **Left:** The normalized FIM (each entry divided by the maximum diagonal value) displayed as a heatmap. The three blocks along the diagonal correspond to the parasympathetic OU block $(\\log a_p,\\, \\log\\sigma_p,\\, c_p)$, sympathetic OU block $(\\log a_s,\\, \\log\\sigma_s,\\, c_s)$, and IG observation block $(\\log\\mu_0,\\, \\log\\rho)$. Off-diagonal blocks are exactly zero by construction, confirming the theoretical separability of the three log-likelihood components. **Right:** Eigenvalues on a log scale. All eight eigenvalues are strictly positive, confirming that the FIM is positive definite and all parameters are locally identified. The large spread reflects the differing amounts of information available from $n \\approx 144{,}000$ OU transitions (720 s at $\\Delta t = 0.005$ s) versus $N \\approx `r length(RES$spikes)`$ beats."
+#| fig-cap: "Observed Fisher information matrix and eigenvalue spectrum for the reference parameter set. **Left:** The normalized FIM (each entry divided by the maximum diagonal value) displayed as a heatmap. The three blocks along the diagonal correspond to the parasympathetic OU block $(\\log a_p, \\log\\sigma_p)$, sympathetic OU block $(\\log a_s, \\log\\sigma_s)$, and IG observation block $(\\log\\mu_0, \\log\\rho)$. Off-diagonal blocks are exactly zero by construction, confirming the theoretical separability of the three log-likelihood components. **Right:** Eigenvalues on a log scale. All six eigenvalues are strictly positive, confirming that the FIM is positive definite and all parameters are locally identified. The large spread reflects the differing amounts of information available from $n \\approx 144{,}000$ OU transitions (720 s at $\\Delta t = 0.005$ s) versus $N \\approx `r length(RES$spikes)`$ beats."
 #| fig-height: 4.5
 
 fim_result <- full_conditional_fim(RES)
@@ -729,12 +729,12 @@ box()
 
 # Right: eigenvalue spectrum
 eig_sorted <- sort(fim_result$eigenvalues, decreasing = TRUE)
-barplot(eig_sorted+1,
+barplot(eig_sorted,
         names.arg = paste0("\u03bb", seq_along(eig_sorted)),
-        col = "#0072B2",
+        col  = "#0072B2",
         xlab = "Eigenvalue index",
-        log = "y",
-        ylab = expression(log[10](lambda[i])),
+        log  = "y",
+        ylab = expression(lambda[i] ~ "(log scale)"),
         main = "FIM Eigenvalue Spectrum",
         border = NA)
 abline(h = 0, lty = 2, col = "gray50")
@@ -743,14 +743,14 @@ grid(nx = NA, col = "lightgray", lty = 1)
 
 ```{r}
 #| label: tbl-fim
-#| tbl-cap: "Fisher information matrix diagnostics. All quantities are in the log-parameterization: $(\\log a_p, \\log\\sigma_p, c_p, \\log a_s, \\log\\sigma_s, c_s, \\log\\mu_0, \\log\\rho)$. The condition number of each diagonal block and the full $8 \\times 8$ matrix are shown. A condition number below $10^4$ is considered well-conditioned for practical estimation."
+#| tbl-cap: "Fisher information matrix diagnostics. All quantities are in the log-parameterization: $(\\log a_p, \\log\\sigma_p, \\log a_s, \\log\\sigma_s, \\log\\mu_0, \\log\\rho)$.. The condition number of each diagonal block and the full $8 \\times 8$ matrix are shown. A condition number below $10^4$ is considered well-conditioned for practical estimation."
 #| echo: false
 
 fim_tbl <- data.frame(
-  Block = c("Parasympathetic OU $(\\log a_p,\\, \\log\\sigma_p,\\, c_p)$",
-            "Sympathetic OU $(\\log a_s,\\, \\log\\sigma_s,\\, c_s)$",
+  Block = c("Parasympathetic OU $(\\log a_p,\\, \\log\\sigma_p)$",
+            "Sympathetic OU $(\\log a_s,\\, \\log\\sigma_s)$",
             "IG observations $(\\log\\mu_0,\\, \\log\\rho)$",
-            "Full $8 \\times 8$ matrix"),
+            "Full $6 \\times 6$ matrix"),
   Lambda_min = c(
     sprintf("%.2e", min(fim_result$blocks$p$eig)),
     sprintf("%.2e", min(fim_result$blocks$s$eig)),
@@ -804,13 +804,14 @@ REC_STUDY <- recovery_study(
 ```{r}
 #| label: fig-recovery
 #| fig-cap: >
-#|   Monte Carlo recovery study ($N = 250$ replications, 300 s each with a 
-#|   60-second double-logistic input at $t = 120$ s). Centre of each interval: 
-#|   relative bias $(\hat\theta - \theta_\text{true})/|\theta_\text{true}| \times 100\%$. 
+#|   Monte Carlo recovery study ($N = 250$ replications, 300 s each). Centre of 
+#|   each interval: relative bias 
+#|   $(\hat\theta - \theta_\text{true})/|\theta_\text{true}| \times 100\%$. 
 #|   Whiskers: $\pm$ relative RMSE. Right margin: empirical 95\% Wald CI coverage. 
-#|   All eight free parameters are estimated by the conditional MLE, in analytically 
-#|   separate blocks for the two OU branches and the IG observation component. 
-#|   Well-calibrated estimation shows bias near zero and coverage near 95\%.
+#|   All six free parameters are estimated by the conditional MLE, in 
+#|   analytically separate blocks for the two OU branches and the IG observation 
+#|   component. Well-calibrated estimation shows bias near zero and coverage 
+#|   near 95\%.
 #| fig-height: 4.5
 
 plot_recovery(REC_STUDY$summary,
@@ -857,7 +858,7 @@ PROFILES <- all_profile_likelihoods(RES, n_grid = 80, width = 3.0)
 
 ```{r}
 #| label: fig-profiles
-#| fig-cap: "Profile log-likelihoods for all eight free parameters (six always free; $c_p$ and $c_s$ identifiable with the boxcar input), normalized to zero at the MLE. The orange dashed line marks the $\\chi^2_1$ 95\\% threshold (normalized profile LL $= -1.92$); tick marks on the horizontal axis indicate the implied 95\\% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All profiles are unimodal and sharply peaked, confirming that each parameter is precisely identified."
+#| fig-cap: "Profile log-likelihoods for all eight free parameters (six always free; $c_p$ and $c_s$ identifiable with the boxcar input), normalized to zero at the MLE. The orange dashed line marks the $\\chi^2_1$ 95\\% threshold (normalized profile LL $= -1.92$); tick marks on the horizontal axis indicate the implied 95\\% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All six profiles are strictly unimodal and sharply peaked, confirming that each parameter is precisely identified from the latent state trajectory."
 #| fig-height: 5.5
 
 fp <- PARAMS$free
@@ -910,7 +911,7 @@ if (FALSE) {
 
 MLE_COUPLED   <- full_conditional_mle(RES_COUPLED)
 FIM_COUPLED   <- full_conditional_fim(RES_COUPLED)
-PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED, n_grid = 40, width = 3.0)
+PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED, n_grid = 60, width = 3.0)
 ```
 
 ```{r}
@@ -995,8 +996,7 @@ SENS <- run_sensitivity(
 #|   to the specific decay-rate regime chosen for the main analysis.
 #| fig-height: 6
 
-plot_sensitivity(SENS, ref_ap = PARAMS$free$a_p,
-                        ref_as = PARAMS$free$a_s)
+plot_sensitivity(SENS, ref_ap = PARAMS$free$a_p, ref_as = PARAMS$free$a_s)
 ```
 
 Relative RMSE for all eight free parameters remains below 5\% across the grid, and filter RMSE on $\hat\Delta(t)$ increases by less than a factor of two at the boundary configurations. Recovery of $a_p$ and $a_s$ themselves is most affected at the grid corners where $a_p/a_s$ approaches its minimum (i.e.\ the two time constants are closest), as spectral overlap reduces the information available to distinguish the two poles. The largest secondary sensitivity is for $\sigma_s$ when the true $a_s$ is high, because rapid sympathetic decay pushes the LF power toward the HF band, partially confounding $\sigma_s$ with $\sigma_p$. Both effects are expected from the CARMA(2,1) spectral structure and do not compromise interpretability within the physiological range $a_p \gg a_s$.
@@ -1005,19 +1005,13 @@ Relative RMSE for all eight free parameters remains below 5\% across the grid, a
 
 ## Marginal Inference from the Spike Train
 
-Section @sec-identifiability establishes identifiability *conditioned on the latent
-state trajectory*: given $p(t)$ and $s(t)$, the six free parameters are recoverable
-with quantified precision.  In practice the states are unobserved; only the spike
-train $\{t_k\}$ is available.  This section develops the marginal inference procedure
-that recovers $\Theta$ and the filtered net drive $\hat\Delta(t)$ from the RR interval
-series alone.
+Section @sec-identifiability establishes identifiability *conditioned on the latent state trajectory*: given $p(t)$ and $s(t)$, the six free parameters are recoverable with quantified precision.  In practice the states are unobserved; only the spike train $\{t_k\}$ is available.  This section develops the marginal inference procedure that recovers $\Theta$ and the filtered net drive $\hat\Delta(t)$ from the RR interval series alone.
 
 ## Point-Process Unscented Kalman Filter
 
 The filter processes one inter-beat interval $\tau_k = t_k - t_{k-1}$ at a time.
 
-**Prediction.** The exact OU transition propagates the Gaussian belief from
-$t_{k-1}$ to $t_k$:
+**Prediction.** The exact OU transition propagates the Gaussian belief from $t_{k-1}$ to $t_k$:
 
 $$
 m_{k|k-1} = F(\tau_k)\,m_{k-1|k-1} + d(\tau_k),
@@ -1194,22 +1188,9 @@ knitr::kable(flt_tbl, escape = FALSE,
 
 The filter validation in the preceding section conditions on the true parameter values (i.e., an oracle scenario that isolates state-estimation error from parameter estimation error). The operational question is harder: given only the spike train $\{t_k\}$, with no knowledge of the latent states or the true parameters, can the full pipeline, marginal MLE via UKF likelihood maximization followed by the MLE-initialized filter, recover $\Theta$ and $\hat\Delta(t)$ with acceptable precision?
 
-This section answers that question directly. We generated $N = 250$ independent
-realizations from the reference parameter set under the same 60-second
-double-logistic stress protocol used in the conditional study
-(@sec-recovery). For each realization, the UKF was applied to the spike
-train alone (i.e., no access to the OU state trajectory), maximizing the marginal
-UKF log-likelihood over all eight free parameters including the input
-sensitivities $c_p$ and $c_s$. The resulting $\hat\Theta$ was then used to
-initialize a final filter pass, yielding $\hat\Delta(t)$.
+This section answers that question directly. We generated $N = 250$ independent realizations from the reference parameter set under the same 60-second double-logistic stress protocol used in the conditional study (@sec-recovery). For each realization, the UKF was applied to the spike train alone (i.e., no access to the OU state trajectory), maximizing the marginal UKF log-likelihood over all eight free parameters including the input sensitivities $c_p$ and $c_s$. The resulting $\hat\Theta$ was then used to initialize a final filter pass, yielding $\hat\Delta(t)$.
 
-Two quantities of interest emerge from this study. The parameter recovery
-comparison (@fig-marginal-recovery) places the marginal MLE bias and RMSE
-alongside the conditional MLE results of @sec-recovery on the same axis scale,
-directly visualizing the information cost of integrating over the unobserved
-latent states. The state recovery summary (@tbl-marginal-recovery) reports
-the distribution of per-replication filter RMSE on $\hat\Delta(t)$, quantifying
-the practical accuracy of the end-to-end pipeline.
+Two quantities of interest emerge from this study. The parameter recovery comparison (@fig-marginal-recovery) places the marginal MLE bias and RMSE alongside the conditional MLE results of @sec-recovery on the same axis scale, directly visualizing the information cost of integrating over the unobserved latent states. The state recovery summary (@tbl-marginal-recovery) reports the distribution of per-replication filter RMSE on $\hat\Delta(t)$, quantifying the practical accuracy of the end-to-end pipeline.
 
 ```{r}
 #| label: marginal-recovery-run

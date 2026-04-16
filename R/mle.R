@@ -44,15 +44,6 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
   }, numeric(1L))
 }
 
-# Helper: reconstruct input vector from a sim_res object.
-# Called once per analysis function; result cached by caller.
-extract_u_vec <- function(sim_res) {
-  if (!is.null(sim_res$input_fn))
-    vapply(sim_res$time, sim_res$input_fn, numeric(1L))
-  else
-    rep(0.0, length(sim_res$time))
-}
-
 # ---- Block 1 / 2: Analytic OU MLE ----
 #
 # Model: x[i+1] | x[i] ~ N(x[i]*exp(-a*dt) + (c*u[i]/a)*(1-exp(-a*dt)),
@@ -99,8 +90,13 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
   a_hat <- exp(opt$maximum)
   pf    <- profile_at_a(a_hat)
 
-  # Numerical Hessian of the full log-lik in (log a, log sigma, c) for SEs
+  # Numerical Hessian for standard errors.
+  # When u(t) ≡ 0, nll_3d does not depend on th[3] (c_gain is non-identifiable),
+  # making the 3×3 Hessian singular. Detect this case and use a 2×2 Hessian
+  # in (log a, log σ) only; c_se is set to NA (not estimable).
   th0    <- c(log(a_hat), log(pf$sigma), pf$c_gain)
+  u_is_zero <- all(abs(u_vec[idx]) < .Machine$double.eps * 100)
+
   nll_3d <- function(th) {
     a_v   <- exp(th[1L]); sig_v <- exp(th[2L]); c_v <- th[3L]
     if (a_v <= 0 || sig_v <= 0) return(1e10)
@@ -112,6 +108,36 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
                       error = function(e) -Inf)
     if (is.finite(ll_v)) -ll_v else 1e10
   }
+
+  if (u_is_zero) {
+    # 2×2 Hessian in (log a, log σ); c is absorbed into the residual variance.
+    th0_2 <- th0[1:2]
+    nll_2 <- function(th) nll_3d(c(th, 0))   # c_gain fixed at 0
+    eps2 <- 1e-4; np2 <- 2L
+    H2   <- matrix(0, np2, np2)
+    for (i in seq_len(np2)) for (j in i:np2) {
+      ei <- ej <- numeric(np2); ei[i] <- eps2; ej[j] <- eps2
+      H2[i, j] <- (nll_2(th0_2+ei+ej) - nll_2(th0_2+ei-ej) -
+                     nll_2(th0_2-ei+ej) + nll_2(th0_2-ei-ej)) / (4 * eps2^2)
+      H2[j, i] <- H2[i, j]
+    }
+    V2      <- tryCatch(solve(H2), error = function(e) matrix(NA_real_, np2, np2))
+    safe2   <- function(k) sqrt(max(V2[k, k], 0, na.rm = TRUE))
+    H_full  <- matrix(0, 3L, 3L)
+    H_full[1:2, 1:2] <- H2   # c row/col remain zero (non-identifiable)
+    return(list(
+      a        = a_hat,
+      sigma    = pf$sigma,
+      c_gain   = 0,
+      a_se     = a_hat    * safe2(1L),
+      sigma_se = pf$sigma * safe2(2L),
+      c_se     = NA_real_,        # non-identifiable when u(t) ≡ 0
+      log_lik  = pf$ll,
+      H_logscale = H_full,
+      n_obs    = n
+    ))
+  }
+
   eps <- 1e-4; np <- 3L
   H   <- matrix(0, np, np)
   for (i in seq_len(np)) for (j in i:np) {
@@ -127,11 +153,11 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
     a        = a_hat,
     sigma    = pf$sigma,
     c_gain   = pf$c_gain,
-    a_se     = a_hat     * safe_se(1L),  # delta method: SE(a) = a * SE(log a)
+    a_se     = a_hat     * safe_se(1L),
     sigma_se = pf$sigma  * safe_se(2L),
     c_se     = safe_se(3L),
     log_lik  = pf$ll,
-    H_logscale = H,                       # 3x3 FIM in (log a, log sigma, c)
+    H_logscale = H,
     n_obs    = n
   )
 }
@@ -410,47 +436,43 @@ ig_obs_fim <- function(mu0, rho_val, tau_vec, delta_vec, eps = 1e-5) {
   )
 }
 
-# ---- Observed information matrix for OU block ----
+# ---- Observed information matrix (negative Hessian) for one OU branch ----
 #
-# Parameterization: theta = (log a, log sigma, c_gain) — 3D, matching ou_mle's
-# internal H_logscale. The cross-terms between log(a) and (log σ, c) are NOT
-# exactly zero in general; ou_mle computes them numerically via finite differences.
-# The claim "matrix is diagonal" was incorrect; the full 3x3 is returned.
+# Parameterization: theta = (log a, log sigma) — 2D.
+# c_gain is excluded: inference always uses u(t) ≡ 0, so c is unidentified
+# and must not appear in the FIM (it would produce a structural zero eigenvalue).
 
-ou_fim <- function(a_val, sigma_val, c_val, x_vec, u_vec, dt) {
-  # Evaluate the 3x3 FIM at the SUPPLIED MLE point (a_val, sigma_val, c_val)
-  # rather than re-optimising, ensuring consistency with full_conditional_mle().
-  th0    <- c(log(a_val), log(sigma_val), c_val)
-  n      <- length(x_vec) - 1L
-  idx    <- seq_len(n)
+ou_fim <- function(a_val, sigma_val, x_vec, dt) {
+  th0 <- c(log(a_val), log(sigma_val))
+  n   <- length(x_vec) - 1L
+  idx <- seq_len(n)
 
-  nll_3d <- function(th) {
-    a_v   <- exp(th[1L]); sig_v <- exp(th[2L]); c_v <- th[3L]
+  nll_2d <- function(th) {
+    a_v   <- exp(th[1L]); sig_v <- exp(th[2L])
     if (a_v <= 0 || sig_v <= 0) return(1e10)
     e_adt <- exp(-a_v * dt)
-    z_v   <- u_vec[idx] / a_v * (-expm1(-a_v * dt))
-    y_v   <- x_vec[-1L] - x_vec[idx] * e_adt - c_v * z_v
+    y_v   <- x_vec[-1L] - x_vec[idx] * e_adt   # c = 0, u = 0
     C_v   <- (-expm1(-2 * a_v * dt)) / (2 * a_v)
     ll_v  <- tryCatch(sum(dnorm(y_v, 0, sig_v * sqrt(C_v), log = TRUE)),
                       error = function(e) -Inf)
     if (is.finite(ll_v)) -ll_v else 1e10
   }
 
-  eps <- 1e-4; np <- 3L
+  eps <- 1e-4; np <- 2L
   H   <- matrix(0, np, np)
   for (i in seq_len(np)) for (j in i:np) {
     ei <- ej <- numeric(np); ei[i] <- eps; ej[j] <- eps
-    H[i, j] <- (nll_3d(th0+ei+ej) - nll_3d(th0+ei-ej) -
-                  nll_3d(th0-ei+ej) + nll_3d(th0-ei-ej)) / (4 * eps^2)
+    H[i, j] <- (nll_2d(th0+ei+ej) - nll_2d(th0+ei-ej) -
+                  nll_2d(th0-ei+ej) + nll_2d(th0-ei-ej)) / (4 * eps^2)
     H[j, i] <- H[i, j]
   }
   fim_inv <- tryCatch(solve(H), error = function(e) matrix(NA_real_, np, np))
   list(
-    fim   = H,
-    se    = sqrt(abs(diag(fim_inv))),
-    cond  = tryCatch(kappa(H), error = function(e) NA_real_),
-    eig   = tryCatch(eigen(H, symmetric = TRUE, only.values = TRUE)$values,
-                     error = function(e) rep(NA_real_, np))
+    fim  = H,
+    se   = sqrt(abs(diag(fim_inv))),   # SE(log a), SE(log sigma)
+    cond = tryCatch(kappa(H), error = function(e) NA_real_),
+    eig  = tryCatch(eigen(H, symmetric = TRUE, only.values = TRUE)$values,
+                    error = function(e) rep(NA_real_, np))
   )
 }
 
@@ -464,7 +486,7 @@ ou_fim <- function(a_val, sigma_val, c_val, x_vec, u_vec, dt) {
 # Parameterisation: (b_ps, b_sp, log σ_p, log σ_s, c_p, c_s, log μ₀, log κ).
 # The block-diagonal structure no longer holds when b_ps or b_sp ≠ 0.
 
-.full_fim_coupled <- function(sim_res, mle, sp, dt) {
+.full_fim_coupled <- function(sim_res, mle, dt) {
   x_mat   <- cbind(sim_res$p, sim_res$s)
   u_zero  <- rep(0.0, nrow(x_mat))
   spk     <- sim_res$spikes
@@ -520,40 +542,43 @@ ou_fim <- function(a_val, sigma_val, c_val, x_vec, u_vec, dt) {
                           obs = list(eig = tail(eig_all, 2L), cond = NA)))
 }
 
+# ---- Full 6x6 block-diagonal FIM ----
+#
+# Parameterization: (log a_p, log sigma_p, log a_s, log sigma_s, log mu_0, log rho)
+# c_p and c_s are excluded: they are simulation-only and unidentified from u(t) ≡ 0.
+# Returns the full FIM, all eigenvalues, overall condition number, and per-param SEs.
+
 full_conditional_fim <- function(sim_res) {
-  sp    <- sim_res$params$structural
-  dt    <- sim_res$time[2L] - sim_res$time[1L]
-  n_t   <- length(sim_res$time)
-  u_vec <- rep(0.0, length(sim_res$time))   # inference: u(t) ≡ 0
+  dt <- sim_res$time[2L] - sim_res$time[1L]
 
   mle <- full_conditional_mle(sim_res)
 
   if ((abs(sim_res$params$free$a_ps) + abs(sim_res$params$free$a_sp)) > 1e-12)
     return(.full_fim_coupled(sim_res, mle, dt))
 
-  fim_p  <- ou_fim(mle$a_p,   mle$sigma_p, mle$c_p,   sim_res$p, u_vec, dt)
-  fim_s  <- ou_fim(mle$a_s,   mle$sigma_s, mle$c_s,   sim_res$s, u_vec, dt)
+  fim_p <- ou_fim(mle$a_p, mle$sigma_p, sim_res$p, dt)
+  fim_s <- ou_fim(mle$a_s, mle$sigma_s, sim_res$s, dt)
 
   spk     <- sim_res$spikes
   tau_vec <- diff(spk)
   delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
   fim_obs <- ig_obs_fim(mle$mu0, mle$rho, tau_vec, delta_v)
 
-  # 8x8 block-diagonal FIM in:
-  # (log a_p, log sigma_p, c_p, log a_s, log sigma_s, c_s, log mu_0, log rho)
-  FIM <- matrix(0, 8, 8)
-  FIM[1:3, 1:3] <- fim_p$fim
-  FIM[4:6, 4:6] <- fim_s$fim
-  FIM[7:8, 7:8] <- fim_obs$fim
+  # 6×6 block-diagonal FIM in:
+  # (log a_p, log sigma_p, log a_s, log sigma_s, log mu_0, log rho)
+  FIM <- matrix(0, 6, 6)
+  FIM[1:2, 1:2] <- fim_p$fim
+  FIM[3:4, 3:4] <- fim_s$fim
+  FIM[5:6, 5:6] <- fim_obs$fim
 
-  param_names <- c("log(a_p)", "log(sigma_p)", "c_p",
-                   "log(a_s)", "log(sigma_s)", "c_s",
+  param_names <- c("log(a_p)", "log(sigma_p)",
+                   "log(a_s)", "log(sigma_s)",
                    "log(mu_0)", "log(rho)")
   dimnames(FIM) <- list(param_names, param_names)
 
   eig_all <- tryCatch(
     eigen(FIM, symmetric = TRUE, only.values = TRUE)$values,
-    error = function(e) rep(NA_real_, 8)
+    error = function(e) rep(NA_real_, 6)
   )
 
   list(
@@ -561,7 +586,9 @@ full_conditional_fim <- function(sim_res) {
     eigenvalues = eig_all,
     cond_number = max(eig_all) / min(eig_all[eig_all > 0]),
     param_names = param_names,
-    blocks      = list(p = fim_p, s = fim_s, obs = fim_obs)
+    blocks      = list(p   = fim_p,
+                       s   = fim_s,
+                       obs = fim_obs)
   )
 }
 

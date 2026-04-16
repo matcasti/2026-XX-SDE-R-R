@@ -245,25 +245,21 @@ pp_ukf <- function(spikes,
 
 pp_mle <- function(spikes,
                    params_init,
-                   input_fn       = function(t) 0,
-                   optimize_gains = FALSE,
-                   verbose        = FALSE) {
+                   input_fn = function(t) 0,
+                   verbose  = FALSE) {
   fp0         <- params_init$free
   use_coupled <- (abs(fp0$a_ps) + abs(fp0$a_sp)) > 1e-12
 
   # Log-space packing: (log a_p, log a_s, log σ_p, log σ_s, log μ₀, log ρ)
-  # + 2 if coupled: (a_ps, a_sp) with lower bound 0
-  # + 2 if optimize_gains: (c_p, c_s)
-  base_n  <- 6L
-  coup_i  <- if (use_coupled) 7L:8L else integer(0)
-  gain_i  <- base_n + 2L * use_coupled + 1L:2L
+  # + 2 if coupled: (a_ps, a_sp) with lower bound 0.
+  # c_p and c_s are NEVER estimated from RR data; always fixed at 0.
+  use_coupled <- (abs(fp0$a_ps) + abs(fp0$a_sp)) > 1e-12
 
   pack <- function(fp) {
     v <- c(log(fp$a_p), log(fp$a_s),
            log(fp$sigma_p), log(fp$sigma_s),
            log(fp$mu_0), log(fp$rho))
-    if (use_coupled)    v <- c(v, fp$a_ps, fp$a_sp)
-    if (optimize_gains) v <- c(v, fp$c_p, fp$c_s)
+    if (use_coupled) v <- c(v, fp$a_ps, fp$a_sp)
     v
   }
   unpack <- function(v) {
@@ -276,14 +272,13 @@ pp_mle <- function(spikes,
       sigma_s = exp(v[4L]),
       mu_0    = exp(v[5L]),
       rho     = exp(v[6L]),
-      c_p     = if (optimize_gains) v[gain_i[1L]] else fp0$c_p,
-      c_s     = if (optimize_gains) v[gain_i[2L]] else fp0$c_s
+      c_p     = 0,        # always zero: external input unobserved in inference
+      c_s     = 0
     )
   }
 
-  lower_v <- c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf)          # log-space: unconstrained
-  if (use_coupled)    lower_v <- c(lower_v, 0, 0)            # a_ps, a_sp >= 0
-  if (optimize_gains) lower_v <- c(lower_v, -Inf, -Inf)
+  lower_v <- c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf)   # log-space: unconstrained
+  if (use_coupled) lower_v <- c(lower_v, 0, 0)        # a_ps, a_sp >= 0
 
   neg_ll <- function(v) {
     fp_v <- unpack(v)

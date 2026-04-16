@@ -102,9 +102,14 @@ recovery_study <- function(N = 200L,
     true_v <- sapply(results, function(r) r$true[p])
     hat_v  <- sapply(results, function(r) r$hat[p])
     se_v   <- sapply(results, function(r) r$se[p])
-    ok     <- is.finite(hat_v) & is.finite(se_v) & se_v > 0
 
-    n_ok   <- sum(ok)
+    # Separate validity: bias/RMSE only require finite estimates;
+    # coverage additionally requires finite, positive SEs.
+    ok_val <- is.finite(hat_v) & is.finite(true_v)
+    ok_cov <- ok_val & is.finite(se_v) & se_v > 0
+
+    n_ok  <- sum(ok_val)
+    n_cov <- sum(ok_cov)
     if (n_ok == 0L) {
       return(data.frame(
         parameter = p, true_value = NA_real_, mean_hat = NA_real_,
@@ -113,15 +118,17 @@ recovery_study <- function(N = 200L,
         coverage_95 = NA_real_, n_valid = 0L,
         stringsAsFactors = FALSE))
     }
-    t_bar  <- mean(true_v[ok])
-    h_bar  <- mean(hat_v[ok])
-    bias   <- h_bar - t_bar
-    rmse   <- sqrt(mean((hat_v[ok] - true_v[ok])^2))
+    t_bar <- mean(true_v[ok_val])
+    h_bar <- mean(hat_v[ok_val])
+    bias  <- h_bar - t_bar
+    rmse  <- sqrt(mean((hat_v[ok_val] - true_v[ok_val])^2))
 
-    # 95% Wald CI coverage  (asymptotic normality of MLE)
-    ci_lo  <- hat_v[ok] - 1.96 * se_v[ok]
-    ci_hi  <- hat_v[ok] + 1.96 * se_v[ok]
-    cover  <- mean(ci_lo <= true_v[ok] & true_v[ok] <= ci_hi)
+    # 95% Wald CI coverage — only computable when SEs are finite and positive
+    cover <- if (n_cov > 0L) {
+      ci_lo <- hat_v[ok_cov] - 1.96 * se_v[ok_cov]
+      ci_hi <- hat_v[ok_cov] + 1.96 * se_v[ok_cov]
+      mean(ci_lo <= true_v[ok_cov] & true_v[ok_cov] <= ci_hi)
+    } else NA_real_
 
     data.frame(
       parameter     = p,
@@ -155,14 +162,12 @@ plot_recovery <- function(rec_summary,
                           main = "Conditional MLE Recovery Study") {
   df  <- rec_summary
   par_labels <- c(
-    a_p     = expression(a[p] ~ "(Hz)"),
-    a_s     = expression(a[s] ~ "(Hz)"),
+    a_p     = expression(a[p]~"(Hz)"),
+    a_s     = expression(a[s]~"(Hz)"),
     sigma_p = expression(sigma[p]),
     sigma_s = expression(sigma[s]),
     mu0     = expression(mu[0]),
-    rho     = expression(rho ~ "(CV"[0]*")"),
-    c_p     = expression(c[p]),
-    c_s     = expression(c[s]),
+    rho     = expression(rho~"(CV)"),
     a_ps    = expression(a[ps]),
     a_sp    = expression(a[sp])
   )
@@ -182,10 +187,13 @@ plot_recovery <- function(rec_summary,
   cols[is.na(cols)] <- "black"
 
   par(mar = c(4.5, 6, 3, 5))
+  xlim_vals <- c(df$rel_bias_pct - df$rmse_rel_pct,
+                 df$rel_bias_pct + df$rmse_rel_pct)
+  xlim_vals <- xlim_vals[is.finite(xlim_vals)]
+  if (length(xlim_vals) == 0L) xlim_vals <- c(-10, 10)
   plot(df$rel_bias_pct, seq_len(np), pch = 19, cex = 1.5,
        col  = cols,
-       xlim = range(c(df$rel_bias_pct - df$rmse_rel_pct,
-                      df$rel_bias_pct + df$rmse_rel_pct)) * 1.15,
+       xlim = range(xlim_vals) * 1.15,
        ylim = c(0.5, np + 0.5),
        xlab = "Relative error (%)",
        ylab = "",
@@ -205,7 +213,9 @@ plot_recovery <- function(rec_summary,
   axis(2, at = seq_len(np), labels = axis_labels, las = 2, cex.axis = 1.1)
 
   # Coverage annotation on right margin
-  mtext(sprintf("%.0f%%", df$coverage_95), side = 4,
+  cov_labels <- ifelse(is.na(df$coverage_95), "\u2014",
+                       sprintf("%.0f%%", df$coverage_95))
+  mtext(cov_labels, side = 4,
         at = seq_len(np), las = 2, cex = 0.75, col = "gray30",
         line = 0.5)
   mtext("95% CI\ncoverage", side = 4, at = np + 0.8,
@@ -378,41 +388,40 @@ marginal_recovery_one <- function(true_params, duration = 300, dt = 0.005,
                                   seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
 
-  # Check whether the input is non-trivial (any u(t) > 1e-6 in the simulation window)
-  has_input <- any(abs(sapply(seq(0, duration, length.out = 200L),
-                              input_fn)) > 1e-6)
+  # Inference ignores the external input: pp_mle always uses c_p = c_s = 0
+  # and attributes all dynamics to the OU spectral structure.
   mle_result <- tryCatch(
-    pp_mle(sim_res$spikes, true_params, input_fn,
-           optimize_gains = has_input, verbose = FALSE),
+    pp_mle(sim_res$spikes, true_params,
+           input_fn = function(t) 0,   # no external input seen by the filter
+           verbose  = FALSE),
     error = function(e) NULL
   )
 
   if (is.null(mle_result) || mle_result$convergence != 0L) return(NULL)
 
-  # Filter at MLE (practical filter)
   flt      <- mle_result$filter
   flt_grid <- filter_to_grid(flt, sim_res$time)
 
-  # State recovery: RMSE of Delta(t)
   delta_err  <- flt_grid$delta - sim_res$delta
   rmse_delta <- sqrt(mean(delta_err^2, na.rm = TRUE))
 
-  # Parameter recovery
-  fp_hat <- mle_result$free_hat
+  fp_hat  <- mle_result$free_hat
   fp_true <- true_params$free
-  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu_0", "rho", "c_p", "c_s")
+
+  # Standardize to "mu0" to match conditional MLE naming convention
+  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
   true_vec <- c(fp_true$a_p, fp_true$a_s, fp_true$sigma_p, fp_true$sigma_s,
-                fp_true$mu_0, fp_true$rho, fp_true$c_p, fp_true$c_s)
-  hat_vec  <- c(fp_hat$a_p, fp_hat$a_s, fp_hat$sigma_p, fp_hat$sigma_s,
-                fp_hat$mu_0, fp_hat$rho, fp_hat$c_p, fp_hat$c_s)
+                fp_true$mu_0, fp_true$rho)
+  hat_vec  <- c(fp_hat$a_p,  fp_hat$a_s,  fp_hat$sigma_p,  fp_hat$sigma_s,
+                fp_hat$mu_0, fp_hat$rho)
   names(true_vec) <- names(hat_vec) <- param_names
 
   list(
-    true      = true_vec,
-    hat       = hat_vec,
+    true       = true_vec,
+    hat        = hat_vec,
     rmse_delta = rmse_delta,
     ll_marginal = mle_result$ll,
-    n_beats   = flt$n_beats
+    n_beats    = flt$n_beats
   )
 }
 
@@ -437,7 +446,7 @@ marginal_recovery_study <- function(N = 100L, true_params, duration = 300,
   }
   results <- Filter(Negate(is.null), results)
 
-  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu_0", "rho", "c_p", "c_s")
+  param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
   summary_df <- do.call(rbind, lapply(param_names, function(p) {
     hat_v  <- sapply(results, function(r) r$hat[p])
     true_v <- sapply(results, function(r) r$true[p])
