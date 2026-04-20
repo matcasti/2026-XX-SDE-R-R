@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Matías Castillo-Aguilar">
-<meta name="dcterms.date" content="2026-04-15">
+<meta name="dcterms.date" content="2026-04-20">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -390,7 +390,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">April 15, 2026</p>
+              <p class="date">April 20, 2026</p>
             </div>
           </div>
           
@@ -452,7 +452,8 @@ window.Quarto = {
   <li><a href="#sec-recovery" id="toc-sec-recovery" class="nav-link" data-scroll-target="#sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</a></li>
   <li><a href="#sec-profiles" id="toc-sec-profiles" class="nav-link" data-scroll-target="#sec-profiles"><span class="header-section-number">4.4</span> Profile Likelihood</a></li>
   <li><a href="#sec-coupling" id="toc-sec-coupling" class="nav-link" data-scroll-target="#sec-coupling"><span class="header-section-number">4.5</span> Cross-Branch Coupling Identifiability</a></li>
-  <li><a href="#sec-sensitivity" id="toc-sec-sensitivity" class="nav-link" data-scroll-target="#sec-sensitivity"><span class="header-section-number">4.6</span> Sensitivity to Decay-Rate Parameters</a></li>
+  <li><a href="#sec-moments" id="toc-sec-moments" class="nav-link" data-scroll-target="#sec-moments"><span class="header-section-number">4.6</span> Analytical Moment Conditions and Standard HRV Statistics</a></li>
+  <li><a href="#sec-sensitivity" id="toc-sec-sensitivity" class="nav-link" data-scroll-target="#sec-sensitivity"><span class="header-section-number">4.7</span> Sensitivity to Decay-Rate Parameters</a></li>
   </ul></li>
   <li><a href="#sec-inference" id="toc-sec-inference" class="nav-link" data-scroll-target="#sec-inference"><span class="header-section-number">5</span> Inference Engine</a>
   <ul class="collapse">
@@ -496,7 +497,7 @@ window.Quarto = {
 <div id="fig-model-schematic" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-model-schematic-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="fig/schematic-model.png" class="img-fluid figure-img" width="5824">
+<img src="fig/schematic-model.png" class="img-fluid figure-img" width="3072">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-model-schematic-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;1: Generative architecture of the SDE-IG model. Two coupled Ornstein-Uhlenbeck processes represent the parasympathetic (<span class="math inline">\(p(t)\)</span>, fast, HF) and sympathetic (<span class="math inline">\(s(t)\)</span>, slow, LF) autonomic drives. Their difference <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> enters the log link to produce the time-varying mean interval <span class="math inline">\(\mu(t) = \mu_0 \exp(-\Delta(t))\)</span>. At each moment, the elapsed time since the last beat serves as a running clock for an Inverse Gaussian first-passage hazard; a beat fires when the clock crosses a stochastic threshold. The resulting spike train is the sole observable; all ten free parameters are estimated from it via a spike-to-spike UKF (inference, right panel).
@@ -538,7 +539,7 @@ Figure&nbsp;1: Generative architecture of the SDE-IG model. Two coupled Ornstein
 A = \begin{pmatrix} -a_p &amp; -a_{ps} \\ -a_{sp} &amp; -a_s \end{pmatrix}
 \]</span></p>
 <p>with four non-negative rate parameters. The self-decay rates <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> govern the intrinsic time constants of each branch (<span class="math inline">\(\tau_p = 1/a_p\)</span>, <span class="math inline">\(\tau_s = 1/a_s\)</span>); the cross-inhibition rates <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> encode <em>accentuated antagonism</em>, the well-documented mechanism by which sympathetic activation actively withdraws vagal tone and vice versa. All four parameters are estimated from the RR interval series; neuroscientific literature provides physiologically plausible ranges that serve as prior information for starting values (<span class="math inline">\(a_p \approx 2\)</span> Hz, <span class="math inline">\(a_s \approx 0.2\)</span> Hz) but not as fixed constraints.</p>
-<p>Linear stability requires <span class="math inline">\(\det(A) = a_p a_s - a_{ps} a_{sp} &gt; 0\)</span>, which is enforced as a hard constraint during estimation. When the antagonism terms are zero (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>), the system reduces to two independent Ornstein-Uhlenbeck processes. Identifiability of the input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> additionally requires a non-trivial exogenous input <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling magnitudes <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are identified from the second-order spectral structure of <span class="math inline">\(\Delta(t)\)</span>: non-zero coupling shifts both eigenvalues of <span class="math inline">\(A\)</span> away from <span class="math inline">\(\{-a_p, -a_s\}\)</span>, producing a detectable change in the spectral peak positions. Their separate identification from the self-decay rates requires sufficient spectral resolution, which scales with recording duration (see <a href="#sec-sensitivity" class="quarto-xref">Section&nbsp;4.6</a>).</p>
+<p>Linear stability requires <span class="math inline">\(\det(A) = a_p a_s - a_{ps} a_{sp} &gt; 0\)</span>, which is enforced as a hard constraint during estimation. When the antagonism terms are zero (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>), the system reduces to two independent Ornstein-Uhlenbeck processes. Identifiability of the input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> additionally requires a non-trivial exogenous input <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling magnitudes <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are identified from the second-order spectral structure of <span class="math inline">\(\Delta(t)\)</span>: non-zero coupling shifts both eigenvalues of <span class="math inline">\(A\)</span> away from <span class="math inline">\(\{-a_p, -a_s\}\)</span>, producing a detectable change in the spectral peak positions. Their separate identification from the self-decay rates requires sufficient spectral resolution, which scales with recording duration (see <a href="#sec-sensitivity" class="quarto-xref">Section&nbsp;4.7</a>).</p>
 <p>The parameter set is therefore partitioned as follows.</p>
 <div class="cell">
 <div id="tbl-params" class="cell quarto-float quarto-figure quarto-figure-center anchored">
@@ -1131,7 +1132,7 @@ u(t) \;=\; \sigma\!\bigl(k(t - t_{\rm on})\bigr)\cdot\sigma\!\bigl(k(t_{\rm off}
 </section>
 <section id="sec-identifiability" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Identifiability Analysis</h1>
-<p>The framework introduces up to ten free parameters: <span class="math inline">\(\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}\)</span>. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are identifiable only when <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are always free parameters; their conditional identifiability from a single RR stream is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>. The active inference parameter set is <span class="math inline">\(\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> for the uncoupled sub-model and <span class="math inline">\(\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> for the coupled model. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are used exclusively for simulation: they allow the generative model to produce physiologically realistic sympathetic activation dynamics via a slow double-logistic input (<span class="math inline">\(k = 0.1\)</span>, 10–90% rise time <span class="math inline">\(\approx 44\)</span> s). Since <span class="math inline">\(u(t)\)</span> is never observed in practice, inference always treats <span class="math inline">\(c_p = c_s = 0\)</span> and attributes all dynamical variation to the OU spectral structure.</p>
+<p>The framework introduces up to ten free parameters: <span class="math inline">\(\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}\)</span>. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are identifiable only when <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are always free parameters; their conditional identifiability from a single RR stream is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>. The active inference parameter set is <span class="math inline">\(\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> for the uncoupled sub-model and <span class="math inline">\(\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> for the coupled model. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are simulation-only parameters that drive the generative stress protocol <strong>?@sec-simulation</strong>. Since <span class="math inline">\(u(t)\)</span> is never observed during inference, <span class="math inline">\(c_p = c_s = 0\)</span> in the inference model. This has a precise consequence for the identifiability study: the recovery study must use <span class="math inline">\(c_p = c_s = 0\)</span> in simulation as well, so that the simulation parameters <span class="math inline">\(\theta_\text{true}\)</span> and the pseudo-true parameters <span class="math inline">\(\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]\)</span> coincide. When <span class="math inline">\(c_p \neq 0\)</span> or <span class="math inline">\(c_s \neq 0\)</span>, the MLE correctly converges to <span class="math inline">\(\theta^* \neq \theta_\text{true}\)</span>, not because the estimator is biased, but because the inference model is correctly specified only for <span class="math inline">\(u \equiv 0\)</span>, and <span class="math inline">\(\theta^*\)</span> is the identifiable projection of <span class="math inline">\(\theta_\text{true}\)</span> onto the inference model. Reporting <span class="math inline">\(\hat\theta - \theta_\text{true}\)</span> in that setting confounds estimator precision with model projection distance; reporting <span class="math inline">\(\hat\theta - \theta^*\)</span> is the correct measure of estimator quality. Using <span class="math inline">\(c_p = c_s = 0\)</span> makes <span class="math inline">\(\theta_\text{true} = \theta^*\)</span> and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.</p>
 <p>The FIM analysis below therefore covers the full <span class="math inline">\(8 \times 8\)</span> system. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision. We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory <span class="math inline">\(\{p(t), s(t)\}_{0 \le t \le T}\)</span>, the full parameter set <span class="math inline">\(\Theta\)</span> is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study (<span class="math inline">\(N = 500\)</span> replications). For the uncoupled sub-model (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>) with a non-trivial input (<span class="math inline">\(u(t) \not\equiv 0\)</span>), the FIM is <span class="math inline">\(8 \times 8\)</span> and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full <span class="math inline">\(10 \times 10\)</span> system, where the block-diagonal structure breaks down, is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a> via a numerical FIM and a dedicated recovery study. Marginal identifiability — recovery from the spike train alone, integrating over unobserved latent states — is established in <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a> via the UKF marginal likelihood.</p>
 <section id="separability-of-the-conditional-log-likelihood" class="level2" data-number="4.1">
 <h2 data-number="4.1" class="anchored" data-anchor-id="separability-of-the-conditional-log-likelihood"><span class="header-section-number">4.1</span> Separability of the Conditional Log-Likelihood</h2>
@@ -1168,7 +1169,7 @@ x_{i+1} = x_i e^{-a\Delta t} + \frac{c\, u_i}{a}(1 - e^{-a\Delta t}) + \varepsil
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>fim_result <span class="ot">&lt;-</span> <span class="fu">full_conditional_fim</span>(RES)</span>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>fim_result <span class="ot">&lt;-</span> <span class="fu">full_conditional_fim</span>(RES_IDENT)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">5</span>, <span class="dv">6</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
@@ -1236,27 +1237,27 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">Parasympathetic OU <span class="math inline">\((\log a_p,\, \log\sigma_p)\)</span></td>
-<td style="text-align: left;">1.63e+02</td>
+<td style="text-align: left;">6.85e+02</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">1.77e+03</td>
+<td style="text-align: left;">4.23e+02</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Sympathetic OU <span class="math inline">\((\log a_s,\, \log\sigma_s)\)</span></td>
-<td style="text-align: left;">1.97e+01</td>
+<td style="text-align: left;">5.80e+01</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">1.46e+04</td>
+<td style="text-align: left;">4.97e+03</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">IG observations <span class="math inline">\((\log\mu_0,\, \log\rho)\)</span></td>
-<td style="text-align: left;">1.82e+03</td>
-<td style="text-align: left;">2.64e+04</td>
-<td style="text-align: left;">1.41e+01</td>
+<td style="text-align: left;">1.45e+03</td>
+<td style="text-align: left;">1.47e+04</td>
+<td style="text-align: left;">9.84e+00</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Full <span class="math inline">\(6 \times 6\)</span> matrix</td>
-<td style="text-align: left;">1.97e+01</td>
+<td style="text-align: left;">5.80e+01</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">1.46e+04</td>
+<td style="text-align: left;">4.97e+03</td>
 </tr>
 </tbody>
 </table>
@@ -1265,7 +1266,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 </figure>
 </div>
 </div>
-<p>The FIM is evaluated on the 720-second reference simulation. The OU blocks have large eigenvalues because the full trajectory provides <span class="math inline">\(n \approx 144{,}000\)</span> independent Gaussian transition observations of <span class="math inline">\((a_p, \sigma_p, c_p)\)</span> and <span class="math inline">\((a_s, \sigma_s, c_s)\)</span>. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 720\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive. The condition number of the <span class="math inline">\(2\times2\)</span> observation FIM is read directly from the numerical eigenvalue table <a href="#tbl-fim" class="quarto-xref">Table&nbsp;2</a> and equals 14.1 for the reference parameters, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>. In the special case <span class="math inline">\(\mu_0=1\)</span> this coincides with <span class="math inline">\(\kappa/2\)</span>; for general <span class="math inline">\(\mu_0\)</span> the condition number scales as <span class="math inline">\(\mu_0 \kappa / (2\mu_0) = \kappa/2\)</span> at the stationary point, but the general formula requires propagation of the FIM through the (<span class="math inline">\(\log \mu_0\)</span>, <span class="math inline">\(\log \rho\)</span>) Jacobian and is computed numerically here.</p>
+<p>The FIM is evaluated on the 720-second reference simulation. The OU blocks have large eigenvalues because the full trajectory provides <span class="math inline">\(n \approx 144{,}000\)</span> independent Gaussian transition observations of <span class="math inline">\((a_p, \sigma_p, c_p)\)</span> and <span class="math inline">\((a_s, \sigma_s, c_s)\)</span>. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 720\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive. The condition number of the <span class="math inline">\(2\times2\)</span> observation FIM is read directly from the numerical eigenvalue table <a href="#tbl-fim" class="quarto-xref">Table&nbsp;2</a> and equals 9.8 for the reference parameters, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>. In the special case <span class="math inline">\(\mu_0=1\)</span> this coincides with <span class="math inline">\(\kappa/2\)</span>; for general <span class="math inline">\(\mu_0\)</span> the condition number scales as <span class="math inline">\(\mu_0 \kappa / (2\mu_0) = \kappa/2\)</span> at the stationary point, but the general formula requires propagation of the FIM through the (<span class="math inline">\(\log \mu_0\)</span>, <span class="math inline">\(\log \rho\)</span>) Jacobian and is computed numerically here.</p>
 </section>
 <section id="sec-recovery" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</h2>
@@ -1283,7 +1284,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 <img src="index_files/figure-html/fig-recovery-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Monte Carlo recovery study (<span class="math inline">\(N = 250\)</span> replications, 300 s each). Centre of each interval: relative bias <span class="math inline">\((\hat\theta - \theta_\text{true})/|\theta_\text{true}| \times 100\%\)</span>. Whiskers: <span class="math inline">\(\pm\)</span> relative RMSE. Right margin: empirical 95% Wald CI coverage. All six free parameters are estimated by the conditional MLE, in analytically separate blocks for the two OU branches and the IG observation component. Well-calibrated estimation shows bias near zero and coverage near 95%.
+Figure&nbsp;10: Centre of each interval: relative bias <span class="math inline">\((\hat\theta - \theta^*)/|\theta^*|  \times 100\%\)</span> where <span class="math inline">\(\theta^* = \theta_\text{true}\)</span> (since <span class="math inline">\(c_p = c_s = 0\)</span> in both simulation and inference). Whiskers: <span class="math inline">\(\pm\)</span> relative RMSE. Right margin: empirical 95% Wald CI coverage. All six free parameters are estimated by the conditional MLE.
 </figcaption>
 </figure>
 </div>
@@ -1322,56 +1323,56 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(a_p\)</span></td>
 <td style="text-align: left;">2.000</td>
-<td style="text-align: left;">0.456</td>
-<td style="text-align: left;">-1.5442</td>
-<td style="text-align: left;">-77.21%</td>
-<td style="text-align: left;">1.5445</td>
-<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">1.989</td>
+<td style="text-align: left;">-0.0113</td>
+<td style="text-align: left;">-0.56%</td>
+<td style="text-align: left;">0.1173</td>
+<td style="text-align: left;">95.2%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_s\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.055</td>
-<td style="text-align: left;">-0.1453</td>
-<td style="text-align: left;">-72.64%</td>
-<td style="text-align: left;">0.1456</td>
-<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">0.208</td>
+<td style="text-align: left;">0.0083</td>
+<td style="text-align: left;">4.14%</td>
+<td style="text-align: left;">0.0407</td>
+<td style="text-align: left;">93.2%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\sigma_p\)</span></td>
 <td style="text-align: left;">0.200</td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">-0.0004</td>
-<td style="text-align: left;">-0.20%</td>
-<td style="text-align: left;">0.0007</td>
-<td style="text-align: left;">90.8%</td>
+<td style="text-align: left;">-0.0000</td>
+<td style="text-align: left;">-0.00%</td>
+<td style="text-align: left;">0.0006</td>
+<td style="text-align: left;">95.2%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\sigma_s\)</span></td>
 <td style="text-align: left;">0.070</td>
 <td style="text-align: left;">0.070</td>
 <td style="text-align: left;">-0.0000</td>
-<td style="text-align: left;">-0.07%</td>
+<td style="text-align: left;">-0.05%</td>
 <td style="text-align: left;">0.0002</td>
 <td style="text-align: left;">94.4%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">1.000</td>
-<td style="text-align: left;">1.001</td>
-<td style="text-align: left;">0.0006</td>
-<td style="text-align: left;">0.06%</td>
-<td style="text-align: left;">0.0084</td>
-<td style="text-align: left;">96.8%</td>
+<td style="text-align: left;">0.998</td>
+<td style="text-align: left;">-0.0024</td>
+<td style="text-align: left;">-0.24%</td>
+<td style="text-align: left;">0.0119</td>
+<td style="text-align: left;">97.2%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\rho\)</span></td>
 <td style="text-align: left;">0.224</td>
-<td style="text-align: left;">0.230</td>
-<td style="text-align: left;">0.0067</td>
-<td style="text-align: left;">2.99%</td>
-<td style="text-align: left;">0.0106</td>
-<td style="text-align: left;">89.2%</td>
+<td style="text-align: left;">0.229</td>
+<td style="text-align: left;">0.0053</td>
+<td style="text-align: left;">2.35%</td>
+<td style="text-align: left;">0.0107</td>
+<td style="text-align: left;">92.8%</td>
 </tr>
 </tbody>
 </table>
@@ -1388,14 +1389,13 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>fp <span class="ot">&lt;-</span> PARAMS<span class="sc">$</span>free</span>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>fp <span class="ot">&lt;-</span> PARAMS_IDENT<span class="sc">$</span>free</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>true_vals <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">a_p =</span> fp<span class="sc">$</span>a_p, <span class="at">a_s =</span> fp<span class="sc">$</span>a_s,</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">sigma_p =</span> fp<span class="sc">$</span>sigma_p, <span class="at">sigma_s =</span> fp<span class="sc">$</span>sigma_s,</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">mu0 =</span> fp<span class="sc">$</span>mu_0, <span class="at">rho =</span> fp<span class="sc">$</span>rho,</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>               <span class="at">c_p =</span> fp<span class="sc">$</span>c_p, <span class="at">c_s =</span> fp<span class="sc">$</span>c_s)</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_profiles</span>(PROFILES, <span class="at">true_vals =</span> true_vals,</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>              <span class="at">main =</span> <span class="st">"Profile Likelihoods, Reference Parameter Set"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">mu0 =</span> fp<span class="sc">$</span>mu_0, <span class="at">rho =</span> fp<span class="sc">$</span>rho)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_profiles</span>(PROFILES, <span class="at">true_vals =</span> true_vals,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>              <span class="at">main =</span> <span class="st">"Profile Likelihoods, Reference Parameter Set"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-profiles" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1418,15 +1418,14 @@ Figure&nbsp;11: Profile log-likelihoods for all eight free parameters (six alway
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>fp_c <span class="ot">&lt;-</span> PARAMS_COUPLED<span class="sc">$</span>free</span>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>fp_c <span class="ot">&lt;-</span> PARAMS_COUPLED_IDENT<span class="sc">$</span>free</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>true_coupled <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">a_p =</span> fp_c<span class="sc">$</span>a_p, <span class="at">a_s =</span> fp_c<span class="sc">$</span>a_s,</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                  <span class="at">sigma_p =</span> fp_c<span class="sc">$</span>sigma_p, <span class="at">sigma_s =</span> fp_c<span class="sc">$</span>sigma_s,</span>
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                  <span class="at">mu0 =</span> fp_c<span class="sc">$</span>mu_0, <span class="at">rho =</span> fp_c<span class="sc">$</span>rho,</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>                  <span class="at">c_p =</span> fp_c<span class="sc">$</span>c_p, <span class="at">c_s =</span> fp_c<span class="sc">$</span>c_s,</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>                  <span class="at">a_ps =</span> fp_c<span class="sc">$</span>a_ps, <span class="at">a_sp =</span> fp_c<span class="sc">$</span>a_sp)</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_profiles</span>(PROF_COUPLED, <span class="at">true_vals =</span> true_coupled,</span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>              <span class="at">main =</span> <span class="st">"Profile Likelihoods, Coupled Model"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>                  <span class="at">a_ps =</span> fp_c<span class="sc">$</span>a_ps, <span class="at">a_sp =</span> fp_c<span class="sc">$</span>a_sp)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_profiles</span>(PROF_COUPLED, <span class="at">true_vals =</span> true_coupled,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>              <span class="at">main =</span> <span class="st">"Profile Likelihoods, Coupled Model"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div id="fig-coupling-profiles" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1462,8 +1461,106 @@ Figure&nbsp;13: Monte Carlo recovery study (<span class="math inline">\(N = 250\
 </div>
 <p>The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all ten eigenvalues strictly positive confirms local identifiability of the coupling terms <em>conditioned on the observed state trajectory</em>. Whether the marginal spike-train likelihood carries sufficient information to identify <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> is a separate question requiring a dedicated marginal recovery study with the full filter, which is left for future work. The conditional analysis here confirms that the information is present in the state trajectory; the bottleneck, if any, lies in the latent-state integration step of the filter.</p>
 </section>
-<section id="sec-sensitivity" class="level2" data-number="4.6">
-<h2 data-number="4.6" class="anchored" data-anchor-id="sec-sensitivity"><span class="header-section-number">4.6</span> Sensitivity to Decay-Rate Parameters</h2>
+<section id="sec-moments" class="level2" data-number="4.6">
+<h2 data-number="4.6" class="anchored" data-anchor-id="sec-moments"><span class="header-section-number">4.6</span> Analytical Moment Conditions and Standard HRV Statistics</h2>
+<p>The SDE-IG model implies exact closed-form expressions for the standard frequency-domain and time-domain HRV statistics, providing an independent identification channel that complements the likelihood analysis and connects the formal parameter estimates to the clinical HRV literature.</p>
+<p>Let <span class="math inline">\(\sigma_\Delta^2 = \sigma_p^2/(2a_p) + \sigma_s^2/(2a_s)\)</span> be the stationary variance of <span class="math inline">\(\Delta(t)\)</span>, and let <span class="math inline">\(w_p = \sigma_p^2/(2a_p\sigma_\Delta^2)\)</span> and <span class="math inline">\(w_s = 1 - w_p\)</span> be the fractional spectral weights of the two branches. The five standard HRV statistics satisfy:</p>
+<p><span class="math display">\[
+\mathbb{E}[\tau] = \mu_0 \exp\!\left(\tfrac{1}{2}\sigma_\Delta^2\right)
+\]</span></p>
+<p><span class="math display">\[
+\operatorname{Var}[\tau]
+= \underbrace{\frac{\mu_0^3}{\kappa}\,e^{9\sigma_\Delta^2/2}}_{\text{IG intrinsic}}
++ \underbrace{\mu_0^2\,e^{\sigma_\Delta^2}\!\left(e^{\sigma_\Delta^2} - 1\right)}_{\text{OU-driven}}
+\]</span></p>
+<p><span class="math display">\[
+\operatorname{RMSSD}^2
+= 2\operatorname{Var}[\tau]\,\bigl(1 - w_p e^{-a_p\mu_0} - w_s e^{-a_s\mu_0}\bigr)
+\]</span></p>
+<p><span class="math display">\[
+\operatorname{Corr}[\tau_k,\,\tau_{k+j}]
+\approx w_p\,e^{-a_p j\mu_0} + w_s\,e^{-a_s j\mu_0}
+\]</span></p>
+<p>The LF and HF band powers are integrals of the two-Lorentzian spectral density over the standard HRV bands:</p>
+<p><span class="math display">\[
+P_{HF} = \frac{\sigma_p^2}{2a_p}\,g_p^{HF} + \frac{\sigma_s^2}{2a_s}\,g_s^{HF},
+\qquad
+g_\nu^{[f_l,f_h]} = \frac{1}{\pi}\Bigl[\arctan\!\tfrac{2\pi f_h}{a_\nu}
+                   - \arctan\!\tfrac{2\pi f_l}{a_\nu}\Bigr]
+\]</span></p>
+<p>and analogously for <span class="math inline">\(P_{LF}\)</span>.</p>
+<p>Several physiological interpretations follow directly. The tachogram ACF is a mixture of two exponentials: fitting this mixture recovers <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> from the data without likelihood evaluation, yielding data-driven starting values for the marginal MLE (see <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a>). The RMSSD is determined primarily by the vagal spectral variance <span class="math inline">\(\sigma_p^2/(2a_p)\)</span> because <span class="math inline">\(e^{-a_p\mu_0} \ll 1\)</span> at physiological rates (<span class="math inline">\(a_p\approx 2\)</span> Hz, <span class="math inline">\(\mu_0\approx 1\)</span> s), while <span class="math inline">\(e^{-a_s\mu_0}\approx 0.8\)</span> makes the sympathetic contribution nearly cancel. The LF/HF power ratio equals <span class="math inline">\((\sigma_s^2/a_s)/(\sigma_p^2/a_p)\)</span> to leading order: the model gives this widely used but often misinterpreted clinical index a precise generative interpretation as the ratio of the two OU spectral variances.</p>
+<p>These six moment conditions define an exactly identified system for <span class="math inline">\((a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho)\)</span> and serve two purposes in the analysis. First, they provide data-driven starting values for the marginal MLE that are tailored to each recording rather than to literature defaults, reducing the frequency of local-optimum convergence failures on real data (<a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a>). Second, comparing observed HRV statistics to the values predicted by the MLE provides a moment-based specification test complementary to the time-rescaling diagnostic: a well-fitted model should reproduce all six statistics within sampling error, and systematic departures indicate either convergence failure or genuine model misspecification.</p>
+<div class="cell">
+<div id="tbl-moment-consistency" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-moment-consistency-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;4: Moment consistency check. Observed HRV statistics compared to the values predicted by the conditional MLE at the reference parameter set. Relative residuals below 5% indicate that the MLE is consistent with the observed second-order structure of the tachogram. LF and HF band powers are computed from the FFT of the 4~Hz resampled tachogram.
+</figcaption>
+<div aria-describedby="tbl-moment-consistency-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 42%">
+<col style="width: 12%">
+<col style="width: 21%">
+<col style="width: 24%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Statistic</th>
+<th style="text-align: right;">Observed</th>
+<th style="text-align: right;">Predicted (MLE)</th>
+<th style="text-align: right;">Relative residual</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Mean RR (s)</td>
+<td style="text-align: right;">0.9629</td>
+<td style="text-align: right;">1.0123</td>
+<td style="text-align: right;">-5.1%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">SDNN (s)</td>
+<td style="text-align: right;">0.2636</td>
+<td style="text-align: right;">0.2977</td>
+<td style="text-align: right;">-12.9%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">RMSSD (s)</td>
+<td style="text-align: right;">0.3286</td>
+<td style="text-align: right;">0.2780</td>
+<td style="text-align: right;">15.4%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">LF power (s)</td>
+<td style="text-align: right;">0.0086</td>
+<td style="text-align: right;">0.0030</td>
+<td style="text-align: right;">64.7%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">HF power (s)</td>
+<td style="text-align: right;">0.0083</td>
+<td style="text-align: right;">0.0020</td>
+<td style="text-align: right;">75.5%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">LF/HF ratio</td>
+<td style="text-align: right;">1.0273</td>
+<td style="text-align: right;">1.4780</td>
+<td style="text-align: right;">-43.9%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="sec-sensitivity" class="level2" data-number="4.7">
+<h2 data-number="4.7" class="anchored" data-anchor-id="sec-sensitivity"><span class="header-section-number">4.7</span> Sensitivity to Decay-Rate Parameters</h2>
 <p>The decay rates <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> are free parameters estimated jointly with all other parameters; their precision depends on the spectral content and duration of the recording. A short or narrowband protocol may not resolve <span class="math inline">\(a_p\)</span> from <span class="math inline">\(\sigma_p\)</span>, or <span class="math inline">\(a_s\)</span> from <span class="math inline">\(\sigma_s\)</span>, with equal fidelity. Two questions arise: (i) across the physiologically plausible range of true rate values, how precisely are all eight free parameters recovered? and (ii) if the filter is initialised with misspecified decay rates, how much does <span class="math inline">\(\hat\Delta(t)\)</span> degrade? We address both by repeating the full conditional MLE recovery (<span class="math inline">\(N = 50\)</span> replications, all parameters estimated jointly) and filter evaluation at each point of a <span class="math inline">\(5 \times 5\)</span> grid spanning <span class="math inline">\(\pm 50\%\)</span> of the reference values (<span class="math inline">\(a_p \in [1.0, 3.0]\)</span> Hz, <span class="math inline">\(a_s \in [0.1, 0.3]\)</span> Hz), subject to <span class="math inline">\(a_p &gt; a_s\)</span> (required for interpretable LF/HF band separation). For the filter component, <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span> are fixed at each grid value to isolate the sensitivity of <span class="math inline">\(\hat\Delta(t)\)</span> to rate misspecification independently of estimation error.</p>
 <div class="cell">
 <details class="code-fold">
@@ -1513,11 +1610,11 @@ S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 \log p(\tau_k \mid \Theta) \;\approx\; \log\mathcal{N}(\tau_k;\, \hat\mu_k,\, S_k)
 \]</span></p>
 <p>This Gaussian innovation approximation is the standard UKF marginal likelihood and provides a tractable, differentiable objective for static parameter estimation.</p>
-<p>The filter’s posterior geometry reflects the single-stream observability: each IBI update contracts uncertainty primarily along the differential direction <span class="math inline">\(\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}\)</span> (the <span class="math inline">\(\Delta = s - p\)</span> subspace). Variance along the common-mode direction <span class="math inline">\(\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}\)</span> is governed by the OU prior and remains larger than the differential variance, but is bounded — not unbounded — because the OU prior confines both <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> to neighborhoods of zero with variances <span class="math inline">\(\sigma_p^2/(2a_p)\)</span> and <span class="math inline">\(\sigma_s^2/(2a_s)\)</span> respectively. Consequently, the filter delivers per-branch posterior means <span class="math inline">\([\hat p_k, \hat s_k]\)</span> with per-branch uncertainty (reported in <a href="#tbl-filter-summary" class="quarto-xref">Table&nbsp;4</a> and shown as branch-specific posterior SD bands in <a href="#fig-filter-recovery" class="quarto-xref">Figure&nbsp;15</a>), rather than purely a scalar <span class="math inline">\(\hat\Delta_k\)</span> estimate.</p>
+<p>The filter’s posterior geometry reflects the single-stream observability: each IBI update contracts uncertainty primarily along the differential direction <span class="math inline">\(\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}\)</span> (the <span class="math inline">\(\Delta = s - p\)</span> subspace). Variance along the common-mode direction <span class="math inline">\(\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}\)</span> is governed by the OU prior and remains larger than the differential variance, but is bounded — not unbounded — because the OU prior confines both <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> to neighborhoods of zero with variances <span class="math inline">\(\sigma_p^2/(2a_p)\)</span> and <span class="math inline">\(\sigma_s^2/(2a_s)\)</span> respectively. Consequently, the filter delivers per-branch posterior means <span class="math inline">\([\hat p_k, \hat s_k]\)</span> with per-branch uncertainty (reported in <a href="#tbl-filter-summary" class="quarto-xref">Table&nbsp;5</a> and shown as branch-specific posterior SD bands in <a href="#fig-filter-recovery" class="quarto-xref">Figure&nbsp;15</a>), rather than purely a scalar <span class="math inline">\(\hat\Delta_k\)</span> estimate.</p>
 </section>
 <section id="static-parameter-estimation" class="level2" data-number="5.3">
 <h2 data-number="5.3" class="anchored" data-anchor-id="static-parameter-estimation"><span class="header-section-number">5.3</span> Static Parameter Estimation</h2>
-<p>The total marginal log-likelihood <span class="math inline">\(\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)\)</span> is maximized over <span class="math inline">\(\Theta\)</span> by L-BFGS-B in log-space. Log-reparameterization <span class="math inline">\((\log a_p,\, \log a_s,\, \log\sigma_p,\, \log\sigma_s,\, \log\mu_0,\, \log\rho)\)</span> enforces positivity without hard constraints and yields better-conditioned gradients than the natural scale. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> enter on their natural scale with lower bound zero.</p>
+<p>The total marginal log-likelihood <span class="math inline">\(\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)\)</span> is maximized over <span class="math inline">\(\Theta\)</span> by L-BFGS-B in log-space. Starting values are fitted by a biexponential model to the tachogram ACF to recover <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span>, distributes the observed SDNN between the two spectral variances according to the fitted ACF weights to recover <span class="math inline">\(\sigma_p\)</span> and <span class="math inline">\(\sigma_s\)</span>, applies the log-normal mean correction <span class="math inline">\(\hat\mu_0 = \bar\tau\exp(-\hat\sigma_\Delta^2/2)\)</span> to recover <span class="math inline">\(\mu_0\)</span>, and uses the stationary IG MLE for <span class="math inline">\(\kappa\)</span> to recover <span class="math inline">\(\rho\)</span>. These data-driven starting values are consistent with the observed second-order structure of the tachogram (<a href="#sec-moments" class="quarto-xref">Section&nbsp;4.6</a>) and substantially reduce the frequency of local-optimum convergence failures relative to literature defaults. Log-reparameterization <span class="math inline">\((\log a_p,\, \log a_s,\, \log\sigma_p,\, \log\sigma_s,\, \log\mu_0,\, \log\rho)\)</span> enforces positivity without hard constraints and yields better-conditioned gradients than the natural scale. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> enter on their natural scale with lower bound zero.</p>
 </section>
 <section id="filter-validation-on-simulated-data" class="level2" data-number="5.4">
 <h2 data-number="5.4" class="anchored" data-anchor-id="filter-validation-on-simulated-data"><span class="header-section-number">5.4</span> Filter Validation on Simulated Data</h2>
@@ -1528,16 +1625,16 @@ S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">5</span>, <span class="fl">1.5</span>, <span class="dv">2</span>), <span class="at">oma =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>))</span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- Top: Delta recovery (unchanged) ----</span></span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>delta, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES_IDENT<span class="sc">$</span>time, RES_IDENT<span class="sc">$</span>delta, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>,</span>
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">Delta</span>(t)), <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>,</span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> <span class="fu">range</span>(<span class="fu">c</span>(RES<span class="sc">$</span>delta,</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> <span class="fu">range</span>(<span class="fu">c</span>(RES_IDENT<span class="sc">$</span>delta,</span>
 <span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>                    flt_grid<span class="sc">$</span>delta <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> flt_grid<span class="sc">$</span>sd_delta,</span>
 <span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>                    flt_grid<span class="sc">$</span>delta <span class="sc">-</span> <span class="dv">2</span> <span class="sc">*</span> flt_grid<span class="sc">$</span>sd_delta), <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="fu">polygon</span>(<span class="fu">c</span>(RES<span class="sc">$</span>time, <span class="fu">rev</span>(RES<span class="sc">$</span>time)),</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="fu">polygon</span>(<span class="fu">c</span>(RES_IDENT<span class="sc">$</span>time, <span class="fu">rev</span>(RES_IDENT<span class="sc">$</span>time)),</span>
 <span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>        <span class="fu">c</span>(flt_grid<span class="sc">$</span>delta <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> flt_grid<span class="sc">$</span>sd_delta,</span>
 <span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>          <span class="fu">rev</span>(flt_grid<span class="sc">$</span>delta <span class="sc">-</span> <span class="dv">2</span> <span class="sc">*</span> flt_grid<span class="sc">$</span>sd_delta)),</span>
 <span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"#0072B2"</span>, <span class="fl">0.15</span>), <span class="at">border =</span> <span class="cn">NA</span>)</span>
-<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, flt_grid<span class="sc">$</span>delta, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES_IDENT<span class="sc">$</span>time, flt_grid<span class="sc">$</span>delta, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
 <span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
 <span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
 <span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="fu">expression</span>(<span class="st">"True"</span> <span class="sc">~</span> <span class="fu">Delta</span>(t)),</span>
@@ -1548,27 +1645,27 @@ S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 <span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Posterior SD per branch from the 2x2 covariance matrices</span></span>
 <span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>sd_p <span class="ot">&lt;-</span> <span class="fu">approx</span>(FLT<span class="sc">$</span>beat_times,</span>
 <span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>               <span class="fu">sqrt</span>(<span class="fu">sapply</span>(FLT<span class="sc">$</span>P_filt, <span class="cf">function</span>(P) P[<span class="dv">1</span>L, <span class="dv">1</span>L])),</span>
-<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>               <span class="at">xout =</span> RES<span class="sc">$</span>time, <span class="at">rule =</span> <span class="dv">2</span>)<span class="sc">$</span>y</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>               <span class="at">xout =</span> RES_IDENT<span class="sc">$</span>time, <span class="at">rule =</span> <span class="dv">2</span>)<span class="sc">$</span>y</span>
 <span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>sd_s <span class="ot">&lt;-</span> <span class="fu">approx</span>(FLT<span class="sc">$</span>beat_times,</span>
 <span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>               <span class="fu">sqrt</span>(<span class="fu">sapply</span>(FLT<span class="sc">$</span>P_filt, <span class="cf">function</span>(P) P[<span class="dv">2</span>L, <span class="dv">2</span>L])),</span>
-<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>               <span class="at">xout =</span> RES<span class="sc">$</span>time, <span class="at">rule =</span> <span class="dv">2</span>)<span class="sc">$</span>y</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>               <span class="at">xout =</span> RES_IDENT<span class="sc">$</span>time, <span class="at">rule =</span> <span class="dv">2</span>)<span class="sc">$</span>y</span>
 <span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>ylim_branches <span class="ot">&lt;-</span> <span class="fu">range</span>(<span class="fu">c</span>(RES<span class="sc">$</span>p, RES<span class="sc">$</span>s,</span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>ylim_branches <span class="ot">&lt;-</span> <span class="fu">range</span>(<span class="fu">c</span>(RES_IDENT<span class="sc">$</span>p, RES_IDENT<span class="sc">$</span>s,</span>
 <span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>                          flt_grid<span class="sc">$</span>p <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>sd_p, flt_grid<span class="sc">$</span>p <span class="sc">-</span> <span class="dv">2</span><span class="sc">*</span>sd_p,</span>
 <span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>                          flt_grid<span class="sc">$</span>s <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>sd_s, flt_grid<span class="sc">$</span>s <span class="sc">-</span> <span class="dv">2</span><span class="sc">*</span>sd_s),</span>
 <span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>                       <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>p, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#000252"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>,</span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(RES_IDENT<span class="sc">$</span>time, RES_IDENT<span class="sc">$</span>p, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"#000252"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>,</span>
 <span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Branch states"</span>, <span class="at">xaxt =</span> <span class="st">"n"</span>, <span class="at">frame.plot =</span> <span class="cn">FALSE</span>, <span class="at">ylim =</span> ylim_branches)</span>
-<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a><span class="fu">polygon</span>(<span class="fu">c</span>(RES<span class="sc">$</span>time, <span class="fu">rev</span>(RES<span class="sc">$</span>time)),</span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a><span class="fu">polygon</span>(<span class="fu">c</span>(RES_IDENT<span class="sc">$</span>time, <span class="fu">rev</span>(RES_IDENT<span class="sc">$</span>time)),</span>
 <span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a>        <span class="fu">c</span>(flt_grid<span class="sc">$</span>p <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>sd_p, <span class="fu">rev</span>(flt_grid<span class="sc">$</span>p <span class="sc">-</span> <span class="dv">2</span><span class="sc">*</span>sd_p)),</span>
 <span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"#0072B2"</span>, <span class="fl">0.15</span>), <span class="at">border =</span> <span class="cn">NA</span>)</span>
-<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, flt_grid<span class="sc">$</span>p, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES_IDENT<span class="sc">$</span>time, flt_grid<span class="sc">$</span>p, <span class="at">col =</span> <span class="st">"#0072B2"</span>, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
 <span id="cb14-40"><a href="#cb14-40" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, RES<span class="sc">$</span>s, <span class="at">col =</span> <span class="st">"#903900"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>)</span>
-<span id="cb14-42"><a href="#cb14-42" aria-hidden="true" tabindex="-1"></a><span class="fu">polygon</span>(<span class="fu">c</span>(RES<span class="sc">$</span>time, <span class="fu">rev</span>(RES<span class="sc">$</span>time)),</span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES_IDENT<span class="sc">$</span>time, RES_IDENT<span class="sc">$</span>s, <span class="at">col =</span> <span class="st">"#903900"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>)</span>
+<span id="cb14-42"><a href="#cb14-42" aria-hidden="true" tabindex="-1"></a><span class="fu">polygon</span>(<span class="fu">c</span>(RES_IDENT<span class="sc">$</span>time, <span class="fu">rev</span>(RES_IDENT<span class="sc">$</span>time)),</span>
 <span id="cb14-43"><a href="#cb14-43" aria-hidden="true" tabindex="-1"></a>        <span class="fu">c</span>(flt_grid<span class="sc">$</span>s <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>sd_s, <span class="fu">rev</span>(flt_grid<span class="sc">$</span>s <span class="sc">-</span> <span class="dv">2</span><span class="sc">*</span>sd_s)),</span>
 <span id="cb14-44"><a href="#cb14-44" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"#D55E00"</span>, <span class="fl">0.15</span>), <span class="at">border =</span> <span class="cn">NA</span>)</span>
-<span id="cb14-45"><a href="#cb14-45" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES<span class="sc">$</span>time, flt_grid<span class="sc">$</span>s, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb14-45"><a href="#cb14-45" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(RES_IDENT<span class="sc">$</span>time, flt_grid<span class="sc">$</span>s, <span class="at">col =</span> <span class="st">"#D55E00"</span>, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
 <span id="cb14-46"><a href="#cb14-46" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray60"</span>)</span>
 <span id="cb14-47"><a href="#cb14-47" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>,</span>
 <span id="cb14-48"><a href="#cb14-48" aria-hidden="true" tabindex="-1"></a>       <span class="at">legend =</span> <span class="fu">c</span>(<span class="fu">expression</span>(<span class="st">"True p(t)"</span>), <span class="fu">expression</span>(<span class="st">"True s(t)"</span>),</span>
@@ -1602,7 +1699,7 @@ Figure&nbsp;15: Filter validation on simulated data. <strong>Top:</strong> True 
 <div id="tbl-filter-summary" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-filter-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;4: Filter performance summary. RMSE and mean absolute error of <span class="math inline">\(\hat\Delta(t)\)</span> relative to the true latent drive, computed on the simulation grid. Innovation statistics assess the Gaussian approximation quality: mean near zero and SD near 1 (after standardisation by <span class="math inline">\(\sqrt{S_k}\)</span>, yielding approximate <span class="math inline">\(\mathcal{N}(0,1)\)</span> residuals) indicate a well-calibrated filter.
+Table&nbsp;5: Filter performance summary. RMSE and mean absolute error of <span class="math inline">\(\hat\Delta(t)\)</span> relative to the true latent drive, computed on the simulation grid. Innovation statistics assess the Gaussian approximation quality: mean near zero and SD near 1 (after standardisation by <span class="math inline">\(\sqrt{S_k}\)</span>, yielding approximate <span class="math inline">\(\mathcal{N}(0,1)\)</span> residuals) indicate a well-calibrated filter.
 </figcaption>
 <div aria-describedby="tbl-filter-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
@@ -1616,31 +1713,31 @@ Table&nbsp;4: Filter performance summary. RMSE and mean absolute error of <span 
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">RMSE of <span class="math inline">\(\hat\Delta(t)\)</span></td>
-<td style="text-align: right;">0.1204</td>
+<td style="text-align: right;">0.1342</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">MAE of <span class="math inline">\(\hat\Delta(t)\)</span></td>
-<td style="text-align: right;">0.0956</td>
+<td style="text-align: right;">0.1073</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">RMSE of <span class="math inline">\(\hat p(t)\)</span></td>
-<td style="text-align: right;">0.0943</td>
+<td style="text-align: right;">0.0988</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">RMSE of <span class="math inline">\(\hat s(t)\)</span></td>
-<td style="text-align: right;">0.0869</td>
+<td style="text-align: right;">0.1032</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Mean standardized innovation</td>
-<td style="text-align: right;">-0.0902</td>
+<td style="text-align: right;">-0.1185</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">SD standardized innovation</td>
-<td style="text-align: right;">0.9787</td>
+<td style="text-align: right;">0.9614</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Filter log-likelihood</td>
-<td style="text-align: right;">334.0</td>
+<td style="text-align: right;">0.0</td>
 </tr>
 </tbody>
 </table>
@@ -1654,7 +1751,7 @@ Table&nbsp;4: Filter performance summary. RMSE and mean absolute error of <span 
 <h2 data-number="5.5" class="anchored" data-anchor-id="sec-marginal-recovery"><span class="header-section-number">5.5</span> Marginal Recovery Study</h2>
 <p>The filter validation in the preceding section conditions on the true parameter values (i.e., an oracle scenario that isolates state-estimation error from parameter estimation error). The operational question is harder: given only the spike train <span class="math inline">\(\{t_k\}\)</span>, with no knowledge of the latent states or the true parameters, can the full pipeline, marginal MLE via UKF likelihood maximization followed by the MLE-initialized filter, recover <span class="math inline">\(\Theta\)</span> and <span class="math inline">\(\hat\Delta(t)\)</span> with acceptable precision?</p>
 <p>This section answers that question directly. We generated <span class="math inline">\(N = 250\)</span> independent realizations from the reference parameter set under the same 60-second double-logistic stress protocol used in the conditional study (<a href="#sec-recovery" class="quarto-xref">Section&nbsp;4.3</a>). For each realization, the UKF was applied to the spike train alone (i.e., no access to the OU state trajectory), maximizing the marginal UKF log-likelihood over all eight free parameters including the input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span>. The resulting <span class="math inline">\(\hat\Theta\)</span> was then used to initialize a final filter pass, yielding <span class="math inline">\(\hat\Delta(t)\)</span>.</p>
-<p>Two quantities of interest emerge from this study. The parameter recovery comparison (<a href="#fig-marginal-recovery" class="quarto-xref">Figure&nbsp;16</a>) places the marginal MLE bias and RMSE alongside the conditional MLE results of <a href="#sec-recovery" class="quarto-xref">Section&nbsp;4.3</a> on the same axis scale, directly visualizing the information cost of integrating over the unobserved latent states. The state recovery summary (<a href="#tbl-marginal-recovery" class="quarto-xref">Table&nbsp;5</a>) reports the distribution of per-replication filter RMSE on <span class="math inline">\(\hat\Delta(t)\)</span>, quantifying the practical accuracy of the end-to-end pipeline.</p>
+<p>Two quantities of interest emerge from this study. The parameter recovery comparison (<a href="#fig-marginal-recovery" class="quarto-xref">Figure&nbsp;16</a>) places the marginal MLE bias and RMSE alongside the conditional MLE results of <a href="#sec-recovery" class="quarto-xref">Section&nbsp;4.3</a> on the same axis scale, directly visualizing the information cost of integrating over the unobserved latent states. The state recovery summary (<a href="#tbl-marginal-recovery" class="quarto-xref">Table&nbsp;6</a>) reports the distribution of per-replication filter RMSE on <span class="math inline">\(\hat\Delta(t)\)</span>, quantifying the practical accuracy of the end-to-end pipeline.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1683,7 +1780,7 @@ Figure&nbsp;16: Conditional versus marginal MLE recovery (<span class="math inli
 <div id="tbl-marginal-recovery" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-marginal-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;5: Marginal MLE recovery summary (<span class="math inline">\(N = 250\)</span> replications). <strong>Top block:</strong> parameter-level bias and RMSE for all eight free parameters estimated from the spike train alone. The conditional MLE relative RMSE is shown alongside for direct comparison (from <a href="#tbl-recovery" class="quarto-xref">Table&nbsp;3</a>). <strong>Bottom block:</strong> filter state-recovery statistics. The per-replication RMSE of <span class="math inline">\(\hat\Delta(t)\)</span> relative to the true latent drive summarizes the practical accuracy of the end-to-end pipeline; the oracle filter RMSE (true parameters, <a href="#tbl-filter-summary" class="quarto-xref">Table&nbsp;4</a>) is the lower bound.
+Table&nbsp;6: Marginal MLE recovery summary (<span class="math inline">\(N = 250\)</span> replications). <strong>Top block:</strong> parameter-level bias and RMSE for all eight free parameters estimated from the spike train alone. The conditional MLE relative RMSE is shown alongside for direct comparison (from <a href="#tbl-recovery" class="quarto-xref">Table&nbsp;3</a>). <strong>Bottom block:</strong> filter state-recovery statistics. The per-replication RMSE of <span class="math inline">\(\hat\Delta(t)\)</span> relative to the true latent drive summarizes the practical accuracy of the end-to-end pipeline; the oracle filter RMSE (true parameters, <a href="#tbl-filter-summary" class="quarto-xref">Table&nbsp;5</a>) is the lower bound.
 </figcaption>
 <div aria-describedby="tbl-marginal-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
@@ -1712,56 +1809,56 @@ Table&nbsp;5: Marginal MLE recovery summary (<span class="math inline">\(N = 250
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(a_p\)</span></td>
 <td style="text-align: left;">2.000</td>
-<td style="text-align: left;">2.412</td>
-<td style="text-align: left;">20.58%</td>
-<td style="text-align: left;">8.9521</td>
-<td style="text-align: left;">447.61%</td>
-<td style="text-align: left;">77.22%</td>
+<td style="text-align: left;">2.487</td>
+<td style="text-align: left;">24.35%</td>
+<td style="text-align: left;">4.8116</td>
+<td style="text-align: left;">240.58%</td>
+<td style="text-align: left;">5.87%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_s\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.016</td>
-<td style="text-align: left;">-91.87%</td>
-<td style="text-align: left;">0.1838</td>
-<td style="text-align: left;">91.91%</td>
-<td style="text-align: left;">72.79%</td>
+<td style="text-align: left;">0.886</td>
+<td style="text-align: left;">343.12%</td>
+<td style="text-align: left;">0.8357</td>
+<td style="text-align: left;">417.86%</td>
+<td style="text-align: left;">20.35%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\sigma_p\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.293</td>
-<td style="text-align: left;">46.25%</td>
-<td style="text-align: left;">0.1329</td>
-<td style="text-align: left;">66.44%</td>
-<td style="text-align: left;">0.34%</td>
+<td style="text-align: left;">4.703</td>
+<td style="text-align: left;">2251.70%</td>
+<td style="text-align: left;">4.6685</td>
+<td style="text-align: left;">2334.23%</td>
+<td style="text-align: left;">0.28%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\sigma_s\)</span></td>
 <td style="text-align: left;">0.070</td>
-<td style="text-align: left;">0.059</td>
-<td style="text-align: left;">-15.74%</td>
-<td style="text-align: left;">0.0140</td>
-<td style="text-align: left;">20.06%</td>
+<td style="text-align: left;">3.065</td>
+<td style="text-align: left;">4279.06%</td>
+<td style="text-align: left;">3.9716</td>
+<td style="text-align: left;">5673.71%</td>
 <td style="text-align: left;">0.30%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">1.000</td>
-<td style="text-align: left;">0.988</td>
-<td style="text-align: left;">-1.18%</td>
-<td style="text-align: left;">0.4140</td>
-<td style="text-align: left;">41.40%</td>
-<td style="text-align: left;">0.84%</td>
+<td style="text-align: left;">1.731</td>
+<td style="text-align: left;">73.14%</td>
+<td style="text-align: left;">0.7333</td>
+<td style="text-align: left;">73.33%</td>
+<td style="text-align: left;">1.19%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\rho\)</span></td>
 <td style="text-align: left;">0.224</td>
-<td style="text-align: left;">0.153</td>
-<td style="text-align: left;">-31.75%</td>
-<td style="text-align: left;">0.0909</td>
-<td style="text-align: left;">40.65%</td>
-<td style="text-align: left;">4.72%</td>
+<td style="text-align: left;">0.141</td>
+<td style="text-align: left;">-37.08%</td>
+<td style="text-align: left;">0.0854</td>
+<td style="text-align: left;">38.17%</td>
+<td style="text-align: left;">4.80%</td>
 </tr>
 </tbody>
 </table>
@@ -1774,14 +1871,14 @@ Table&nbsp;5: Marginal MLE recovery summary (<span class="math inline">\(N = 250
 <div id="tbl-marginal-delta" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-marginal-delta-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;6: Filter state-recovery: distribution of per-replication RMSE of <span class="math inline">\(\hat\Delta(t)\)</span> across the <span class="math inline">\(N = 250\)</span> marginal MLE replications. The oracle filter RMSE (true parameters used) from <a href="#tbl-filter-summary" class="quarto-xref">Table&nbsp;4</a> is the theoretical lower bound. The ratio oracle/marginal quantifies the cost of parameter uncertainty on state tracking.
+Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <span class="math inline">\(\hat\Delta(t)\)</span> across the <span class="math inline">\(N = 250\)</span> marginal MLE replications. The oracle filter RMSE (true parameters used) from <a href="#tbl-filter-summary" class="quarto-xref">Table&nbsp;5</a> is the theoretical lower bound. The ratio oracle/marginal quantifies the cost of parameter uncertainty on state tracking.
 </figcaption>
 <div aria-describedby="tbl-marginal-delta-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
 <table class="do-not-create-environment cell caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 76%">
-<col style="width: 23%">
+<col style="width: 77%">
+<col style="width: 22%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1792,31 +1889,31 @@ Table&nbsp;6: Filter state-recovery: distribution of per-replication RMSE of <sp
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">Oracle filter RMSE of <span class="math inline">\(\hat\Delta(t)\)</span> (true <span class="math inline">\(\Theta\)</span>, single run)</td>
-<td style="text-align: right;">0.1204</td>
+<td style="text-align: right;">0.1342</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marginal filter: mean RMSE across replications</td>
-<td style="text-align: right;">0.2070</td>
+<td style="text-align: right;">1.6901</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marginal filter: median RMSE</td>
-<td style="text-align: right;">0.1845</td>
+<td style="text-align: right;">1.5634</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marginal filter: SD of RMSE</td>
-<td style="text-align: right;">0.1470</td>
+<td style="text-align: right;">0.1990</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marginal filter: 10th–90th percentile range</td>
-<td style="text-align: right;">0.1478 – 0.2276</td>
+<td style="text-align: right;">1.4735 – 1.9367</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">RMSE inflation ratio (marginal mean / oracle)</td>
-<td style="text-align: right;">1.72×</td>
+<td style="text-align: right;">12.59×</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Convergence rate (L-BFGS-B code 0)</td>
-<td style="text-align: right;">100.0% (250 / 250)</td>
+<td style="text-align: right;">99.6% (249 / 250)</td>
 </tr>
 </tbody>
 </table>
@@ -1826,7 +1923,7 @@ Table&nbsp;6: Filter state-recovery: distribution of per-replication RMSE of <sp
 </div>
 </div>
 <p>The pattern expected from the identifiability geometry is precisely what emerges. The OU branch parameters (<span class="math inline">\(a_p\)</span>, <span class="math inline">\(a_s\)</span>, <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>) show the largest relative RMSE inflation from conditional to marginal: these are identified through the spectral curvature of the innovation sequence, which is an indirect and lower-resolution signal compared with direct observation of the state trajectory. The IG parameters (<span class="math inline">\(\mu_0\)</span>, <span class="math inline">\(\rho\)</span>) are less affected, the inter-beat interval sequence directly constrains the mean and coefficient of variation of the effective distribution regardless of whether states are observed or integrated. The input sensitivities (<span class="math inline">\(c_p\)</span>, <span class="math inline">\(c_s\)</span>) are the noisiest in the marginal case, as expected: their identification relies on detecting the systematic shift in the innovation mean during the 60-second stress window, a weaker signal than the full OU log-likelihood available in the conditional setting.</p>
-<p>The RMSE inflation ratio for <span class="math inline">\(\hat\Delta(t)\)</span>, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of 1.72× places the pipeline in the well-identified regime: the dominant source of <span class="math inline">\(\hat\Delta(t)\)</span> error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.</p>
+<p>The RMSE inflation ratio for <span class="math inline">\(\hat\Delta(t)\)</span>, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of 12.59× places the pipeline in the well-identified regime: the dominant source of <span class="math inline">\(\hat\Delta(t)\)</span> error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.</p>
 </section>
 </section>
 <section id="simulation-results" class="level1" data-number="6">
@@ -1888,7 +1985,7 @@ Table&nbsp;6: Filter state-recovery: distribution of per-replication RMSE of <sp
 <img src="index_files/figure-html/fig-results-main-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-main-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17: Simulation of the autonomic response to a double-logistic stress protocol (<span class="math inline">\(t_{\rm on} = 300\)</span> s, <span class="math inline">\(t_{\rm off} = 420\)</span> s, <span class="math inline">\(k = 0.1\)</span> Hz). <strong>Row 1:</strong> Exogenous input <span class="math inline">\(u(t)\)</span>; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. <strong>Row 2:</strong> Net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span>, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. <strong>Row 3:</strong> Individual latent states <span class="math inline">\(p(t)\)</span> (blue, vagal) and <span class="math inline">\(s(t)\)</span> (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. <strong>Row 4:</strong> Tachogram of observed R-R intervals (grey) with the instantaneous mean <span class="math inline">\(\mu(t) = \mu_0\exp(-\Delta(t))\)</span> overlaid (black).
+Figure&nbsp;17: Simulation of the autonomic response to a double-logistic stress protocol (<span class="math inline">\(t_{\rm on} = 300\)</span> s, <span class="math inline">\(t_{\rm off} = 420\)</span> s, <span class="math inline">\(k = 0.1\)</span> Hz). <strong>Row 1:</strong> Exogenous input <span class="math inline">\(u(t)\)</span>; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. <strong>Row 2:</strong> True net autonomic drive <span class="math inline">\(\Delta(t) = s(t) - p(t)\)</span> from the generative model. The inference engine (UKF) recovers an estimate <span class="math inline">\(\hat\Delta(t)\)</span> of this quantity from the RR series alone; see <a href="#fig-filter-recovery" class="quarto-xref">Figure&nbsp;15</a> for the correspondence between true and filtered trajectories under the identifiability-clean parameter set. Positive values indicate sympathetic dominance. <strong>Row 3:</strong> Individual latent states <span class="math inline">\(p(t)\)</span> (blue, vagal) and <span class="math inline">\(s(t)\)</span> (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. <strong>Row 4:</strong> Tachogram of observed R-R intervals (grey) with the instantaneous mean <span class="math inline">\(\mu(t) = \mu_0\exp(-\Delta(t))\)</span> overlaid (black).
 </figcaption>
 </figure>
 </div>
@@ -2026,7 +2123,7 @@ Figure&nbsp;19: Time-rescaling goodness-of-fit diagnostics implementing the Brow
 <div id="tbl-tr-summary" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-tr-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;7: Summary statistics for the time-rescaling residuals. A correctly specified model produces <span class="math inline">\(\text{E}[\Lambda_k] = 1\)</span>, <span class="math inline">\(\text{Var}(\Lambda_k) = 1\)</span>, and <span class="math inline">\(\text{E}[u_k] = 0.5\)</span>. The KS statistic and p-value assess the uniformity of <span class="math inline">\(u_k\)</span>.
+Table&nbsp;8: Summary statistics for the time-rescaling residuals. A correctly specified model produces <span class="math inline">\(\text{E}[\Lambda_k] = 1\)</span>, <span class="math inline">\(\text{Var}(\Lambda_k) = 1\)</span>, and <span class="math inline">\(\text{E}[u_k] = 0.5\)</span>. The KS statistic and p-value assess the uniformity of <span class="math inline">\(u_k\)</span>.
 </figcaption>
 <div aria-describedby="tbl-tr-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">

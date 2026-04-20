@@ -86,11 +86,14 @@ sensitivity_one <- function(a_p_val, a_s_val,
   # filter accuracy degrades when the decay rates are *misspecified*, independently
   # of estimation variance.
   flt <- tryCatch({
-    params_for_filter        <- base_params
+    params_for_filter          <- base_params
     params_for_filter$free$a_p <- a_p_val
     params_for_filter$free$a_s <- a_s_val
+    # Inference model: c_p = c_s = 0, input unobserved
+    params_for_filter$free$c_p <- 0
+    params_for_filter$free$c_s <- 0
     pp_ukf(sim_res_ref$spikes, params_for_filter,
-           input_fn = sim_res_ref$input_fn)
+           input_fn = function(t) 0)
   }, error = function(e) NULL)
 
   flt_rmse <- NA_real_

@@ -123,17 +123,14 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
     }
     V2      <- tryCatch(solve(H2), error = function(e) matrix(NA_real_, np2, np2))
     safe2   <- function(k) sqrt(max(V2[k, k], 0, na.rm = TRUE))
-    H_full  <- matrix(0, 3L, 3L)
-    H_full[1:2, 1:2] <- H2   # c row/col remain zero (non-identifiable)
     return(list(
       a        = a_hat,
       sigma    = pf$sigma,
       c_gain   = 0,
       a_se     = a_hat    * safe2(1L),
       sigma_se = pf$sigma * safe2(2L),
-      c_se     = NA_real_,        # non-identifiable when u(t) ≡ 0
+      c_se     = NA_real_,
       log_lik  = pf$ll,
-      H_logscale = H_full,
       n_obs    = n
     ))
   }
@@ -157,13 +154,12 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
     sigma_se = pf$sigma  * safe_se(2L),
     c_se     = safe_se(3L),
     log_lik  = pf$ll,
-    H_logscale = H,
     n_obs    = n
   )
 }
 
 # ---- Bivariate coupled-OU log-likelihood ----
-# Parameterization: b_ps, b_sp free; a_p, a_s fixed structural.
+# Parameterization: a_ps, a_sp free; a_p, a_s fixed structural.
 # All n-1 bivariate Gaussian transition densities share the same F, Q
 # (dt constant), so these are computed once per call.
 
@@ -395,6 +391,96 @@ full_conditional_mle <- function(sim_res) {
     n_beats  = mle_obs$n_beats,
     ll_obs   = mle_obs$log_lik,
     ll_total = ll_ou + mle_obs$log_lik
+  )
+}
+
+# ---- Moment consistency check ----
+# Compares observed HRV statistics against the values predicted by the
+# SDE-IG model at the MLE. Provides a pre-submission specification test
+# complementary to the time-rescaling diagnostic.
+#
+# Under correct model specification, each relative residual should be
+# small (< 5% in absolute value). Systematic departures indicate either
+# a local-optimum convergence failure or genuine model misspecification.
+#
+# Arguments
+#   rr_vec  : raw RR interval vector (seconds)
+#   mle     : output of full_conditional_mle() or a list with named
+#             fields a_p, a_s, sigma_p, sigma_s, mu0, rho
+#
+# Returns a data.frame suitable for knitr::kable().
+
+check_moment_consistency <- function(rr_vec, mle) {
+  stopifnot(is.numeric(rr_vec), length(rr_vec) > 10L, all(rr_vec > 0))
+
+  # Normalise field names: full_conditional_mle() uses 'mu0';
+  # pp_mle free_hat uses 'mu_0'.  Accept both.
+  mu0_val <- if (!is.null(mle$mu0))  mle$mu0  else
+    if (!is.null(mle$mu_0)) mle$mu_0 else
+      stop("check_moment_consistency: mle must contain 'mu0' or 'mu_0'")
+
+  pred <- predicted_hrv_moments(
+    a_p     = mle$a_p,
+    a_s     = mle$a_s,
+    sigma_p = mle$sigma_p,
+    sigma_s = mle$sigma_s,
+    mu_0    = mu0_val,
+    rho     = mle$rho
+  )
+
+  # ---- Observed statistics ----
+  n       <- length(rr_vec)
+  e_obs   <- mean(rr_vec)
+  sd_obs  <- sd(rr_vec)                          # SDNN
+  rmssd_obs <- sqrt(mean(diff(rr_vec)^2))
+
+  # Spectral band powers via Lomb-Scargle on the tachogram.
+  # Beat times are reconstructed assuming the first beat at t = 0.
+  beat_t  <- cumsum(c(0, rr_vec))[-1L]           # midpoints would be more correct
+  # Fast approximation: FFT on the evenly resampled tachogram (4 Hz)
+  dt_rs   <- 0.25
+  t_rs    <- seq(beat_t[1L], tail(beat_t, 1L), by = dt_rs)
+  rr_rs   <- approx(beat_t, rr_vec, xout = t_rs, rule = 2)$y
+  n_rs    <- length(rr_rs)
+  freq_rs <- seq(0, 0.5 / dt_rs, length.out = floor(n_rs / 2) + 1L)
+  psd_rs  <- (Mod(fft(rr_rs - mean(rr_rs)))[seq_along(freq_rs)])^2 /
+    (n_rs * (1 / dt_rs))
+
+  band_power <- function(f_lo, f_hi) {
+    idx <- freq_rs >= f_lo & freq_rs <= f_hi
+    if (!any(idx)) return(NA_real_)
+    sum(psd_rs[idx]) * (freq_rs[2L] - freq_rs[1L])
+  }
+  lf_obs  <- band_power(0.04, 0.15)
+  hf_obs  <- band_power(0.15, 0.40)
+  lfhf_obs <- lf_obs / max(hf_obs, 1e-12)
+
+  # ---- Residuals ----
+  rel_err <- function(obs, pred_v)
+    ifelse(abs(obs) > 1e-10, 100 * (obs - pred_v) / abs(obs), NA_real_)
+
+  data.frame(
+    Statistic = c(
+      "Mean RR (s)",
+      "SDNN (s)",
+      "RMSSD (s)",
+      "LF power (s\\textsuperscript{2})",
+      "HF power (s\\textsuperscript{2})",
+      "LF/HF ratio"
+    ),
+    Observed  = sprintf("%.4f", c(e_obs, sd_obs, rmssd_obs,
+                                  lf_obs, hf_obs, lfhf_obs)),
+    Predicted = sprintf("%.4f", c(pred$e_tau, pred$sdnn, pred$rmssd,
+                                  pred$lf_power, pred$hf_power, pred$lf_hf)),
+    Rel_error = sprintf("%.1f\\%%", c(
+      rel_err(e_obs,    pred$e_tau),
+      rel_err(sd_obs,   pred$sdnn),
+      rel_err(rmssd_obs, pred$rmssd),
+      rel_err(lf_obs,   pred$lf_power),
+      rel_err(hf_obs,   pred$hf_power),
+      rel_err(lfhf_obs, pred$lf_hf)
+    )),
+    stringsAsFactors = FALSE
   )
 }
 
@@ -737,11 +823,71 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
            },
            a_p = {
              if (v <= 0) return(-Inf)
-             profile_at_a_internal(sim_res$p, v, dt)$ll
+             use_coupled_loc <- (abs(sim_res$params$free$a_ps) +
+                                   abs(sim_res$params$free$a_sp)) > 1e-12
+             if (!use_coupled_loc) {
+               profile_at_a_internal(sim_res$p, v, dt)$ll
+             } else {
+               # In coupled model, profile a_p within the full joint OU LL,
+               # maximising over (a_s, a_ps, a_sp, sigma_p, sigma_s).
+               x_mat_loc  <- cbind(sim_res$p, sim_res$s)
+               u_zero_loc <- rep(0.0, nrow(x_mat_loc))
+               th0_loc <- c(log(mle$a_s),
+                            max(mle$a_ps, 1e-6), max(mle$a_sp, 1e-6),
+                            log(max(mle$sigma_p, 1e-5)),
+                            log(max(mle$sigma_s, 1e-5)))
+               local({
+                 vv <- v
+                 nll_loc <- function(th) {
+                   a_s_v  <- exp(th[1L])
+                   a_ps_v <- th[2L];  a_sp_v <- th[3L]
+                   if (a_ps_v < 0 || a_sp_v < 0 ||
+                       vv * a_s_v - a_ps_v * a_sp_v <= 0) return(1e10)
+                   ll <- tryCatch(
+                     ou_coupled_log_lik(a_ps_v, a_sp_v, vv, a_s_v,
+                                        exp(th[4L]), exp(th[5L]), 0, 0,
+                                        x_mat_loc, u_zero_loc, dt),
+                     error = function(e) -Inf)
+                   if (is.finite(ll)) -ll else 1e10
+                 }
+                 -optim(th0_loc, nll_loc, method = "L-BFGS-B",
+                        lower = c(-Inf, 0, 0, -Inf, -Inf),
+                        control = list(maxit = 200L, factr = 1e8))$value
+               })
+             }
            },
            a_s = {
              if (v <= 0) return(-Inf)
-             profile_at_a_internal(sim_res$s, v, dt)$ll
+             use_coupled_loc <- (abs(sim_res$params$free$a_ps) +
+                                   abs(sim_res$params$free$a_sp)) > 1e-12
+             if (!use_coupled_loc) {
+               profile_at_a_internal(sim_res$s, v, dt)$ll
+             } else {
+               x_mat_loc  <- cbind(sim_res$p, sim_res$s)
+               u_zero_loc <- rep(0.0, nrow(x_mat_loc))
+               th0_loc <- c(log(mle$a_p),
+                            max(mle$a_ps, 1e-6), max(mle$a_sp, 1e-6),
+                            log(max(mle$sigma_p, 1e-5)),
+                            log(max(mle$sigma_s, 1e-5)))
+               local({
+                 vv <- v
+                 nll_loc <- function(th) {
+                   a_p_v  <- exp(th[1L])
+                   a_ps_v <- th[2L];  a_sp_v <- th[3L]
+                   if (a_ps_v < 0 || a_sp_v < 0 ||
+                       a_p_v * vv - a_ps_v * a_sp_v <= 0) return(1e10)
+                   ll <- tryCatch(
+                     ou_coupled_log_lik(a_ps_v, a_sp_v, a_p_v, vv,
+                                        exp(th[4L]), exp(th[5L]), 0, 0,
+                                        x_mat_loc, u_zero_loc, dt),
+                     error = function(e) -Inf)
+                   if (is.finite(ll)) -ll else 1e10
+                 }
+                 -optim(th0_loc, nll_loc, method = "L-BFGS-B",
+                        lower = c(-Inf, 0, 0, -Inf, -Inf),
+                        control = list(maxit = 200L, factr = 1e8))$value
+               })
+             }
            },
            rho = {
              if (v <= 0) return(-Inf)

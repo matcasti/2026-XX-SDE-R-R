@@ -28,6 +28,7 @@
 # filter — no constraint is imposed by hand.
 # ============================================================
 
+source("R/spectral_init.R")
 
 # ---- UKF tuning (Wan & van der Merwe 2000) ----
 # L = 2 (state dim: p, s).  alpha = 0.1 gives moderate sigma-point spread;
@@ -78,7 +79,12 @@
   if ((abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12) {
     A_mat <- matrix(c(-a_p, -fp$a_sp, -fp$a_ps, -a_s), 2L, 2L)
     F_mat <- mat2x2_exp(A_mat, tau)
-    Q_mat <- ou_coupled_Q(A_mat, fp$sigma_p, fp$sigma_s, tau, n_steps = 40L)
+    # Reuse F_mat already computed; derive Q via the Lyapunov identity
+    # to avoid the redundant mat2x2_exp call inside ou_coupled_Q.
+    P_inf <- ou_stationary_cov(a_p, fp$a_s, fp$a_ps, fp$a_sp,
+                               fp$sigma_p, fp$sigma_s)
+    Q_raw <- P_inf - F_mat %*% P_inf %*% t(F_mat)
+    Q_mat <- 0.5 * (Q_raw + t(Q_raw))
 
     d_vec <- c(0, 0)
     if (u != 0) {
@@ -138,8 +144,8 @@
   P2_raw <- P1 - outer(K, K) * S
   P2     <- 0.5 * (P2_raw + t(P2_raw)) + 1e-9 * diag(.ukf_weights$L)
 
-  # Marginal LL: Gaussian innovation approximation (standard UKF)
-  ll_k <- dnorm(tau_k, mean = mu_hat, sd = sqrt(max(S, 1e-9)), log = TRUE)
+  ll_pts <- log_ig_pdf(tau_k, h_pts, kappa)   # evaluate IG log-pdf at each sigma point
+  ll_k   <- sum(.ukf_weights$Wm * ll_pts)     # weighted average in log-space
 
   list(m = m2, P = P2, innov = innov, S = S, mu_hat = mu_hat, ll = ll_k)
 }
@@ -247,7 +253,32 @@ pp_mle <- function(spikes,
                    params_init,
                    input_fn = function(t) 0,
                    verbose  = FALSE) {
-  fp0         <- params_init$free
+
+  # ---- Data-driven initialisation ----
+  # spectral_init() estimates starting values from the tachogram's
+  # second-order structure (biexponential ACF, SDNN, RMSSD, mean).
+  # This replaces hard-coded literature defaults and substantially
+  # reduces dependence of L-BFGS-B on the choice of params_init.
+  # Coupling terms (a_ps, a_sp) and input gains (c_p, c_s) are
+  # carried over from params_init unchanged, since spectral_init
+  # does not estimate them.
+  rr_for_init <- diff(spikes)
+  params_spectral <- tryCatch(
+    spectral_init(rr_for_init, verbose = verbose),
+    error = function(e) {
+      if (verbose)
+        message("pp_mle: spectral_init failed (", conditionMessage(e),
+                "); falling back to params_init")
+      params_init
+    }
+  )
+  # Preserve coupling and gain terms from the caller's params_init
+  params_spectral$free$a_ps <- params_init$free$a_ps
+  params_spectral$free$a_sp <- params_init$free$a_sp
+  params_spectral$free$c_p  <- params_init$free$c_p
+  params_spectral$free$c_s  <- params_init$free$c_s
+
+  fp0         <- params_spectral$free
   use_coupled <- (abs(fp0$a_ps) + abs(fp0$a_sp)) > 1e-12
 
   # Log-space packing: (log a_p, log a_s, log σ_p, log σ_s, log μ₀, log ρ)

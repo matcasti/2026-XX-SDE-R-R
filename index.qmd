@@ -70,6 +70,7 @@ Here we show that this synthesis is achievable and productive. We introduce the 
 #| include: false
 
 source("R/model_functions.R")
+source("R/spectral_init.R")
 
 # ---- Shared simulation parameters ----
 
@@ -971,6 +972,68 @@ plot_recovery(REC_COUPLED$summary,
 
 The FIM eigenvalue spectrum for the coupled model provides the diagnostic summary: all ten eigenvalues strictly positive confirms local identifiability of the coupling terms *conditioned on the observed state trajectory*. Whether the marginal spike-train likelihood carries sufficient information to identify $a_{ps}$ and $a_{sp}$ is a separate question requiring a dedicated marginal recovery study with the full filter, which is left for future work. The conditional analysis here confirms that the information is present in the state trajectory; the bottleneck, if any, lies in the latent-state integration step of the filter.
 
+## Analytical Moment Conditions and Standard HRV Statistics {#sec-moments}
+
+The SDE-IG model implies exact closed-form expressions for the standard frequency-domain and time-domain HRV statistics, providing an independent identification channel that complements the likelihood analysis and connects the formal parameter estimates to the clinical HRV literature.
+
+Let $\sigma_\Delta^2 = \sigma_p^2/(2a_p) + \sigma_s^2/(2a_s)$ be the stationary variance of $\Delta(t)$, and let $w_p = \sigma_p^2/(2a_p\sigma_\Delta^2)$ and $w_s = 1 - w_p$ be the fractional spectral weights of the two branches. The five standard HRV statistics satisfy:
+
+$$
+\mathbb{E}[\tau] = \mu_0 \exp\!\left(\tfrac{1}{2}\sigma_\Delta^2\right)
+$$
+
+$$
+\operatorname{Var}[\tau]
+= \underbrace{\frac{\mu_0^3}{\kappa}\,e^{9\sigma_\Delta^2/2}}_{\text{IG intrinsic}}
++ \underbrace{\mu_0^2\,e^{\sigma_\Delta^2}\!\left(e^{\sigma_\Delta^2} - 1\right)}_{\text{OU-driven}}
+$$
+
+$$
+\operatorname{RMSSD}^2
+= 2\operatorname{Var}[\tau]\,\bigl(1 - w_p e^{-a_p\mu_0} - w_s e^{-a_s\mu_0}\bigr)
+$$
+
+$$
+\operatorname{Corr}[\tau_k,\,\tau_{k+j}]
+\approx w_p\,e^{-a_p j\mu_0} + w_s\,e^{-a_s j\mu_0}
+$$
+
+The LF and HF band powers are integrals of the two-Lorentzian spectral density
+over the standard HRV bands:
+
+$$
+P_{HF} = \frac{\sigma_p^2}{2a_p}\,g_p^{HF} + \frac{\sigma_s^2}{2a_s}\,g_s^{HF},
+\qquad
+g_\nu^{[f_l,f_h]} = \frac{1}{\pi}\Bigl[\arctan\!\tfrac{2\pi f_h}{a_\nu}
+                   - \arctan\!\tfrac{2\pi f_l}{a_\nu}\Bigr]
+$$
+
+and analogously for $P_{LF}$.
+
+Several physiological interpretations follow directly. The tachogram ACF is a mixture of two exponentials: fitting this mixture recovers $a_p$ and $a_s$ from the data without likelihood evaluation, yielding data-driven starting values for the marginal MLE (see @sec-inference). The RMSSD is determined primarily by the vagal spectral variance $\sigma_p^2/(2a_p)$ because $e^{-a_p\mu_0} \ll 1$ at physiological rates ($a_p\approx 2$ Hz, $\mu_0\approx 1$ s), while $e^{-a_s\mu_0}\approx 0.8$ makes the sympathetic contribution nearly cancel. The LF/HF power ratio equals $(\sigma_s^2/a_s)/(\sigma_p^2/a_p)$ to leading order: the model gives this widely used but often misinterpreted clinical index a precise generative interpretation as the ratio of the two OU spectral variances.
+
+These six moment conditions define an exactly identified system for $(a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho)$ and serve two purposes in the analysis. First, they provide data-driven starting values for the marginal MLE that are tailored to each recording rather than to literature defaults, reducing the frequency of local-optimum convergence failures on real data (@sec-inference). Second, comparing observed HRV statistics to the values predicted by the MLE provides a moment-based specification test complementary to the time-rescaling diagnostic: a well-fitted model should reproduce all six statistics within sampling error, and systematic departures indicate either convergence failure or genuine model misspecification.
+
+```{r}
+#| label: tbl-moment-consistency
+#| tbl-cap: >
+#|   Moment consistency check. Observed HRV statistics compared to the
+#|   values predicted by the conditional MLE at the reference parameter set.
+#|   Relative residuals below 5\\% indicate that the MLE is consistent with
+#|   the observed second-order structure of the tachogram. LF and HF band
+#|   powers are computed from the FFT of the 4~Hz resampled tachogram.
+#| echo: false
+
+MLE_IDENT  <- full_conditional_mle(RES_IDENT)
+RR_IDENT   <- diff(RES_IDENT$spikes)
+MOMENT_CHK <- check_moment_consistency(RR_IDENT, MLE_IDENT)
+
+knitr::kable(MOMENT_CHK, escape = FALSE,
+             col.names = c("Statistic", "Observed", "Predicted (MLE)",
+                           "Relative residual"),
+             align = c("l", "r", "r", "r"))
+```
+
 ## Sensitivity to Decay-Rate Parameters {#sec-sensitivity}
 
 The decay rates $a_p$ and $a_s$ are free parameters estimated jointly with all other parameters; their precision depends on the spectral content and duration of the recording.  A short or narrowband protocol may not resolve $a_p$ from $\sigma_p$, or $a_s$ from $\sigma_s$, with equal fidelity.  Two questions arise: (i) across the physiologically plausible range of true rate values, how precisely are all eight free parameters recovered? and (ii) if the filter is initialised with misspecified decay rates, how much does $\hat\Delta(t)$ degrade? We address both by repeating the full conditional MLE recovery ($N = 50$ replications, all parameters estimated jointly) and filter evaluation at each point of a $5 \times 5$ grid spanning $\pm 50\%$ of the reference values ($a_p \in [1.0, 3.0]$ Hz, $a_s \in [0.1, 0.3]$ Hz), subject to $a_p > a_s$ (required for interpretable LF/HF band separation). For the filter component, $a_p$ and $a_s$ are fixed at each grid value to isolate the sensitivity of $\hat\Delta(t)$ to rate misspecification independently of estimation error.
@@ -982,9 +1045,12 @@ The decay rates $a_p$ and $a_s$ are free parameters estimated jointly with all o
 source("R/filter.R") 
 source("R/sensitivity.R")
 
+# Sensitivity study uses PARAMS_IDENT (c_p = c_s = 0) so that θ_true = θ*
+# for the recovery sub-study, and RES_IDENT as the reference trajectory so
+# filter RMSE measures state-estimation error, not input-model mismatch.
 SENS <- run_sensitivity(
-  base_params  = PARAMS,
-  sim_res_ref  = RES,
+  base_params  = PARAMS_IDENT,
+  sim_res_ref  = RES_IDENT,
   multipliers  = c(0.5, 0.75, 1.0, 1.25, 1.5),
   N_rep        = 50L,
   use_parallel = TRUE
@@ -1057,7 +1123,7 @@ The filter's posterior geometry reflects the single-stream observability: each I
 
 ## Static Parameter Estimation
 
-The total marginal log-likelihood $\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)$ is maximized over $\Theta$ by L-BFGS-B in log-space. Log-reparameterization $(\log a_p,\, \log a_s,\, \log\sigma_p,\, \log\sigma_s,\, \log\mu_0,\, \log\rho)$ enforces positivity without hard constraints and yields better-conditioned gradients than the natural scale.  The coupling terms $a_{ps}$ and $a_{sp}$ enter on their natural scale with lower bound zero.
+The total marginal log-likelihood $\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)$ is maximized over $\Theta$ by L-BFGS-B in log-space. Starting values are fitted by a biexponential model to the tachogram ACF to recover $a_p$ and $a_s$, distributes the observed SDNN between the two spectral variances according to the fitted ACF weights to recover $\sigma_p$ and $\sigma_s$, applies the log-normal mean correction $\hat\mu_0 = \bar\tau\exp(-\hat\sigma_\Delta^2/2)$ to recover $\mu_0$, and uses the stationary IG MLE for $\kappa$ to recover $\rho$. These data-driven starting values are consistent with the observed second-order structure of the tachogram (@sec-moments) and substantially reduce the frequency of local-optimum convergence failures relative to literature defaults. Log-reparameterization $(\log a_p,\, \log a_s,\, \log\sigma_p,\, \log\sigma_s,\, \log\mu_0,\, \log\rho)$ enforces positivity without hard constraints and yields better-conditioned gradients than the natural scale. The coupling terms $a_{ps}$ and $a_{sp}$ enter on their natural scale with lower bound zero.
 
 ## Filter Validation on Simulated Data
 
@@ -1099,16 +1165,16 @@ layout(matrix(1:3, 3, 1), heights = c(1.2, 0.9, 0.9))
 par(mar = c(2, 5, 1.5, 2), oma = c(3, 0, 0, 0))
 
 # ---- Top: Delta recovery (unchanged) ----
-plot(RES$time, RES$delta, type = "l", col = "black", lwd = 1.2,
+plot(RES_IDENT$time, RES_IDENT$delta, type = "l", col = "black", lwd = 1.2,
      ylab = expression(Delta(t)), xaxt = "n", frame.plot = FALSE,
-     ylim = range(c(RES$delta,
+     ylim = range(c(RES_IDENT$delta,
                     flt_grid$delta + 2 * flt_grid$sd_delta,
                     flt_grid$delta - 2 * flt_grid$sd_delta), na.rm = TRUE))
-polygon(c(RES$time, rev(RES$time)),
+polygon(c(RES_IDENT$time, rev(RES_IDENT$time)),
         c(flt_grid$delta + 2 * flt_grid$sd_delta,
           rev(flt_grid$delta - 2 * flt_grid$sd_delta)),
         col = adjustcolor("#0072B2", 0.15), border = NA)
-lines(RES$time, flt_grid$delta, col = "#0072B2", lwd = 2)
+lines(RES_IDENT$time, flt_grid$delta, col = "#0072B2", lwd = 2)
 abline(h = 0, lty = 2, col = "gray60")
 legend("topleft",
        legend = c(expression("True" ~ Delta(t)),
@@ -1119,27 +1185,27 @@ legend("topleft",
 # Posterior SD per branch from the 2x2 covariance matrices
 sd_p <- approx(FLT$beat_times,
                sqrt(sapply(FLT$P_filt, function(P) P[1L, 1L])),
-               xout = RES$time, rule = 2)$y
+               xout = RES_IDENT$time, rule = 2)$y
 sd_s <- approx(FLT$beat_times,
                sqrt(sapply(FLT$P_filt, function(P) P[2L, 2L])),
-               xout = RES$time, rule = 2)$y
+               xout = RES_IDENT$time, rule = 2)$y
 
-ylim_branches <- range(c(RES$p, RES$s,
+ylim_branches <- range(c(RES_IDENT$p, RES_IDENT$s,
                           flt_grid$p + 2*sd_p, flt_grid$p - 2*sd_p,
                           flt_grid$s + 2*sd_s, flt_grid$s - 2*sd_s),
                        na.rm = TRUE)
-plot(RES$time, RES$p, type = "l", col = "#000252", lwd = 1.2,
+plot(RES_IDENT$time, RES_IDENT$p, type = "l", col = "#000252", lwd = 1.2,
      ylab = "Branch states", xaxt = "n", frame.plot = FALSE, ylim = ylim_branches)
-polygon(c(RES$time, rev(RES$time)),
+polygon(c(RES_IDENT$time, rev(RES_IDENT$time)),
         c(flt_grid$p + 2*sd_p, rev(flt_grid$p - 2*sd_p)),
         col = adjustcolor("#0072B2", 0.15), border = NA)
-lines(RES$time, flt_grid$p, col = "#0072B2", lwd = 2, lty = 2)
+lines(RES_IDENT$time, flt_grid$p, col = "#0072B2", lwd = 2, lty = 2)
 
-lines(RES$time, RES$s, col = "#903900", lwd = 1.2)
-polygon(c(RES$time, rev(RES$time)),
+lines(RES_IDENT$time, RES_IDENT$s, col = "#903900", lwd = 1.2)
+polygon(c(RES_IDENT$time, rev(RES_IDENT$time)),
         c(flt_grid$s + 2*sd_s, rev(flt_grid$s - 2*sd_s)),
         col = adjustcolor("#D55E00", 0.15), border = NA)
-lines(RES$time, flt_grid$s, col = "#D55E00", lwd = 2, lty = 2)
+lines(RES_IDENT$time, flt_grid$s, col = "#D55E00", lwd = 2, lty = 2)
 abline(h = 0, lty = 2, col = "gray60")
 legend("topleft",
        legend = c(expression("True p(t)"), expression("True s(t)"),
@@ -1312,7 +1378,7 @@ rmse_v <- MARG_REC$rmse_delta
 rmse_v <- rmse_v[is.finite(rmse_v)]
 
 # Oracle RMSE — reuse from the filter validation section
-delta_err_oracle <- flt_grid$delta - RES$delta
+delta_err_oracle <- flt_grid$delta - RES_IDENT$delta
 oracle_rmse <- sqrt(mean(delta_err_oracle^2, na.rm = TRUE))
 
 delta_tbl <- data.frame(
@@ -1371,7 +1437,7 @@ mu_beats <- approx(RES$time, RES$mu, xout = beat_t)$y
 
 ```{r}
 #| label: fig-results-main
-#| fig-cap: "Simulation of the autonomic response to a double-logistic stress protocol ($t_{\\rm on} = 300$ s, $t_{\\rm off} = 420$ s, $k = 0.1$ Hz). **Row 1:** Exogenous input $u(t)$; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. **Row 2:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$, the quantity directly identified from the RR series. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
+#| fig-cap: "Simulation of the autonomic response to a double-logistic stress protocol ($t_{\\rm on} = 300$ s, $t_{\\rm off} = 420$ s, $k = 0.1$ Hz). **Row 1:** Exogenous input $u(t)$; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. **Row 2:** True net autonomic drive $\\Delta(t) = s(t) - p(t)$ from the generative model. The inference engine (UKF) recovers an estimate $\\hat\\Delta(t)$ of this quantity from the RR series alone; see @fig-filter-recovery for the correspondence between true and filtered trajectories under the identifiability-clean parameter set. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
 #| fig-height: 9
 
 layout(matrix(1:4, 4, 1), heights = c(0.6, 0.9, 0.9, 1.4))
