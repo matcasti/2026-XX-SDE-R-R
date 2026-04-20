@@ -648,6 +648,75 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
     list(ll = sum(dnorm(y_b, 0, sqrt(sig2 * C_b), log = TRUE)))
   }
 
+  # ---- Coupled parameters: warm-start sequential loop ----
+  # Pre-compute x_mat ONCE outside the loop (not inside vapply per grid point).
+  # Warm starts: pass previous converged solution as initialization for next point.
+  if (param %in% c("a_ps", "a_sp")) {
+    x_mat  <- cbind(sim_res$p, sim_res$s)
+    u_zero <- rep(0.0, nrow(x_mat))
+    is_ps  <- (param == "a_ps")
+
+    # Initialize from the joint MLE; th_warm is updated after each convergence.
+    th_warm <- if (is_ps) {
+      c(log(mle$a_p), log(mle$a_s), max(mle$a_sp, 1e-6),
+        log(max(mle$sigma_p, 1e-5)), log(max(mle$sigma_s, 1e-5)))
+    } else {
+      c(log(mle$a_p), log(mle$a_s), max(mle$a_ps, 1e-6),
+        log(max(mle$sigma_p, 1e-5)), log(max(mle$sigma_s, 1e-5)))
+    }
+
+    ll_out <- numeric(length(grid))
+    for (k in seq_along(grid)) {
+      v <- grid[k]
+      if (!is.finite(v) || v < 0) { ll_out[k] <- -Inf; next }
+
+      # nll_k closes over v (the fixed profile parameter) and x_mat/u_zero.
+      nll_k <- if (is_ps) {
+        local({
+          vv <- v
+          function(th) {
+            a_p_v <- exp(th[1L]);  a_s_v <- exp(th[2L]);  a_sp_v <- th[3L]
+            if (a_sp_v < 0 || a_p_v * a_s_v - vv * a_sp_v <= 0) return(1e10)
+            ll <- tryCatch(
+              ou_coupled_log_lik(vv, a_sp_v, a_p_v, a_s_v,
+                                 exp(th[4L]), exp(th[5L]), 0, 0,
+                                 x_mat, u_zero, dt),
+              error = function(e) -Inf)
+            if (is.finite(ll)) -ll else 1e10
+          }
+        })
+      } else {
+        local({
+          vv <- v
+          function(th) {
+            a_p_v <- exp(th[1L]);  a_s_v <- exp(th[2L]);  a_ps_v <- th[3L]
+            if (a_ps_v < 0 || a_p_v * a_s_v - a_ps_v * vv <= 0) return(1e10)
+            ll <- tryCatch(
+              ou_coupled_log_lik(a_ps_v, vv, a_p_v, a_s_v,
+                                 exp(th[4L]), exp(th[5L]), 0, 0,
+                                 x_mat, u_zero, dt),
+              error = function(e) -Inf)
+            if (is.finite(ll)) -ll else 1e10
+          }
+        })
+      }
+
+      res <- tryCatch(
+        optim(th_warm, nll_k, method = "L-BFGS-B",
+              lower = c(-Inf, -Inf, 0, -Inf, -Inf),
+              control = list(maxit = 300L, factr = 1e7)),
+        error = function(e) list(value = 1e10, par = th_warm, convergence = 99L)
+      )
+
+      ll_out[k] <- if (is.finite(-res$value)) -res$value else -Inf
+      # Accept warm start unconditionally: even a partial solution is a better
+      # initialization than the fixed joint-MLE for distant grid points.
+      th_warm <- res$par
+    }
+    return(ll_out)
+  }
+
+  # ---- All other parameters: standard vapply ----
   vapply(grid, function(v) {
     if (!is.finite(v)) return(-Inf)
     switch(param,
@@ -689,46 +758,6 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
              )
              opt$objective
            },
-           a_ps = {
-             if (v < 0) return(-Inf)
-             x_mat  <- cbind(sim_res$p, sim_res$s)
-             u_zero <- rep(0.0, nrow(x_mat))
-             th0 <- c(log(mle$a_p), log(mle$a_s), max(mle$a_sp, 0),
-                      log(max(mle$sigma_p, 1e-5)), log(max(mle$sigma_s, 1e-5)))
-             nll <- function(th) {
-               a_p_v <- exp(th[1L]);  a_s_v <- exp(th[2L]);  a_sp_v <- th[3L]
-               if (a_sp_v < 0 || a_p_v * a_s_v - v * a_sp_v <= 0) return(1e10)
-               ll <- tryCatch(
-                 ou_coupled_log_lik(v, a_sp_v, a_p_v, a_s_v,
-                                    exp(th[4L]), exp(th[5L]), 0, 0,
-                                    x_mat, u_zero, dt),
-                 error = function(e) -Inf)
-               if (is.finite(ll)) -ll else 1e10
-             }
-             -optim(th0, nll, method = "L-BFGS-B",
-                    lower = c(-Inf, -Inf, 0, -Inf, -Inf),
-                    control = list(maxit = 150L, factr = 1e9))$value
-           },
-           a_sp = {
-             if (v < 0) return(-Inf)
-             x_mat  <- cbind(sim_res$p, sim_res$s)
-             u_zero <- rep(0.0, nrow(x_mat))
-             th0 <- c(log(mle$a_p), log(mle$a_s), max(mle$a_ps, 1e-6),
-                      log(max(mle$sigma_p, 1e-5)), log(max(mle$sigma_s, 1e-5)))
-             nll <- function(th) {
-               a_p_v <- exp(th[1L]);  a_s_v <- exp(th[2L]);  a_ps_v <- th[3L]
-               if (a_ps_v < 0 || a_p_v * a_s_v - a_ps_v * v <= 0) return(1e10)
-               ll <- tryCatch(
-                 ou_coupled_log_lik(a_ps_v, v, a_p_v, a_s_v,
-                                    exp(th[4L]), exp(th[5L]), 0, 0,
-                                    x_mat, u_zero, dt),
-                 error = function(e) -Inf)
-               if (is.finite(ll)) -ll else 1e10
-             }
-             -optim(th0, nll, method = "L-BFGS-B",
-                    lower = c(-Inf, -Inf, 0, -Inf, -Inf),
-                    control = list(maxit = 150L, factr = 1e9))$value
-           },
            -Inf
     )
   }, numeric(1L))
@@ -758,9 +787,9 @@ all_profile_likelihoods <- function(sim_res, n_grid = 60, width = 3.0) {
   )
 
   if (use_coupled) {
-    specs$a_ps <- list(center = max(mle$a_ps, 1e-4), log_scale = FALSE,
+    specs$a_ps <- list(center = max(mle$a_ps, 1e-4), log_scale = TRUE,
                        width_override = 3.0, label = expression(a[ps]))
-    specs$a_sp <- list(center = max(mle$a_sp, 1e-4), log_scale = FALSE,
+    specs$a_sp <- list(center = max(mle$a_sp, 1e-4), log_scale = TRUE,
                        width_override = 3.0, label = expression(a[sp]))
   }
 

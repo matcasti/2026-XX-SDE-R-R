@@ -83,6 +83,26 @@ PARAMS <- make_model_params(
 # Derived quantity for inline use:
 KAPPA_REF <- kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)  # = 20
 
+# ---- Identifiability parameters: c_p = c_s = 0 ----
+# The inference model always treats u(t) ≡ 0.  For the recovery study,
+# profile likelihood, and FIM to test the ESTIMATOR (not the mismatch
+# between generative and inference model), the simulation parameters must
+# coincide with the pseudo-true parameters under u ≡ 0.  Setting c_p = c_s = 0
+# guarantees θ_true = θ* (no systematic distance between simulation and
+# estimator target).  The stress-protocol demonstration (fig-results-main)
+# retains PARAMS with c_p = -1, c_s = 0.1 to show physiological realism.
+PARAMS_IDENT <- make_model_params(
+  a_p = 2.0, a_s = 0.2,
+  a_ps = 0.0, a_sp = 0.0,
+  sigma_p = 0.20, sigma_s = 0.07,
+  mu_0 = 1.0, rho = 0.2236068,
+  c_p = 0.0, c_s = 0.0
+)
+KAPPA_REF_IDENT <- kappa_from_rho(PARAMS_IDENT$free$mu_0, PARAMS_IDENT$free$rho)
+
+set.seed(2026)
+
+RES_IDENT <- sim_sde_ig(720, 0.005, PARAMS_IDENT, function(t) 0)
 
 INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 0.1)
 
@@ -649,7 +669,7 @@ The full simulation integrates the three components above into a single time-ind
 
 # Identifiability Analysis {#sec-identifiability}
 
-The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are used exclusively for simulation: they allow the generative model to produce physiologically realistic sympathetic activation dynamics via a slow double-logistic input ($k = 0.1$, 10–90% rise time $\approx 44$ s). Since $u(t)$ is never observed in practice, inference always treats $c_p = c_s = 0$ and attributes all dynamical variation to the OU spectral structure.
+The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are simulation-only parameters that drive the generative stress protocol [@sec-simulation]. Since $u(t)$ is never observed during inference, $c_p = c_s = 0$ in the inference model. This has a precise consequence for the identifiability study: the recovery study must use $c_p = c_s = 0$ in simulation as well, so that the simulation parameters $\theta_\text{true}$ and the pseudo-true parameters $\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]$ coincide. When $c_p \neq 0$ or $c_s \neq 0$, the MLE correctly converges to $\theta^* \neq \theta_\text{true}$, not because the estimator is biased, but because the inference model is correctly specified only for $u \equiv 0$, and $\theta^*$ is the identifiable projection of $\theta_\text{true}$ onto the inference model. Reporting $\hat\theta - \theta_\text{true}$ in that setting confounds estimator precision with model projection distance; reporting $\hat\theta - \theta^*$ is the correct measure of estimator quality. Using $c_p = c_s = 0$ makes $\theta_\text{true} = \theta^*$ and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.
 
 The FIM analysis below therefore covers the full $8 \times 8$ system. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision.  We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory $\{p(t), s(t)\}_{0 \le t \le T}$, the full parameter set $\Theta$ is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study ($N = 500$ replications). For the uncoupled sub-model ($a_{ps} = a_{sp} = 0$) with a non-trivial input ($u(t) \not\equiv 0$), the FIM is $8 \times 8$ and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full $10 \times 10$ system, where the block-diagonal structure breaks down, is established in @sec-coupling via a numerical FIM and a dedicated recovery study. Marginal identifiability — recovery from the spike train alone, integrating over unobserved latent states — is established in @sec-inference via the UKF marginal likelihood.
 
@@ -711,7 +731,7 @@ These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\ha
 #| fig-cap: "Observed Fisher information matrix and eigenvalue spectrum for the reference parameter set. **Left:** The normalized FIM (each entry divided by the maximum diagonal value) displayed as a heatmap. The three blocks along the diagonal correspond to the parasympathetic OU block $(\\log a_p, \\log\\sigma_p)$, sympathetic OU block $(\\log a_s, \\log\\sigma_s)$, and IG observation block $(\\log\\mu_0, \\log\\rho)$. Off-diagonal blocks are exactly zero by construction, confirming the theoretical separability of the three log-likelihood components. **Right:** Eigenvalues on a log scale. All six eigenvalues are strictly positive, confirming that the FIM is positive definite and all parameters are locally identified. The large spread reflects the differing amounts of information available from $n \\approx 144{,}000$ OU transitions (720 s at $\\Delta t = 0.005$ s) versus $N \\approx `r length(RES$spikes)`$ beats."
 #| fig-height: 4.5
 
-fim_result <- full_conditional_fim(RES)
+fim_result <- full_conditional_fim(RES_IDENT)
 
 par(mfrow = c(1, 2), mar = c(5, 6, 2.5, 1))
 
@@ -787,16 +807,16 @@ We generated $N = 250$ independent realizations from the reference parameter set
 #| cache: true
 #| include: false
 
-REC_INPUT <- make_double_logistic(t_on = 120, t_off = 180, k = 0.1)
-
-# Recovery uses PARAMS defined in the setup chunk.
-# Input sensitivities c_p, c_s are non-zero, enabling identification.
+# Recovery study uses PARAMS_IDENT (c_p = c_s = 0, no input).
+# This ensures the estimator target θ* equals the simulation θ_true,
+# so the recovery study cleanly tests estimator precision without
+# the confound of input-model mismatch.
 REC_STUDY <- recovery_study(
   N           = 250,
-  true_params = PARAMS,
+  true_params = PARAMS_IDENT,
   duration    = 300,
   dt          = 0.005,
-  input_fn    = REC_INPUT,
+  input_fn    = function(t) 0,
   use_parallel = TRUE
 )
 ```
@@ -804,14 +824,11 @@ REC_STUDY <- recovery_study(
 ```{r}
 #| label: fig-recovery
 #| fig-cap: >
-#|   Monte Carlo recovery study ($N = 250$ replications, 300 s each). Centre of 
-#|   each interval: relative bias 
-#|   $(\hat\theta - \theta_\text{true})/|\theta_\text{true}| \times 100\%$. 
-#|   Whiskers: $\pm$ relative RMSE. Right margin: empirical 95\% Wald CI coverage. 
-#|   All six free parameters are estimated by the conditional MLE, in 
-#|   analytically separate blocks for the two OU branches and the IG observation 
-#|   component. Well-calibrated estimation shows bias near zero and coverage 
-#|   near 95\%.
+#|   Centre of each interval: relative bias $(\hat\theta - \theta^*)/|\theta^*| 
+#|   \times 100\%$ where $\theta^* = \theta_\text{true}$ (since $c_p = c_s = 0$ 
+#|   in both simulation and inference). Whiskers: $\pm$ relative RMSE. Right 
+#|   margin: empirical 95\% Wald CI coverage. All six free parameters are 
+#|   estimated by the conditional MLE.
 #| fig-height: 4.5
 
 plot_recovery(REC_STUDY$summary,
@@ -853,7 +870,7 @@ Profile likelihood curves provide the final identifiability check: a peaked, uni
 #| cache: true
 #| include: false
 
-PROFILES <- all_profile_likelihoods(RES, n_grid = 80, width = 3.0)
+PROFILES <- all_profile_likelihoods(RES_IDENT, n_grid = 80, width = 3.0)
 ```
 
 ```{r}
@@ -861,11 +878,10 @@ PROFILES <- all_profile_likelihoods(RES, n_grid = 80, width = 3.0)
 #| fig-cap: "Profile log-likelihoods for all eight free parameters (six always free; $c_p$ and $c_s$ identifiable with the boxcar input), normalized to zero at the MLE. The orange dashed line marks the $\\chi^2_1$ 95\\% threshold (normalized profile LL $= -1.92$); tick marks on the horizontal axis indicate the implied 95\\% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All six profiles are strictly unimodal and sharply peaked, confirming that each parameter is precisely identified from the latent state trajectory."
 #| fig-height: 5.5
 
-fp <- PARAMS$free
+fp <- PARAMS_IDENT$free
 true_vals <- c(a_p = fp$a_p, a_s = fp$a_s,
                sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
-               mu0 = fp$mu_0, rho = fp$rho,
-               c_p = fp$c_p, c_s = fp$c_s)
+               mu0 = fp$mu_0, rho = fp$rho)
 
 plot_profiles(PROFILES, true_vals = true_vals,
               main = "Profile Likelihoods, Reference Parameter Set")
@@ -884,23 +900,23 @@ The full model estimates ten free parameters: $\{a_p,\, a_s,\, a_{ps},\, a_{sp},
 # Physiologically motivated coupling values.
 # Stability requires det(A) = a_p*a_s - b_ps*b_sp > 0, i.e. b_ps*b_sp < 0.4.
 # Stability check: det(A) = a_p*a_s - a_ps*a_sp = 2.0*0.2 - 0.15*0.10 = 0.385 > 0.
-PARAMS_COUPLED <- make_model_params(
+PARAMS_COUPLED_IDENT <- make_model_params(
   a_p = 2.0, a_s = 0.2,
-  a_ps = 0.15, a_sp = 0.10,   # mutual inhibition: s→p and p→s, magnitudes both ≥ 0
+  a_ps = 0.15, a_sp = 0.10,
   sigma_p = 0.20, sigma_s = 0.07,
-  mu_0 = PARAMS$free$mu_0,       # inherit baseline from reference params
-  rho  = PARAMS$free$rho,        # same kappa as uncoupled study
-  c_p = -1.0, c_s = 0.1          # simulation-only; inference always uses c_p = c_s = 0
+  mu_0 = PARAMS_IDENT$free$mu_0,
+  rho  = PARAMS_IDENT$free$rho,
+  c_p = 0.0, c_s = 0.0        # identifiability analysis: no input
 )
 
 set.seed(5678)
-RES_COUPLED <- sim_sde_ig(300, 0.005, PARAMS_COUPLED, REC_INPUT)
+RES_COUPLED_IDENT <- sim_sde_ig(300, 0.005, PARAMS_COUPLED_IDENT, function(t) 0)
 
 if (FALSE) {
   par(mfrow = c(1,3))
-  plot(RES_COUPLED$time, RES_COUPLED$p, type = "l")
-  plot(RES_COUPLED$time, RES_COUPLED$s, type = "l")
-  plot(RES_COUPLED$time, RES_COUPLED$mu, type = "l")
+  plot(RES_COUPLED_IDENT$time, RES_COUPLED$p, type = "l")
+  plot(RES_COUPLED_IDENT$time, RES_COUPLED$s, type = "l")
+  plot(RES_COUPLED_IDENT$time, RES_COUPLED$mu, type = "l")
 }
 ```
 
@@ -909,9 +925,9 @@ if (FALSE) {
 #| cache: true
 #| include: false
 
-MLE_COUPLED   <- full_conditional_mle(RES_COUPLED)
-FIM_COUPLED   <- full_conditional_fim(RES_COUPLED)
-PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED, n_grid = 60, width = 3.0)
+MLE_COUPLED   <- full_conditional_mle(RES_COUPLED_IDENT)
+FIM_COUPLED   <- full_conditional_fim(RES_COUPLED_IDENT)
+PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED_IDENT, n_grid = 60, width = 3.0)
 ```
 
 ```{r}
@@ -919,11 +935,10 @@ PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED, n_grid = 60, width = 3.0)
 #| fig-cap: "Profile log-likelihoods for all eight free parameters under the coupled model ($a_{ps} = 0.15$, $a_{sp} = 0.10$). Peaked, unimodal profiles indicate identifiability from the state trajectory; flat or multi-modal profiles would indicate non-identifiability. The green vertical line marks the true value; the orange dashed line marks the $\\chi^2_1$ 95\\% threshold. Profiles for $b_{ps}$ and $b_{sp}$ are obtained by re-optimising over all remaining OU parameters at each grid point."
 #| fig-height: 6.5
 
-fp_c <- PARAMS_COUPLED$free
+fp_c <- PARAMS_COUPLED_IDENT$free
 true_coupled <- c(a_p = fp_c$a_p, a_s = fp_c$a_s,
                   sigma_p = fp_c$sigma_p, sigma_s = fp_c$sigma_s,
                   mu0 = fp_c$mu_0, rho = fp_c$rho,
-                  c_p = fp_c$c_p, c_s = fp_c$c_s,
                   a_ps = fp_c$a_ps, a_sp = fp_c$a_sp)
 
 plot_profiles(PROF_COUPLED, true_vals = true_coupled,
@@ -937,10 +952,10 @@ plot_profiles(PROF_COUPLED, true_vals = true_coupled,
 
 REC_COUPLED <- recovery_study(
   N           = 250L,
-  true_params = PARAMS_COUPLED,
+  true_params = PARAMS_COUPLED_IDENT,
   duration    = 300,
   dt          = 0.005,
-  input_fn    = REC_INPUT,
+  input_fn    = function(t) 0,
   use_parallel = TRUE
 )
 ```
@@ -1057,11 +1072,10 @@ source("R/filter.R")
 #| cache: true
 #| include: false
 
-# ORACLE FILTER: runs at the true parameter values (PARAMS) to isolate
-# filter state-estimation error from parameter estimation error.
-# The practical (MLE-initialized) filter is the subject of validation.
-FLT       <- pp_ukf(RES$spikes, PARAMS, INPUT_FN)
-flt_grid  <- filter_to_grid(FLT, RES$time)
+# Oracle filter: true parameters, no input (PARAMS_IDENT, c_p=c_s=0).
+# This isolates filter state-estimation error from parameter estimation error.
+FLT       <- pp_ukf(RES_IDENT$spikes, PARAMS_IDENT, function(t) 0)
+flt_grid  <- filter_to_grid(FLT, RES_IDENT$time)
 ```
 
 
@@ -1153,11 +1167,11 @@ mtext("Time (s)", side = 1, outer = TRUE, line = 1.5)
 #|   yielding approximate $\mathcal{N}(0,1)$ residuals) indicate a well-calibrated filter.
 #| echo: false
 
-delta_err <- flt_grid$delta - RES$delta
-std_innov <- FLT$innov / sqrt(FLT$S_innov)
+delta_err <- flt_grid$delta - RES_IDENT$delta
+p_err <- flt_grid$p - RES_IDENT$p
+s_err <- flt_grid$s - RES_IDENT$s
 
-p_err <- flt_grid$p - RES$p
-s_err <- flt_grid$s - RES$s
+std_innov <- FLT$innov / sqrt(FLT$S_innov)
 
 flt_tbl <- data.frame(
   Statistic = c(
@@ -1199,10 +1213,10 @@ Two quantities of interest emerge from this study. The parameter recovery compar
 
 MARG_REC <- marginal_recovery_study(
   N           = 250L,
-  true_params = PARAMS,
+  true_params = PARAMS_IDENT,
   duration    = 300,
   dt          = 0.005,
-  input_fn    = REC_INPUT,
+  input_fn    = function(t) 0,
   use_parallel = TRUE
 )
 ```
@@ -1335,7 +1349,7 @@ knitr::kable(delta_tbl, escape = FALSE,
 
 The pattern expected from the identifiability geometry is precisely what emerges. The OU branch parameters ($a_p$, $a_s$, $\sigma_p$, $\sigma_s$) show the largest relative RMSE inflation from conditional to marginal: these are identified through the spectral curvature of the innovation sequence, which is an indirect and lower-resolution signal compared with direct observation of the state trajectory. The IG parameters ($\mu_0$, $\rho$) are less affected, the inter-beat interval sequence directly constrains the mean and coefficient of variation of the effective distribution regardless of whether states are observed or integrated. The input sensitivities ($c_p$, $c_s$) are the noisiest in the marginal case, as expected: their identification relies on detecting the systematic shift in the innovation mean during the 60-second stress window, a weaker signal than the full OU log-likelihood available in the conditional setting.
 
-The RMSE inflation ratio for $\hat\Delta(t)$, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of `r sprintf("%.2f", mean(MARG_REC$rmse_delta[is.finite(MARG_REC$rmse_delta)]) / sqrt(mean((flt_grid$delta - RES$delta)^2, na.rm = TRUE)))`× places the pipeline in the well-identified regime: the dominant source of $\hat\Delta(t)$ error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.
+The RMSE inflation ratio for $\hat\Delta(t)$, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of `r sprintf("%.2f", mean(MARG_REC$rmse_delta[is.finite(MARG_REC$rmse_delta)]) / sqrt(mean((flt_grid$delta - RES_IDENT$delta)^2, na.rm = TRUE)))`× places the pipeline in the well-identified regime: the dominant source of $\hat\Delta(t)$ error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.
 
 #  Simulation Results
 
