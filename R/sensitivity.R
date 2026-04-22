@@ -54,6 +54,8 @@ sensitivity_one <- function(a_p_val, a_s_val,
   params_mod$free$a_p <- a_p_val
   params_mod$free$a_s <- a_s_val
 
+  # NOTE: if base_params has c_p = c_s = 0, the input_fn has no generative
+  # effect. The argument is retained for API compatibility with single_recovery().
   # (1) Conditional MLE recovery — N_rep short replications
   set.seed(SENSITIVITY_SEED)
   seeds <- sample.int(1e6L, N_rep)

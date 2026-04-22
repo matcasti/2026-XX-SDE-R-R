@@ -23,7 +23,11 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
     t_end   <- spk[k + 1L]
     idx <- which(time_vec > t_start & time_vec <= t_end)
     if (length(idx) > 0L) {
-      -log(mean(exp(-delta_vec[idx])))
+      neg_d  <- -delta_vec[idx]
+      d_max  <- max(neg_d)
+      # log-sum-exp: log(sum(exp(neg_d))) = d_max + log(sum(exp(neg_d - d_max)))
+      lse    <- d_max + log(sum(exp(neg_d - d_max)))
+      lse - log(length(idx))   # = -log(mean(exp(-delta)))
     } else {
       # No grid points inside (t_start, t_end] — IBI < dt.
       # This should not occur at dt = 0.005 s with physiological IBIs.
@@ -99,7 +103,7 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
 
   nll_3d <- function(th) {
     a_v   <- exp(th[1L]); sig_v <- exp(th[2L]); c_v <- th[3L]
-    if (a_v <= 0 || sig_v <= 0) return(1e10)
+    if (a_v < 1e-6 || sig_v <= 0) return(1e10)
     e_adt <- exp(-a_v * dt)
     z_v   <- u_vec[idx] / a_v * (-expm1(-a_v * dt))
     y_v   <- x_vec[-1L] - x_vec[idx] * e_adt - c_v * z_v
@@ -159,7 +163,8 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
 }
 
 # ---- Bivariate coupled-OU log-likelihood ----
-# Parameterization: a_ps, a_sp free; a_p, a_s fixed structural.
+# Parameterization: all four rate parameters free (a_p, a_s, a_ps, a_sp);
+# called by ou_coupled_mle which optimises over log(a_p), log(a_s), a_ps, a_sp.
 # All n-1 bivariate Gaussian transition densities share the same F, Q
 # (dt constant), so these are computed once per call.
 
@@ -309,8 +314,8 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
 
   i_log_kappa <- n / 2
   # SEs are unreliable if kappa is at its cap; flag with NA
-  mu0_se   <- if (kappa_hat >= 1e6 - 1) NA_real_ else mu0_hat   / sqrt(i_log_mu0)
-  kappa_se <- if (kappa_hat >= 1e6 - 1) NA_real_ else kappa_hat / sqrt(i_log_kappa)
+  mu0_se   <- if (kappa_hat >= 1e6) NA_real_ else mu0_hat   / sqrt(i_log_mu0)
+  kappa_se <- if (kappa_hat >= 1e6) NA_real_ else kappa_hat / sqrt(i_log_kappa)
 
   ll <- sum(log_ig_pdf(tau_vec, mu_k, kappa_hat))
 

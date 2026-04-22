@@ -28,8 +28,6 @@
 # filter — no constraint is imposed by hand.
 # ============================================================
 
-source("R/spectral_init.R")
-
 # ---- UKF tuning (Wan & van der Merwe 2000) ----
 # L = 2 (state dim: p, s).  alpha = 0.1 gives moderate sigma-point spread;
 # beta = 2 is optimal for Gaussian priors; kappa = 0 is standard.
@@ -73,7 +71,7 @@ source("R/spectral_init.R")
 #
 # Returns: list(m, P)
 
-.ou_predict <- function(m0, P0, tau, sp, fp, u = 0) {
+.ou_predict <- function(m0, P0, tau, fp, u = 0) {
   a_p <- fp$a_p;  a_s <- fp$a_s
 
   if ((abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12) {
@@ -85,6 +83,12 @@ source("R/spectral_init.R")
                                fp$sigma_p, fp$sigma_s)
     Q_raw <- P_inf - F_mat %*% P_inf %*% t(F_mat)
     Q_mat <- 0.5 * (Q_raw + t(Q_raw))
+
+    # Regularize against floating-point PSD violation at tiny tau
+    eig_q <- eigen(Q_mat, symmetric = TRUE, only.values = TRUE)$values
+    if (any(eig_q < 0)) {
+      Q_mat <- Q_mat + (abs(min(eig_q)) + 1e-10) * diag(2L)
+    }
 
     d_vec <- c(0, 0)
     if (u != 0) {
@@ -128,7 +132,11 @@ source("R/spectral_init.R")
   h_pts  <- mu_0 * exp(pts[1L, ] - pts[2L, ])   # h(sigma_i)
 
   mu_hat <- sum(.ukf_weights$Wm * h_pts)
-  R      <- max(mu_hat^3 / kappa, 1e-6)          # IG Var; floored for safety
+  if (!is.finite(mu_hat) || mu_hat <= 0) {
+    # Sigma-point collapse: return prior without update
+    return(list(m = m1, P = P1, innov = 0, S = 1, mu_hat = fp$mu_0, ll = -Inf))
+  }
+  R <- max(mu_hat^3 / kappa, 1e-6)
 
   dh   <- h_pts - mu_hat
   S    <- sum(.ukf_weights$Wc * dh^2) + R
@@ -201,7 +209,7 @@ pp_ukf <- function(spikes,
     # transition (≈ 0.5% error at the steepest point for the reference parameters).
     u_k   <- input_fn(spikes[k])
 
-    pred <- .ou_predict(m_cur, P_cur, tau_k, sp, fp, u = u_k)
+    pred <- .ou_predict(m_cur, P_cur, tau_k, fp, u = u_k)
     upd  <- .ukf_update(pred$m, pred$P, tau_k, fp, kap_const)
 
     m_filt[k, ]   <- upd$m
@@ -281,6 +289,16 @@ pp_mle <- function(spikes,
   fp0         <- params_spectral$free
   use_coupled <- (abs(fp0$a_ps) + abs(fp0$a_sp)) > 1e-12
 
+  if (use_coupled) {
+    fp0 <- params_spectral$free
+    if (fp0$a_p * fp0$a_s - fp0$a_ps * fp0$a_sp <= 0) {
+      # Starting values violate stability: fall back to params_init
+      if (verbose)
+        message("pp_mle: spectral_init starting values violate det(A)>0 after coupling patch; using params_init.")
+      params_spectral <- params_init
+    }
+  }
+
   # Log-space packing: (log a_p, log a_s, log σ_p, log σ_s, log μ₀, log ρ)
   # + 2 if coupled: (a_ps, a_sp) with lower bound 0.
   # c_p and c_s are NEVER estimated from RR data; always fixed at 0.
@@ -338,10 +356,19 @@ pp_mle <- function(spikes,
   fp_hat     <- unpack(res$par)
   params_hat <- list(structural = params_init$structural, free = fp_hat)
 
+  ll_hat <- if (res$value >= 1e9) {
+    if (verbose)
+      message("pp_mle: optimizer terminated at a boundary (neg_ll = ", res$value,
+              "). ll is unreliable; check convergence code ", res$convergence, ".")
+    NA_real_
+  } else {
+    -res$value
+  }
+
   list(
     params_hat  = params_hat,
     free_hat    = fp_hat,
-    ll          = -res$value,
+    ll          = ll_hat,
     convergence = res$convergence,
     filter      = pp_ukf(spikes, params_hat, input_fn)
   )

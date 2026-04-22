@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Matías Castillo-Aguilar">
-<meta name="dcterms.date" content="2026-04-20">
+<meta name="dcterms.date" content="2026-04-21">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -390,7 +390,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">April 20, 2026</p>
+              <p class="date">April 21, 2026</p>
             </div>
           </div>
           
@@ -491,7 +491,7 @@ window.Quarto = {
 
 <section id="abstract" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Abstract</h1>
-<p>Heart rate variability is widely used to probe autonomic cardiovascular regulation, yet existing models are either descriptive spectral summaries or mechanistic point-process models whose time-varying parameters lack explicit stochastic dynamics. We introduce the SDE-Inverse Gaussian (SDE-IG) framework, which couples two Ornstein-Uhlenbeck processes representing parasympathetic and sympathetic drives to an Inverse Gaussian first-passage observation model for inter-beat intervals. All ten free parameters, including the decay rates, coupling magnitudes, diffusion amplitudes, and observation parameters, are locally identifiable from a single RR interval stream: the Fisher information matrix is block-diagonal and positive definite, closed-form and profile maximum likelihood estimators exist for all parameters, and a Monte Carlo recovery study (<span class="math inline">\(N = 500\)</span> replications) confirms sub-percent relative bias and nominal 95% confidence interval coverage. A spike-to-spike Unscented Kalman Filter recovers the net autonomic drive <span class="math inline">\(\hat\Delta(t)\)</span> and the individual branch estimates <span class="math inline">\([\hat p(t),\, \hat s(t)]\)</span> in real time; once parameters are estimated, forward simulation of the fitted OU model generates individual branch trajectories consistent with the identified spectral structure<!-- TODO: insert real-data RMSE/KS/AIC numbers -->. The architecture extends naturally to multi-stream data, where an additional physiological observation (respiratory, blood pressure) further constrains the common-mode direction, reducing branch-level posterior uncertainty. This framework provides a principled, estimable, and interpretable generative model for beat-to-beat autonomic dynamics.</p>
+<p>Heart rate variability is widely used to probe autonomic cardiovascular regulation, yet existing models are either descriptive spectral summaries or mechanistic point-process models whose time-varying parameters lack explicit stochastic dynamics. We introduce the SDE-Inverse Gaussian (SDE-IG) framework, which couples two Ornstein-Uhlenbeck processes representing parasympathetic and sympathetic drives to an Inverse Gaussian first-passage observation model for inter-beat intervals. All eight free parameters — the decay rates <span class="math inline">\(a_p, a_s\)</span>, coupling magnitudes <span class="math inline">\(a_{ps}, a_{sp}\)</span>, diffusion amplitudes <span class="math inline">\(\sigma_p, \sigma_s\)</span>, and observation parameters <span class="math inline">\(\mu_0, \rho\)</span>, are locally identifiable from a single RR interval stream (the input sensitivities <span class="math inline">\(c_p, c_s\)</span> require a non-trivial exogenous input and are not estimated in the single-stream protocol), the Fisher information matrix is block-diagonal and positive definite, closed-form and profile maximum likelihood estimators exist for all parameters, and a Monte Carlo recovery study (<span class="math inline">\(N = 250\)</span> replications) confirms sub-percent relative bias and nominal 95% confidence interval coverage. A spike-to-spike Unscented Kalman Filter recovers the net autonomic drive <span class="math inline">\(\hat\Delta(t)\)</span> and the individual branch estimates <span class="math inline">\([\hat p(t),\, \hat s(t)]\)</span> in real time; once parameters are estimated, forward simulation of the fitted OU model generates individual branch trajectories consistent with the identified spectral structure<!-- TODO: insert real-data RMSE/KS/AIC numbers -->. The architecture extends naturally to multi-stream data, where an additional physiological observation (respiratory, blood pressure) further constrains the common-mode direction, reducing branch-level posterior uncertainty. This framework provides a principled, estimable, and interpretable generative model for beat-to-beat autonomic dynamics.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div id="fig-model-schematic" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1132,8 +1132,8 @@ u(t) \;=\; \sigma\!\bigl(k(t - t_{\rm on})\bigr)\cdot\sigma\!\bigl(k(t_{\rm off}
 </section>
 <section id="sec-identifiability" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Identifiability Analysis</h1>
-<p>The framework introduces up to ten free parameters: <span class="math inline">\(\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}\)</span>. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are identifiable only when <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are always free parameters; their conditional identifiability from a single RR stream is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>. The active inference parameter set is <span class="math inline">\(\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> for the uncoupled sub-model and <span class="math inline">\(\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> for the coupled model. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are simulation-only parameters that drive the generative stress protocol <strong>?@sec-simulation</strong>. Since <span class="math inline">\(u(t)\)</span> is never observed during inference, <span class="math inline">\(c_p = c_s = 0\)</span> in the inference model. This has a precise consequence for the identifiability study: the recovery study must use <span class="math inline">\(c_p = c_s = 0\)</span> in simulation as well, so that the simulation parameters <span class="math inline">\(\theta_\text{true}\)</span> and the pseudo-true parameters <span class="math inline">\(\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]\)</span> coincide. When <span class="math inline">\(c_p \neq 0\)</span> or <span class="math inline">\(c_s \neq 0\)</span>, the MLE correctly converges to <span class="math inline">\(\theta^* \neq \theta_\text{true}\)</span>, not because the estimator is biased, but because the inference model is correctly specified only for <span class="math inline">\(u \equiv 0\)</span>, and <span class="math inline">\(\theta^*\)</span> is the identifiable projection of <span class="math inline">\(\theta_\text{true}\)</span> onto the inference model. Reporting <span class="math inline">\(\hat\theta - \theta_\text{true}\)</span> in that setting confounds estimator precision with model projection distance; reporting <span class="math inline">\(\hat\theta - \theta^*\)</span> is the correct measure of estimator quality. Using <span class="math inline">\(c_p = c_s = 0\)</span> makes <span class="math inline">\(\theta_\text{true} = \theta^*\)</span> and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.</p>
-<p>The FIM analysis below therefore covers the full <span class="math inline">\(8 \times 8\)</span> system. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision. We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory <span class="math inline">\(\{p(t), s(t)\}_{0 \le t \le T}\)</span>, the full parameter set <span class="math inline">\(\Theta\)</span> is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study (<span class="math inline">\(N = 500\)</span> replications). For the uncoupled sub-model (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>) with a non-trivial input (<span class="math inline">\(u(t) \not\equiv 0\)</span>), the FIM is <span class="math inline">\(8 \times 8\)</span> and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full <span class="math inline">\(10 \times 10\)</span> system, where the block-diagonal structure breaks down, is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a> via a numerical FIM and a dedicated recovery study. Marginal identifiability — recovery from the spike train alone, integrating over unobserved latent states — is established in <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a> via the UKF marginal likelihood.</p>
+<p>The framework introduces up to ten parameters in the generative model: <span class="math inline">\(\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}\)</span>. Of these, <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are fixed at zero in the inference model (external input is unobserved), so the active inference parameter set is eight-dimensional. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are identifiable only when <span class="math inline">\(u(t) \not\equiv 0\)</span>. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> are always free parameters; their conditional identifiability from a single RR stream is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>. The active inference parameter set is <span class="math inline">\(\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> for the uncoupled sub-model and <span class="math inline">\(\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}\)</span> for the coupled model. The input sensitivities <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> are simulation-only parameters that drive the generative stress protocol <strong>?@sec-simulation</strong>. Since <span class="math inline">\(u(t)\)</span> is never observed during inference, <span class="math inline">\(c_p = c_s = 0\)</span> in the inference model. This has a precise consequence for the identifiability study: the recovery study must use <span class="math inline">\(c_p = c_s = 0\)</span> in simulation as well, so that the simulation parameters <span class="math inline">\(\theta_\text{true}\)</span> and the pseudo-true parameters <span class="math inline">\(\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]\)</span> coincide. When <span class="math inline">\(c_p \neq 0\)</span> or <span class="math inline">\(c_s \neq 0\)</span>, the MLE correctly converges to <span class="math inline">\(\theta^* \neq \theta_\text{true}\)</span>, not because the estimator is biased, but because the inference model is correctly specified only for <span class="math inline">\(u \equiv 0\)</span>, and <span class="math inline">\(\theta^*\)</span> is the identifiable projection of <span class="math inline">\(\theta_\text{true}\)</span> onto the inference model. Reporting <span class="math inline">\(\hat\theta - \theta_\text{true}\)</span> in that setting confounds estimator precision with model projection distance; reporting <span class="math inline">\(\hat\theta - \theta^*\)</span> is the correct measure of estimator quality. Using <span class="math inline">\(c_p = c_s = 0\)</span> makes <span class="math inline">\(\theta_\text{true} = \theta^*\)</span> and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.</p>
+<p>The FIM analysis below covers the <span class="math inline">\(6 \times 6\)</span> system for the uncoupled sub-model (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>, <span class="math inline">\(c_p = c_s = 0\)</span>); the <span class="math inline">\(8 \times 8\)</span> coupled-model FIM is computed in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision. We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory <span class="math inline">\(\{p(t), s(t)\}_{0 \le t \le T}\)</span>, the full parameter set <span class="math inline">\(\Theta\)</span> is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study (<span class="math inline">\(N = 500\)</span> replications). For the uncoupled sub-model (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>) with a non-trivial input (<span class="math inline">\(u(t) \not\equiv 0\)</span>), the FIM is <span class="math inline">\(8 \times 8\)</span> and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full <span class="math inline">\(8 \times 8\)</span> coupled system (where the block-diagonal structure breaks down) is established in <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a> via a numerical FIM and a dedicated recovery study. Marginal identifiability, i.e.&nbsp;recovery from the spike train alone, integrating over unobserved latent states, is established in <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a> via the UKF marginal likelihood.</p>
 <section id="separability-of-the-conditional-log-likelihood" class="level2" data-number="4.1">
 <h2 data-number="4.1" class="anchored" data-anchor-id="separability-of-the-conditional-log-likelihood"><span class="header-section-number">4.1</span> Separability of the Conditional Log-Likelihood</h2>
 <p>For the uncoupled sub-model (<span class="math inline">\(a_{ps} = a_{sp} = 0\)</span>), the conditional log-likelihood separates into three independent blocks:</p>
@@ -1215,7 +1215,7 @@ Figure&nbsp;9: Observed Fisher information matrix and eigenvalue spectrum for th
 <div id="tbl-fim" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-fim-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the log-parameterization: <span class="math inline">\((\log a_p, \log\sigma_p, \log a_s, \log\sigma_s, \log\mu_0, \log\rho)\)</span>.. The condition number of each diagonal block and the full <span class="math inline">\(8 \times 8\)</span> matrix are shown. A condition number below <span class="math inline">\(10^4\)</span> is considered well-conditioned for practical estimation.
+Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the log-parameterization: <span class="math inline">\((\log a_p, \log\sigma_p, \log a_s, \log\sigma_s, \log\mu_0, \log\rho)\)</span> for the uncoupled <span class="math inline">\(6 \times 6\)</span> case shown here. The coupled <span class="math inline">\(8 \times 8\)</span> FIM additionally includes <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> on their natural scale (see <a href="#sec-coupling" class="quarto-xref">Section&nbsp;4.5</a>). The condition number of each diagonal block and the full <span class="math inline">\(8 \times 8\)</span> matrix are shown. A condition number below <span class="math inline">\(10^4\)</span> is considered well-conditioned for practical estimation.
 </figcaption>
 <div aria-describedby="tbl-fim-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
@@ -1237,27 +1237,27 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">Parasympathetic OU <span class="math inline">\((\log a_p,\, \log\sigma_p)\)</span></td>
-<td style="text-align: left;">6.85e+02</td>
+<td style="text-align: left;">7.24e+02</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">4.23e+02</td>
+<td style="text-align: left;">4.00e+02</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Sympathetic OU <span class="math inline">\((\log a_s,\, \log\sigma_s)\)</span></td>
-<td style="text-align: left;">5.80e+01</td>
+<td style="text-align: left;">9.12e+01</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">4.97e+03</td>
+<td style="text-align: left;">3.16e+03</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">IG observations <span class="math inline">\((\log\mu_0,\, \log\rho)\)</span></td>
-<td style="text-align: left;">1.45e+03</td>
-<td style="text-align: left;">1.47e+04</td>
-<td style="text-align: left;">9.84e+00</td>
+<td style="text-align: left;">1.36e+03</td>
+<td style="text-align: left;">7.44e+03</td>
+<td style="text-align: left;">5.31e+00</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Full <span class="math inline">\(6 \times 6\)</span> matrix</td>
-<td style="text-align: left;">5.80e+01</td>
+<td style="text-align: left;">9.12e+01</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">4.97e+03</td>
+<td style="text-align: left;">3.16e+03</td>
 </tr>
 </tbody>
 </table>
@@ -1266,11 +1266,11 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 </figure>
 </div>
 </div>
-<p>The FIM is evaluated on the 720-second reference simulation. The OU blocks have large eigenvalues because the full trajectory provides <span class="math inline">\(n \approx 144{,}000\)</span> independent Gaussian transition observations of <span class="math inline">\((a_p, \sigma_p, c_p)\)</span> and <span class="math inline">\((a_s, \sigma_s, c_s)\)</span>. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 720\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive. The condition number of the <span class="math inline">\(2\times2\)</span> observation FIM is read directly from the numerical eigenvalue table <a href="#tbl-fim" class="quarto-xref">Table&nbsp;2</a> and equals 9.8 for the reference parameters, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>. In the special case <span class="math inline">\(\mu_0=1\)</span> this coincides with <span class="math inline">\(\kappa/2\)</span>; for general <span class="math inline">\(\mu_0\)</span> the condition number scales as <span class="math inline">\(\mu_0 \kappa / (2\mu_0) = \kappa/2\)</span> at the stationary point, but the general formula requires propagation of the FIM through the (<span class="math inline">\(\log \mu_0\)</span>, <span class="math inline">\(\log \rho\)</span>) Jacobian and is computed numerically here.</p>
+<p>The FIM is evaluated on the 720-second reference simulation. The OU blocks have large eigenvalues because the full trajectory provides <span class="math inline">\(n \approx 144{,}000\)</span> independent Gaussian transition observations of <span class="math inline">\((a_p, \sigma_p, c_p)\)</span> and <span class="math inline">\((a_s, \sigma_s, c_s)\)</span>. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 720\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive. The condition number of the <span class="math inline">\(2\times2\)</span> observation FIM is read directly from the numerical eigenvalue table <a href="#tbl-fim" class="quarto-xref">Table&nbsp;2</a> and equals 5.3 for the reference parameters, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>. In the special case <span class="math inline">\(\mu_0=1\)</span> this coincides with <span class="math inline">\(\kappa/2\)</span>; for general <span class="math inline">\(\mu_0\)</span> the condition number scales as <span class="math inline">\(\mu_0 \kappa / (2\mu_0) = \kappa/2\)</span> at the stationary point, but the general formula requires propagation of the FIM through the (<span class="math inline">\(\log \mu_0\)</span>, <span class="math inline">\(\log \rho\)</span>) Jacobian and is computed numerically here.</p>
 </section>
 <section id="sec-recovery" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</h2>
-<p>We generated <span class="math inline">\(N = 250\)</span> independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. This study conditions on the true latent state trajectory; <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a> addresses the fully marginal problem of recovering <span class="math inline">\(\Theta\)</span> and <span class="math inline">\(\hat\Delta(t)\)</span> from the spike train alone.</p>
+<p>We generated <span class="math inline">\(N = 250\)</span> independent realizations from the reference parameter set under baseline conditions (<span class="math inline">\(u(t) \equiv 0\)</span>, <span class="math inline">\(c_p = c_s = 0\)</span>, 300-second recordings), applied the conditional MLE to each, and compared estimates to the ground truth. This study conditions on the true latent state trajectory; <a href="#sec-inference" class="quarto-xref">Section&nbsp;5</a> addresses the fully marginal problem of recovering <span class="math inline">\(\Theta\)</span> and <span class="math inline">\(\hat\Delta(t)\)</span> from the spike train alone.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1323,20 +1323,20 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(a_p\)</span></td>
 <td style="text-align: left;">2.000</td>
-<td style="text-align: left;">1.989</td>
-<td style="text-align: left;">-0.0113</td>
-<td style="text-align: left;">-0.56%</td>
-<td style="text-align: left;">0.1173</td>
-<td style="text-align: left;">95.2%</td>
+<td style="text-align: left;">2.000</td>
+<td style="text-align: left;">-0.0003</td>
+<td style="text-align: left;">-0.01%</td>
+<td style="text-align: left;">0.1083</td>
+<td style="text-align: left;">96.8%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_s\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.208</td>
-<td style="text-align: left;">0.0083</td>
-<td style="text-align: left;">4.14%</td>
-<td style="text-align: left;">0.0407</td>
-<td style="text-align: left;">93.2%</td>
+<td style="text-align: left;">0.209</td>
+<td style="text-align: left;">0.0086</td>
+<td style="text-align: left;">4.31%</td>
+<td style="text-align: left;">0.0359</td>
+<td style="text-align: left;">96.0%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\sigma_p\)</span></td>
@@ -1351,28 +1351,28 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <td style="text-align: left;"><span class="math inline">\(\sigma_s\)</span></td>
 <td style="text-align: left;">0.070</td>
 <td style="text-align: left;">0.070</td>
-<td style="text-align: left;">-0.0000</td>
-<td style="text-align: left;">-0.05%</td>
+<td style="text-align: left;">0.0000</td>
+<td style="text-align: left;">0.00%</td>
 <td style="text-align: left;">0.0002</td>
-<td style="text-align: left;">94.4%</td>
+<td style="text-align: left;">93.6%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">1.000</td>
-<td style="text-align: left;">0.998</td>
-<td style="text-align: left;">-0.0024</td>
-<td style="text-align: left;">-0.24%</td>
-<td style="text-align: left;">0.0119</td>
-<td style="text-align: left;">97.2%</td>
+<td style="text-align: left;">1.032</td>
+<td style="text-align: left;">0.0323</td>
+<td style="text-align: left;">3.23%</td>
+<td style="text-align: left;">0.0562</td>
+<td style="text-align: left;">50.4%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\rho\)</span></td>
 <td style="text-align: left;">0.224</td>
-<td style="text-align: left;">0.229</td>
-<td style="text-align: left;">0.0053</td>
-<td style="text-align: left;">2.35%</td>
-<td style="text-align: left;">0.0107</td>
-<td style="text-align: left;">92.8%</td>
+<td style="text-align: left;">0.347</td>
+<td style="text-align: left;">0.1230</td>
+<td style="text-align: left;">55.02%</td>
+<td style="text-align: left;">0.1246</td>
+<td style="text-align: left;">0.0%</td>
 </tr>
 </tbody>
 </table>
@@ -1404,7 +1404,7 @@ Table&nbsp;3: Numerical summary of the Monte Carlo recovery study. True values, 
 <img src="index_files/figure-html/fig-profiles-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-profiles-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Profile log-likelihoods for all eight free parameters (six always free; <span class="math inline">\(c_p\)</span> and <span class="math inline">\(c_s\)</span> identifiable with the boxcar input), normalized to zero at the MLE. The orange dashed line marks the <span class="math inline">\(\chi^2_1\)</span> 95% threshold (normalized profile LL <span class="math inline">\(= -1.92\)</span>); tick marks on the horizontal axis indicate the implied 95% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All six profiles are strictly unimodal and sharply peaked, confirming that each parameter is precisely identified from the latent state trajectory.
+Figure&nbsp;11: Profile log-likelihoods for all six free parameters of the uncoupled inference model (<span class="math inline">\(a_p\)</span>, <span class="math inline">\(a_s\)</span>, <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>, <span class="math inline">\(\mu_0\)</span>, <span class="math inline">\(\rho\)</span>), normalized to zero at the MLE. The orange dashed line marks the <span class="math inline">\(\chi^2_1\)</span> 95% threshold (normalized profile LL <span class="math inline">\(= -1.92\)</span>); tick marks on the horizontal axis indicate the implied 95% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All six profiles are strictly unimodal and sharply peaked, confirming that each parameter is precisely identified from the latent state trajectory.
 </figcaption>
 </figure>
 </div>
@@ -1517,39 +1517,39 @@ Table&nbsp;4: Moment consistency check. Observed HRV statistics compared to the 
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">Mean RR (s)</td>
-<td style="text-align: right;">0.9629</td>
-<td style="text-align: right;">1.0123</td>
-<td style="text-align: right;">-5.1%</td>
+<td style="text-align: right;">0.9917</td>
+<td style="text-align: right;">1.0352</td>
+<td style="text-align: right;">-4.4%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">SDNN (s)</td>
-<td style="text-align: right;">0.2636</td>
-<td style="text-align: right;">0.2977</td>
-<td style="text-align: right;">-12.9%</td>
+<td style="text-align: right;">0.2571</td>
+<td style="text-align: right;">0.3735</td>
+<td style="text-align: right;">-45.3%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">RMSSD (s)</td>
-<td style="text-align: right;">0.3286</td>
-<td style="text-align: right;">0.2780</td>
-<td style="text-align: right;">15.4%</td>
+<td style="text-align: right;">0.3304</td>
+<td style="text-align: right;">0.3946</td>
+<td style="text-align: right;">-19.4%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">LF power (s)</td>
-<td style="text-align: right;">0.0086</td>
-<td style="text-align: right;">0.0030</td>
-<td style="text-align: right;">64.7%</td>
+<td style="text-align: right;">0.0112</td>
+<td style="text-align: right;">0.0026</td>
+<td style="text-align: right;">76.8%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">HF power (s)</td>
 <td style="text-align: right;">0.0083</td>
-<td style="text-align: right;">0.0020</td>
-<td style="text-align: right;">75.5%</td>
+<td style="text-align: right;">0.0019</td>
+<td style="text-align: right;">76.7%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">LF/HF ratio</td>
-<td style="text-align: right;">1.0273</td>
-<td style="text-align: right;">1.4780</td>
-<td style="text-align: right;">-43.9%</td>
+<td style="text-align: right;">1.3440</td>
+<td style="text-align: right;">1.3408</td>
+<td style="text-align: right;">0.2%</td>
 </tr>
 </tbody>
 </table>
@@ -1605,11 +1605,12 @@ P_{k|k-1} = F(\tau_k)\,P_{k-1|k-1}\,F(\tau_k)^\top + Q(\tau_k)
 \qquad
 S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 \]</span></p>
-<p>where <span class="math inline">\(R_k = \hat\mu_k^3/\kappa\)</span> is the IG variance outer-linearized at the predicted mean, and the Kalman gain and covariance update follow the standard UKF equations. The marginal log-likelihood contribution at beat <span class="math inline">\(k\)</span> is</p>
+<p>where <span class="math inline">\(R_k = \hat\mu_k^3/\kappa\)</span> is the IG variance outer-linearized at the predicted mean, and the Kalman gain and covariance update follow the standard UKF equations. The marginal log-likelihood contribution at beat <span class="math inline">\(k\)</span> is approximated by the sigma-point expectation of the IG log-pdf:</p>
 <p><span class="math display">\[
-\log p(\tau_k \mid \Theta) \;\approx\; \log\mathcal{N}(\tau_k;\, \hat\mu_k,\, S_k)
+\log p(\tau_k \mid \Theta) \;\approx\;
+\sum_i W_i^m\, \log f_{\mathrm{IG}}\!\left(\tau_k;\; h(\boldsymbol{\sigma}_i),\; \kappa\right)
 \]</span></p>
-<p>This Gaussian innovation approximation is the standard UKF marginal likelihood and provides a tractable, differentiable objective for static parameter estimation.</p>
+<p>This weighted log-density approximation avoids the linearization error of the standard Gaussian innovation approximation <span class="math inline">\(\log\mathcal{N}(\tau_k;\,\hat\mu_k,\,S_k)\)</span>.</p>
 <p>The filter’s posterior geometry reflects the single-stream observability: each IBI update contracts uncertainty primarily along the differential direction <span class="math inline">\(\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}\)</span> (the <span class="math inline">\(\Delta = s - p\)</span> subspace). Variance along the common-mode direction <span class="math inline">\(\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}\)</span> is governed by the OU prior and remains larger than the differential variance, but is bounded — not unbounded — because the OU prior confines both <span class="math inline">\(p(t)\)</span> and <span class="math inline">\(s(t)\)</span> to neighborhoods of zero with variances <span class="math inline">\(\sigma_p^2/(2a_p)\)</span> and <span class="math inline">\(\sigma_s^2/(2a_s)\)</span> respectively. Consequently, the filter delivers per-branch posterior means <span class="math inline">\([\hat p_k, \hat s_k]\)</span> with per-branch uncertainty (reported in <a href="#tbl-filter-summary" class="quarto-xref">Table&nbsp;5</a> and shown as branch-specific posterior SD bands in <a href="#fig-filter-recovery" class="quarto-xref">Figure&nbsp;15</a>), rather than purely a scalar <span class="math inline">\(\hat\Delta_k\)</span> estimate.</p>
 </section>
 <section id="static-parameter-estimation" class="level2" data-number="5.3">
@@ -1713,31 +1714,31 @@ Table&nbsp;5: Filter performance summary. RMSE and mean absolute error of <span 
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">RMSE of <span class="math inline">\(\hat\Delta(t)\)</span></td>
-<td style="text-align: right;">0.1342</td>
+<td style="text-align: right;">0.1197</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">MAE of <span class="math inline">\(\hat\Delta(t)\)</span></td>
-<td style="text-align: right;">0.1073</td>
+<td style="text-align: right;">0.0954</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">RMSE of <span class="math inline">\(\hat p(t)\)</span></td>
-<td style="text-align: right;">0.0988</td>
+<td style="text-align: right;">0.0991</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">RMSE of <span class="math inline">\(\hat s(t)\)</span></td>
-<td style="text-align: right;">0.1032</td>
+<td style="text-align: right;">0.0841</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Mean standardized innovation</td>
-<td style="text-align: right;">-0.1185</td>
+<td style="text-align: right;">-0.0499</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">SD standardized innovation</td>
-<td style="text-align: right;">0.9614</td>
+<td style="text-align: right;">0.9508</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Filter log-likelihood</td>
-<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">25.1</td>
 </tr>
 </tbody>
 </table>
@@ -1809,56 +1810,56 @@ Table&nbsp;6: Marginal MLE recovery summary (<span class="math inline">\(N = 250
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(a_p\)</span></td>
 <td style="text-align: left;">2.000</td>
-<td style="text-align: left;">2.487</td>
-<td style="text-align: left;">24.35%</td>
-<td style="text-align: left;">4.8116</td>
-<td style="text-align: left;">240.58%</td>
-<td style="text-align: left;">5.87%</td>
+<td style="text-align: left;">2.050</td>
+<td style="text-align: left;">2.50%</td>
+<td style="text-align: left;">4.4455</td>
+<td style="text-align: left;">222.28%</td>
+<td style="text-align: left;">5.41%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_s\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.886</td>
-<td style="text-align: left;">343.12%</td>
-<td style="text-align: left;">0.8357</td>
-<td style="text-align: left;">417.86%</td>
-<td style="text-align: left;">20.35%</td>
+<td style="text-align: left;">0.932</td>
+<td style="text-align: left;">365.85%</td>
+<td style="text-align: left;">0.9547</td>
+<td style="text-align: left;">477.33%</td>
+<td style="text-align: left;">17.96%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\sigma_p\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">4.703</td>
-<td style="text-align: left;">2251.70%</td>
-<td style="text-align: left;">4.6685</td>
-<td style="text-align: left;">2334.23%</td>
+<td style="text-align: left;">4.859</td>
+<td style="text-align: left;">2329.40%</td>
+<td style="text-align: left;">4.7806</td>
+<td style="text-align: left;">2390.31%</td>
 <td style="text-align: left;">0.28%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\sigma_s\)</span></td>
 <td style="text-align: left;">0.070</td>
-<td style="text-align: left;">3.065</td>
-<td style="text-align: left;">4279.06%</td>
-<td style="text-align: left;">3.9716</td>
-<td style="text-align: left;">5673.71%</td>
-<td style="text-align: left;">0.30%</td>
+<td style="text-align: left;">3.091</td>
+<td style="text-align: left;">4315.02%</td>
+<td style="text-align: left;">3.9956</td>
+<td style="text-align: left;">5707.98%</td>
+<td style="text-align: left;">0.31%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">1.000</td>
-<td style="text-align: left;">1.731</td>
-<td style="text-align: left;">73.14%</td>
-<td style="text-align: left;">0.7333</td>
-<td style="text-align: left;">73.33%</td>
-<td style="text-align: left;">1.19%</td>
+<td style="text-align: left;">1.724</td>
+<td style="text-align: left;">72.43%</td>
+<td style="text-align: left;">0.7259</td>
+<td style="text-align: left;">72.59%</td>
+<td style="text-align: left;">5.62%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\rho\)</span></td>
 <td style="text-align: left;">0.224</td>
-<td style="text-align: left;">0.141</td>
-<td style="text-align: left;">-37.08%</td>
-<td style="text-align: left;">0.0854</td>
-<td style="text-align: left;">38.17%</td>
-<td style="text-align: left;">4.80%</td>
+<td style="text-align: left;">0.138</td>
+<td style="text-align: left;">-38.34%</td>
+<td style="text-align: left;">0.0881</td>
+<td style="text-align: left;">39.39%</td>
+<td style="text-align: left;">55.71%</td>
 </tr>
 </tbody>
 </table>
@@ -1877,8 +1878,8 @@ Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <sp
 <div class="cell-output-display">
 <table class="do-not-create-environment cell caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 77%">
-<col style="width: 22%">
+<col style="width: 76%">
+<col style="width: 23%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1889,31 +1890,31 @@ Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <sp
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">Oracle filter RMSE of <span class="math inline">\(\hat\Delta(t)\)</span> (true <span class="math inline">\(\Theta\)</span>, single run)</td>
-<td style="text-align: right;">0.1342</td>
+<td style="text-align: right;">0.1197</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marginal filter: mean RMSE across replications</td>
-<td style="text-align: right;">1.6901</td>
+<td style="text-align: right;">1.7084</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marginal filter: median RMSE</td>
-<td style="text-align: right;">1.5634</td>
+<td style="text-align: right;">1.8014</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marginal filter: SD of RMSE</td>
-<td style="text-align: right;">0.1990</td>
+<td style="text-align: right;">0.2020</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marginal filter: 10th–90th percentile range</td>
-<td style="text-align: right;">1.4735 – 1.9367</td>
+<td style="text-align: right;">1.4816 – 1.9414</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">RMSE inflation ratio (marginal mean / oracle)</td>
-<td style="text-align: right;">12.59×</td>
+<td style="text-align: right;">14.27×</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Convergence rate (L-BFGS-B code 0)</td>
-<td style="text-align: right;">99.6% (249 / 250)</td>
+<td style="text-align: right;">100.0% (250 / 250)</td>
 </tr>
 </tbody>
 </table>
@@ -1923,7 +1924,7 @@ Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <sp
 </div>
 </div>
 <p>The pattern expected from the identifiability geometry is precisely what emerges. The OU branch parameters (<span class="math inline">\(a_p\)</span>, <span class="math inline">\(a_s\)</span>, <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>) show the largest relative RMSE inflation from conditional to marginal: these are identified through the spectral curvature of the innovation sequence, which is an indirect and lower-resolution signal compared with direct observation of the state trajectory. The IG parameters (<span class="math inline">\(\mu_0\)</span>, <span class="math inline">\(\rho\)</span>) are less affected, the inter-beat interval sequence directly constrains the mean and coefficient of variation of the effective distribution regardless of whether states are observed or integrated. The input sensitivities (<span class="math inline">\(c_p\)</span>, <span class="math inline">\(c_s\)</span>) are the noisiest in the marginal case, as expected: their identification relies on detecting the systematic shift in the innovation mean during the 60-second stress window, a weaker signal than the full OU log-likelihood available in the conditional setting.</p>
-<p>The RMSE inflation ratio for <span class="math inline">\(\hat\Delta(t)\)</span>, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of 12.59× places the pipeline in the well-identified regime: the dominant source of <span class="math inline">\(\hat\Delta(t)\)</span> error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.</p>
+<p>The RMSE inflation ratio for <span class="math inline">\(\hat\Delta(t)\)</span>, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of 14.27× places the pipeline in the well-identified regime: the dominant source of <span class="math inline">\(\hat\Delta(t)\)</span> error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.</p>
 </section>
 </section>
 <section id="simulation-results" class="level1" data-number="6">
@@ -2027,7 +2028,7 @@ Figure&nbsp;17: Simulation of the autonomic response to a double-logistic stress
 <img src="index_files/figure-html/fig-heteroscedasticity-1.svg" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-heteroscedasticity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;18: Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction <span class="math inline">\(\text{Var}(\tau) = \mu^3/\kappa\)</span> with the true <span class="math inline">\(\kappa = 20\)</span>. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
+Figure&nbsp;18: Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical prediction <span class="math inline">\(\text{Var}(\tau) = \rho^2\mu^3/\mu_0\)</span> evaluated at the true <span class="math inline">\(\rho = `r round(PARAMS\)</span>free<span class="math inline">\(rho, 3)`\)</span>, <span class="math inline">\(\mu_0 = `r PARAMS\)</span>free<span class="math inline">\(mu_0`\)</span> (equivalently <span class="math inline">\(\mu^3/\kappa\)</span> with <span class="math inline">\(\kappa = `r round(KAPPA_REF)`\)</span>). The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
 </figcaption>
 </figure>
 </div>
@@ -2139,17 +2140,17 @@ Table&nbsp;8: Summary statistics for the time-rescaling residuals. A correctly s
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\text{E}[\Lambda_k]\)</span></td>
 <td style="text-align: center;">1.000</td>
-<td style="text-align: center;">1.0098</td>
+<td style="text-align: center;">1.0018</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\text{Var}(\Lambda_k)\)</span></td>
 <td style="text-align: center;">1.000</td>
-<td style="text-align: center;">1.1005</td>
+<td style="text-align: center;">0.9157</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\text{E}[u_k]\)</span></td>
 <td style="text-align: center;">0.500</td>
-<td style="text-align: center;">0.4962</td>
+<td style="text-align: center;">0.5058</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">KS statistic</td>
@@ -2159,7 +2160,7 @@ Table&nbsp;8: Summary statistics for the time-rescaling residuals. A correctly s
 <tr class="odd">
 <td style="text-align: left;">KS <span class="math inline">\(p\)</span>-value</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">0.6876</td>
+<td style="text-align: center;">0.7029</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Significant ACF lags (of 20)</td>

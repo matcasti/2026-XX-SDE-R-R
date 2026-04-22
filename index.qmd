@@ -18,7 +18,7 @@ format:
 
 # Abstract
 
-Heart rate variability is widely used to probe autonomic cardiovascular regulation, yet existing models are either descriptive spectral summaries or mechanistic point-process models whose time-varying parameters lack explicit stochastic dynamics. We introduce the SDE-Inverse Gaussian (SDE-IG) framework, which couples two Ornstein-Uhlenbeck processes representing parasympathetic and sympathetic drives to an Inverse Gaussian first-passage observation model for inter-beat intervals. All ten free parameters, including the decay rates, coupling magnitudes, diffusion amplitudes, and observation parameters, are locally identifiable from a single RR interval stream: the Fisher information matrix is block-diagonal and positive definite, closed-form and profile maximum likelihood estimators exist for all parameters, and a Monte Carlo recovery study ($N = 500$ replications) confirms sub-percent relative bias and nominal 95\% confidence interval coverage. A spike-to-spike Unscented Kalman Filter recovers the net autonomic drive $\hat\Delta(t)$ and the individual branch estimates $[\hat p(t),\, \hat s(t)]$ in real time; once parameters are estimated, forward simulation of the fitted OU model generates individual branch trajectories consistent with the identified spectral structure<!-- TODO: insert real-data RMSE/KS/AIC numbers -->. The architecture extends naturally to multi-stream data, where an additional physiological observation (respiratory, blood pressure) further constrains the common-mode direction, reducing branch-level posterior uncertainty. This framework provides a principled, estimable, and interpretable generative model for beat-to-beat autonomic dynamics.
+Heart rate variability is widely used to probe autonomic cardiovascular regulation, yet existing models are either descriptive spectral summaries or mechanistic point-process models whose time-varying parameters lack explicit stochastic dynamics. We introduce the SDE-Inverse Gaussian (SDE-IG) framework, which couples two Ornstein-Uhlenbeck processes representing parasympathetic and sympathetic drives to an Inverse Gaussian first-passage observation model for inter-beat intervals. All eight free parameters — the decay rates $a_p, a_s$, coupling magnitudes $a_{ps}, a_{sp}$, diffusion amplitudes $\sigma_p, \sigma_s$, and observation parameters $\mu_0, \rho$, are locally identifiable from a single RR interval stream (the input sensitivities $c_p, c_s$ require a non-trivial exogenous input and are not estimated in the single-stream protocol), the Fisher information matrix is block-diagonal and positive definite, closed-form and profile maximum likelihood estimators exist for all parameters, and a Monte Carlo recovery study ($N = 250$ replications) confirms sub-percent relative bias and nominal 95\% confidence interval coverage. A spike-to-spike Unscented Kalman Filter recovers the net autonomic drive $\hat\Delta(t)$ and the individual branch estimates $[\hat p(t),\, \hat s(t)]$ in real time; once parameters are estimated, forward simulation of the fitted OU model generates individual branch trajectories consistent with the identified spectral structure<!-- TODO: insert real-data RMSE/KS/AIC numbers -->. The architecture extends naturally to multi-stream data, where an additional physiological observation (respiratory, blood pressure) further constrains the common-mode direction, reducing branch-level posterior uncertainty. This framework provides a principled, estimable, and interpretable generative model for beat-to-beat autonomic dynamics.
 
 ```{r}
 #| label: fig-model-schematic
@@ -670,9 +670,9 @@ The full simulation integrates the three components above into a single time-ind
 
 # Identifiability Analysis {#sec-identifiability}
 
-The framework introduces up to ten free parameters: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are simulation-only parameters that drive the generative stress protocol [@sec-simulation]. Since $u(t)$ is never observed during inference, $c_p = c_s = 0$ in the inference model. This has a precise consequence for the identifiability study: the recovery study must use $c_p = c_s = 0$ in simulation as well, so that the simulation parameters $\theta_\text{true}$ and the pseudo-true parameters $\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]$ coincide. When $c_p \neq 0$ or $c_s \neq 0$, the MLE correctly converges to $\theta^* \neq \theta_\text{true}$, not because the estimator is biased, but because the inference model is correctly specified only for $u \equiv 0$, and $\theta^*$ is the identifiable projection of $\theta_\text{true}$ onto the inference model. Reporting $\hat\theta - \theta_\text{true}$ in that setting confounds estimator precision with model projection distance; reporting $\hat\theta - \theta^*$ is the correct measure of estimator quality. Using $c_p = c_s = 0$ makes $\theta_\text{true} = \theta^*$ and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.
+The framework introduces up to ten parameters in the generative model: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. Of these, $c_p$ and $c_s$ are fixed at zero in the inference model (external input is unobserved), so the active inference parameter set is eight-dimensional. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are simulation-only parameters that drive the generative stress protocol [@sec-simulation]. Since $u(t)$ is never observed during inference, $c_p = c_s = 0$ in the inference model. This has a precise consequence for the identifiability study: the recovery study must use $c_p = c_s = 0$ in simulation as well, so that the simulation parameters $\theta_\text{true}$ and the pseudo-true parameters $\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]$ coincide. When $c_p \neq 0$ or $c_s \neq 0$, the MLE correctly converges to $\theta^* \neq \theta_\text{true}$, not because the estimator is biased, but because the inference model is correctly specified only for $u \equiv 0$, and $\theta^*$ is the identifiable projection of $\theta_\text{true}$ onto the inference model. Reporting $\hat\theta - \theta_\text{true}$ in that setting confounds estimator precision with model projection distance; reporting $\hat\theta - \theta^*$ is the correct measure of estimator quality. Using $c_p = c_s = 0$ makes $\theta_\text{true} = \theta^*$ and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.
 
-The FIM analysis below therefore covers the full $8 \times 8$ system. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision.  We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory $\{p(t), s(t)\}_{0 \le t \le T}$, the full parameter set $\Theta$ is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study ($N = 500$ replications). For the uncoupled sub-model ($a_{ps} = a_{sp} = 0$) with a non-trivial input ($u(t) \not\equiv 0$), the FIM is $8 \times 8$ and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full $10 \times 10$ system, where the block-diagonal structure breaks down, is established in @sec-coupling via a numerical FIM and a dedicated recovery study. Marginal identifiability — recovery from the spike train alone, integrating over unobserved latent states — is established in @sec-inference via the UKF marginal likelihood.
+The FIM analysis below covers the $6 \times 6$ system for the uncoupled sub-model ($a_{ps} = a_{sp} = 0$, $c_p = c_s = 0$); the $8 \times 8$ coupled-model FIM is computed in @sec-coupling. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision. We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory $\{p(t), s(t)\}_{0 \le t \le T}$, the full parameter set $\Theta$ is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study ($N = 500$ replications). For the uncoupled sub-model ($a_{ps} = a_{sp} = 0$) with a non-trivial input ($u(t) \not\equiv 0$), the FIM is $8 \times 8$ and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full $8 \times 8$ coupled system (where the block-diagonal structure breaks down) is established in @sec-coupling via a numerical FIM and a dedicated recovery study. Marginal identifiability, i.e. recovery from the spike train alone, integrating over unobserved latent states, is established in @sec-inference via the UKF marginal likelihood.
 
 ```{r}
 #| label: ident-setup
@@ -764,7 +764,7 @@ grid(nx = NA, col = "lightgray", lty = 1)
 
 ```{r}
 #| label: tbl-fim
-#| tbl-cap: "Fisher information matrix diagnostics. All quantities are in the log-parameterization: $(\\log a_p, \\log\\sigma_p, \\log a_s, \\log\\sigma_s, \\log\\mu_0, \\log\\rho)$.. The condition number of each diagonal block and the full $8 \\times 8$ matrix are shown. A condition number below $10^4$ is considered well-conditioned for practical estimation."
+#| tbl-cap: "Fisher information matrix diagnostics. All quantities are in the log-parameterization: $(\\log a_p, \\log\\sigma_p, \\log a_s, \\log\\sigma_s, \\log\\mu_0, \\log\\rho)$ for the uncoupled $6 \\times 6$ case shown here. The coupled $8 \\times 8$ FIM additionally includes $a_{ps}$ and $a_{sp}$ on their natural scale (see @sec-coupling). The condition number of each diagonal block and the full $8 \\times 8$ matrix are shown. A condition number below $10^4$ is considered well-conditioned for practical estimation."
 #| echo: false
 
 fim_tbl <- data.frame(
@@ -801,7 +801,7 @@ The FIM is evaluated on the 720-second reference simulation.  The OU blocks have
 
 ## Simulation Recovery Study {#sec-recovery}
 
-We generated $N = 250$ independent realizations from the reference parameter set under the stress protocol (a 60-second boxcar input on a 300-second window), applied the conditional MLE to each, and compared estimates to the ground truth. This study conditions on the true latent state trajectory; @sec-inference addresses the fully marginal problem of recovering $\Theta$ and $\hat\Delta(t)$ from the spike train alone. 
+We generated $N = 250$ independent realizations from the reference parameter set under baseline conditions ($u(t) \equiv 0$, $c_p = c_s = 0$, 300-second recordings), applied the conditional MLE to each, and compared estimates to the ground truth. This study conditions on the true latent state trajectory; @sec-inference addresses the fully marginal problem of recovering $\Theta$ and $\hat\Delta(t)$ from the spike train alone. 
 
 ```{r}
 #| label: recovery-run
@@ -876,7 +876,7 @@ PROFILES <- all_profile_likelihoods(RES_IDENT, n_grid = 80, width = 3.0)
 
 ```{r}
 #| label: fig-profiles
-#| fig-cap: "Profile log-likelihoods for all eight free parameters (six always free; $c_p$ and $c_s$ identifiable with the boxcar input), normalized to zero at the MLE. The orange dashed line marks the $\\chi^2_1$ 95\\% threshold (normalized profile LL $= -1.92$); tick marks on the horizontal axis indicate the implied 95\\% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All six profiles are strictly unimodal and sharply peaked, confirming that each parameter is precisely identified from the latent state trajectory."
+#| fig-cap: "Profile log-likelihoods for all six free parameters of the uncoupled inference model ($a_p$, $a_s$, $\\sigma_p$, $\\sigma_s$, $\\mu_0$, $\\rho$), normalized to zero at the MLE. The orange dashed line marks the $\\chi^2_1$ 95\\% threshold (normalized profile LL $= -1.92$); tick marks on the horizontal axis indicate the implied 95\\% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All six profiles are strictly unimodal and sharply peaked, confirming that each parameter is precisely identified from the latent state trajectory."
 #| fig-height: 5.5
 
 fp <- PARAMS_IDENT$free
@@ -933,7 +933,7 @@ PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED_IDENT, n_grid = 60, width =
 
 ```{r}
 #| label: fig-coupling-profiles
-#| fig-cap: "Profile log-likelihoods for all eight free parameters under the coupled model ($a_{ps} = 0.15$, $a_{sp} = 0.10$). Peaked, unimodal profiles indicate identifiability from the state trajectory; flat or multi-modal profiles would indicate non-identifiability. The green vertical line marks the true value; the orange dashed line marks the $\\chi^2_1$ 95\\% threshold. Profiles for $b_{ps}$ and $b_{sp}$ are obtained by re-optimising over all remaining OU parameters at each grid point."
+#| fig-cap: "Profile log-likelihoods for all eight free parameters under the coupled model ($a_{ps} = 0.15$, $a_{sp} = 0.10$). Peaked, unimodal profiles indicate identifiability from the state trajectory; flat or multi-modal profiles would indicate non-identifiability. The green vertical line marks the true value; the orange dashed line marks the $\\chi^2_1$ 95\\% threshold. Profiles for $a_{ps}$ and $a_{sp}$ are obtained by re-optimising over all remaining OU parameters at each grid point."
 #| fig-height: 6.5
 
 fp_c <- PARAMS_COUPLED_IDENT$free
@@ -1042,7 +1042,6 @@ The decay rates $a_p$ and $a_s$ are free parameters estimated jointly with all o
 #| label: sensitivity-run
 #| cache: true
 #| include: false
-source("R/filter.R") 
 source("R/sensitivity.R")
 
 # Sensitivity study uses PARAMS_IDENT (c_p = c_s = 0) so that θ_true = θ*
@@ -1110,14 +1109,14 @@ $$
 S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 $$
 
-where $R_k = \hat\mu_k^3/\kappa$ is the IG variance outer-linearized at the predicted mean, and the Kalman gain and covariance update follow the standard UKF equations.  The marginal log-likelihood contribution at beat $k$ is
+where $R_k = \hat\mu_k^3/\kappa$ is the IG variance outer-linearized at the predicted mean, and the Kalman gain and covariance update follow the standard UKF equations. The marginal log-likelihood contribution at beat $k$ is approximated by the sigma-point expectation of the IG log-pdf:
 
 $$
-\log p(\tau_k \mid \Theta) \;\approx\; \log\mathcal{N}(\tau_k;\, \hat\mu_k,\, S_k)
-$$
+\log p(\tau_k \mid \Theta) \;\approx\;
+\sum_i W_i^m\, \log f_{\mathrm{IG}}\!\left(\tau_k;\; h(\boldsymbol{\sigma}_i),\; \kappa\right)
+$$ 
 
-This Gaussian innovation approximation is the standard UKF marginal likelihood and
-provides a tractable, differentiable objective for static parameter estimation.
+This weighted log-density approximation avoids the linearization error of the standard Gaussian innovation approximation $\log\mathcal{N}(\tau_k;\,\hat\mu_k,\,S_k)$.
 
 The filter's posterior geometry reflects the single-stream observability: each IBI update contracts uncertainty primarily along the differential direction $\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta = s - p$ subspace). Variance along the common-mode direction $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$ is governed by the OU prior and remains larger than the differential variance, but is bounded — not unbounded — because the OU prior confines both $p(t)$ and $s(t)$ to neighborhoods of zero with variances $\sigma_p^2/(2a_p)$ and $\sigma_s^2/(2a_s)$ respectively. Consequently, the filter delivers per-branch posterior means $[\hat p_k, \hat s_k]$ with per-branch uncertainty (reported in @tbl-filter-summary and shown as branch-specific posterior SD bands in @fig-filter-recovery), rather than purely a scalar $\hat\Delta_k$ estimate.
 
@@ -1130,6 +1129,7 @@ The total marginal log-likelihood $\log\mathcal{L}(\Theta) = \sum_k \log\mathcal
 ```{r}
 #| label: filter-setup
 #| include: false
+source("R/spectral_init.R")   # must precede filter.R
 source("R/filter.R")
 ```
 
@@ -1490,7 +1490,8 @@ A distinctive property of the IG point process is the dependence of interval var
 
 ```{r}
 #| label: fig-heteroscedasticity
-#| fig-cap: "Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical Inverse Gaussian prediction $\\text{Var}(\\tau) = \\mu^3/\\kappa$ with the true $\\kappa = 20$. The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment."
+#| fig-cap: >
+#|  Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical prediction $\text{Var}(\tau) = \rho^2\mu^3/\mu_0$ evaluated at the true $\rho = `r round(PARAMS$free$rho, 3)`$, $\mu_0 = `r PARAMS$free$mu_0`$ (equivalently $\mu^3/\kappa$ with $\kappa = `r round(KAPPA_REF)`$). The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
 #| fig-height: 4.5
 
 rr_wn  <- 10

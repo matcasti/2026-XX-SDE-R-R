@@ -107,7 +107,7 @@ ou_stationary_cov <- function(a_p, a_s, a_ps, a_sp, sigma_p, sigma_s) {
 # Proof: d/dτ [F P∞ Fᵀ] = −F ΣΣᵀ Fᵀ (from the Lyapunov equation),
 # so ∫₀^Δt F(s)ΣΣᵀF(s)ᵀ ds = P∞ − F(Δt)P∞F(Δt)ᵀ  (exact for all Δt).
 # n_steps retained in signature for backward compatibility; no longer used.
-ou_coupled_Q <- function(A_mat, sigma_p, sigma_s, dt, n_steps = 40L) {
+ou_coupled_Q <- function(A_mat, sigma_p, sigma_s, dt) {
   a_p  <- -A_mat[1L, 1L];  a_s  <- -A_mat[2L, 2L]
   a_ps <- -A_mat[1L, 2L];  a_sp <- -A_mat[2L, 1L]
   P_inf <- ou_stationary_cov(a_p, a_s, a_ps, a_sp, sigma_p, sigma_s)
@@ -128,7 +128,7 @@ ou_coupled_matrices <- function(a_p, a_s, a_ps, a_sp,
   # Stability: det(A) = a_p*a_s - a_ps*a_sp > 0 (enforced by make_model_params)
   A_mat <- matrix(c(-a_p, -a_sp, -a_ps, -a_s), 2L, 2L)
   F_mat <- mat2x2_exp(A_mat, dt)
-  Q_mat <- ou_coupled_Q(A_mat, sigma_p, sigma_s, dt, n_q_steps)
+  Q_mat <- ou_coupled_Q(A_mat, sigma_p, sigma_s, dt)
 
   eig_q <- eigen(Q_mat, symmetric = TRUE)
   if (any(eig_q$values <= 0)) {
@@ -345,6 +345,19 @@ sim_sde_ig <- function(duration, dt, params,
 
   for (i in seq_len(n - 1)) {
     u <- input_fn(tg[i])
+    # REPLACE WITH (fire using start-of-step state, then advance):
+    tau_start <- tg[i] - last_t
+    tau_end   <- tg[i+1] - last_t
+
+    # Firing probability evaluated at START of interval [tg[i], tg[i+1]]
+    pf <- p_fire_survival_ratio(tau_start, tau_end, mu_v[i], kap)
+    if (runif(1) < pf) {
+      n_spikes <- n_spikes + 1L
+      spikes[n_spikes] <- tg[i+1]
+      last_t <- tg[i+1]
+    }
+
+    # State advance AFTER firing decision
     if (use_coupled) {
       xnew   <- ou_coupled_step(c(p[i], s[i]), cmats, c_vec_ou, u)
       p[i+1] <- xnew[1L];  s[i+1] <- xnew[2L]
@@ -354,18 +367,7 @@ sim_sde_ig <- function(duration, dt, params,
     }
     mu_v[i+1] <- compute_mu(p[i+1], s[i+1], fp$mu_0)
     dlt[i+1]  <- compute_delta(p[i+1], s[i+1])
-
-    tau_start <- tg[i] - last_t
-    tau_end   <- tg[i+1] - last_t
-
     loglam[i+1] <- obs_models[[1]]$log_intensity(tau_end, p[i+1], s[i+1], fp)
-
-    pf <- p_fire_survival_ratio(tau_start, tau_end, mu_v[i+1], kap)
-    if (runif(1) < pf) {
-      n_spikes <- n_spikes + 1L
-      spikes[n_spikes] <- tg[i+1]
-      last_t <- tg[i+1]
-    }
   }
   spikes <- spikes[seq_len(n_spikes)]
   # NOTE: input_fn is stored in the result to enable downstream MLE and
@@ -410,7 +412,7 @@ compute_time_rescaling <- function(res) {
     sum(vapply(seq_along(idx), function(j) {
       tau_end   <- tau_ends[j]
       tau_start <- max(tau_end - dt, 0)
-      mu_j      <- mu_v[idx[j]]
+      mu_j      <- mu_v[idx[j] - 1L]
       log_ig_survival(tau_start, mu_j, kappa) -
         log_ig_survival(tau_end,   mu_j, kappa)
     }, numeric(1L)))
