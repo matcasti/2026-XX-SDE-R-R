@@ -290,12 +290,12 @@ pp_mle <- function(spikes,
   use_coupled <- (abs(fp0$a_ps) + abs(fp0$a_sp)) > 1e-12
 
   if (use_coupled) {
-    fp0 <- params_spectral$free
     if (fp0$a_p * fp0$a_s - fp0$a_ps * fp0$a_sp <= 0) {
       # Starting values violate stability: fall back to params_init
       if (verbose)
         message("pp_mle: spectral_init starting values violate det(A)>0 after coupling patch; using params_init.")
       params_spectral <- params_init
+      fp0 <- params_spectral$free   # must update fp0 so pack() and use_coupled use the fallback
     }
   }
 
