@@ -7,6 +7,8 @@ website:
     left:
       - href: index.qmd
         text: Home
+      - href: https://autonomic-navigator.netlify.app/
+        text: "Web app"
     right:
       - icon: github
         href: https://github.com/matcasti/2026-XX-SDE-R-R

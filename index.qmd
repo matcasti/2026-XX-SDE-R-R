@@ -740,6 +740,8 @@ Numerical verification of these quantities from the reference simulation is give
 #| tbl-cap: "Fisher information diagnostics per block of the conditional log-likelihood, computed numerically at the MLE of the reference simulation. All quantities use the log-parameterisation. The theoretical floor for each block's condition number is given by the analytical expressions in the text. A condition number below 10^3 is considered well-conditioned for the sample sizes involved"
 #| echo: false
 
+fim_result <- full_conditional_fim(RES_IDENT)
+
 fim_tbl <- data.frame(
   Block = c("Parasympathetic OU $(\\log a_p,\\, \\log\\sigma_p)$",
             "Sympathetic OU $(\\log a_s,\\, \\log\\sigma_s)$",
