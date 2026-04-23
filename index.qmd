@@ -5,6 +5,9 @@ author:
   - name: "Matías Castillo-Aguilar"
     affiliation: "Escuela de Medicina, Universidad de Magallanes"
     orcid: "0000-0001-7291-247X"
+  - name: "Noah Beelders"
+    affiliation: "Escuela de Medicina, Universidad de Magallanes"
+    orcid: "0000-0001-7291-247X"
 bibliography: references.bib
 date: today
 title-block-style: manuscript
@@ -533,7 +536,7 @@ Two numerical considerations arise in implementing the exact formula. The varian
 ```{r}
 #| label: fig-ou-exact
 #| cache: true
-#| fig-cap: "Stationary variance bias of Euler-Maruyama (EM) versus the exact OU kernel, shown for the vagal branch ($a_p = 2.0$ Hz, $\\sigma_p = 0.20$). **Left:** Empirical stationary variance from 300 replicate trajectories ($N = 5000$ steps each). The exact kernel converges to the true value $\\sigma^2/(2a) = 0.01$ at every step size; the slight negative deviation at small $\\Delta t$ is a finite-sample artefact — the sample variance of a strongly positively autocorrelated time series is negatively biased when the effective sample size $n_{\\mathrm{eff}} = n \\cdot (1-r)/(1+r) \\ll n$ due to the OU autocorrelation $r \\approx e^{-a\\Delta t}$. This does \\emph{not} reflect a bias in the transition kernel. **Right:** Relative bias (\\%) as a function of step size; the Euler-Maruyama bias follows the theoretical prediction $\\approx a\\Delta t/2$."
+#| fig-cap: "Stationary variance bias of Euler-Maruyama (EM) versus the exact OU kernel, shown for the vagal branch ($a_p = 2.0$ Hz, $\\sigma_p = 0.20$). **Left:** Empirical stationary variance from 300 replicate trajectories ($N = 5000$ steps each). The exact kernel converges to the true value $\\sigma^2/(2a) = 0.01$ at every step size; the slight negative deviation at small $\\Delta t$ is a finite-sample artefact — the sample variance of a strongly positively autocorrelated time series is negatively biased when the effective sample size $n_{\\mathrm{eff}} = n \\cdot (1-r)/(1+r) \\ll n$ due to the OU autocorrelation $r \\approx e^{-a\\Delta t}$. This does *not* reflect a bias in the transition kernel. **Right:** Relative bias (\\%) as a function of step size; the Euler-Maruyama bias follows the theoretical prediction $\\approx a\\Delta t/2$."
 #| fig-height: 4
 
 set.seed(321)
@@ -597,7 +600,7 @@ At each simulation step, the current OU state is mapped to the mean interval via
 
 ###  Survival-Ratio Event Generation
 
-The Bernoulli approximation $P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t$ produces a signed error whose direction depends on the slope of the hazard at the step entry point. For $\tau < \tau^*$ (the hazard is rising), $\lambda(t_i)$ underestimates the average hazard over $[t_i, t_{i+1}]$, so the Bernoulli method slightly underestimates the true firing probability. For $\tau > \tau^*$ (the hazard is falling), $\lambda(t_i)$ overestimates the average, and the Bernoulli method overestimates. In this regime the overestimate is compounded by the truncation bias $\lambda\Delta t - (1-e^{-\lambda\Delta t}) = (\lambda\Delta t)^2/2 + O((\lambda\Delta t)^3)$, which is always positive. For the reference parameters ($\mu_0 = 1.0$ s, $\kappa = 20$), the IG hazard peaks at $\tau^* \approx 2\mu_0 \approx 2.0$ s, while beats are concentrated near the mode $\tau \approx \mu_0 = 1.0$ s. Because most beats therefore arrive in the \emph{rising-hazard regime} ($\tau < \tau^*$), $\lambda(\tau_i)$ systematically \emph{underestimates} the step-average hazard and the Bernoulli approximation fires too rarely, producing a net negative bias in simulated event counts and slightly elongated inter-beat intervals.
+The Bernoulli approximation $P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t$ produces a signed error whose direction depends on the slope of the hazard at the step entry point. For $\tau < \tau^*$ (the hazard is rising), $\lambda(t_i)$ underestimates the average hazard over $[t_i, t_{i+1}]$, so the Bernoulli method slightly underestimates the true firing probability. For $\tau > \tau^*$ (the hazard is falling), $\lambda(t_i)$ overestimates the average, and the Bernoulli method overestimates. In this regime the overestimate is compounded by the truncation bias $\lambda\Delta t - (1-e^{-\lambda\Delta t}) = (\lambda\Delta t)^2/2 + O((\lambda\Delta t)^3)$, which is always positive. For the reference parameters ($\mu_0 = 1.0$ s, $\kappa = 20$), the IG hazard peaks at $\tau^* \approx 2\mu_0 \approx 2.0$ s, while beats are concentrated near the mode $\tau \approx \mu_0 = 1.0$ s. Because most beats therefore arrive in the *rising-hazard regime* ($\tau < \tau^*$), $\lambda(\tau_i)$ systematically *underestimates* the step-average hazard and the Bernoulli approximation fires too rarely, producing a net negative bias in simulated event counts and slightly elongated inter-beat intervals.
 
 The exact within-step firing probability, under the assumption that $\mu(t)$ is constant within the interval $[t_i, t_{i+1}]$, is obtained directly from the survival function ratio:
 
@@ -616,7 +619,7 @@ using the identity $1 - e^x = -\text{expm1}(x)$, which is numerically stable for
 
 ```{r}
 #| label: fig-bernoulli-vs-survival
-#| fig-cap: "Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. **Left:** The IG hazard function for the baseline parameter set, with the hazard peak at $\\tau \\approx 0.72$ s. **Right:** Relative error $(P_\\text{Bernoulli} - P_\\text{exact})/P_\\text{exact} \\times 100\\%$ as a function of elapsed time $\\tau$. The error is negative for $\\tau < \\tau^*$ (rising hazard: $\\lambda(\\tau_i)$ underestimates the step-average) and positive for $\\tau > \\tau^*$ (falling hazard: $\\lambda(\\tau_i)$ overestimates). The annotated orange point marks the location of maximum relative error within the displayed range. For the reference parameters ($\\mu_0 = 1.0$ s, $\\kappa = 20$), the hazard peak lies at $\\tau^* \\approx 2.0$ s; beats are concentrated near $\\tau \\approx \\mu_0 = 1.0$ s in the rising-hazard (negative-error) regime. The Bernoulli approximation therefore produces a \\emph{net underestimate} of event counts across a full simulation; the survival-ratio method eliminates this bias by evaluating the exact step probability $P = -\\mathrm{expm1}(\\log S(\\tau+\\Delta t) - \\log S(\\tau))$."
+#| fig-cap: "Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. **Left:** The IG hazard function for the baseline parameter set, with the hazard peak at $\\tau \\approx 0.72$ s. **Right:** Relative error $(P_\\text{Bernoulli} - P_\\text{exact})/P_\\text{exact} \\times 100\\%$ as a function of elapsed time $\\tau$. The error is negative for $\\tau < \\tau^*$ (rising hazard: $\\lambda(\\tau_i)$ underestimates the step-average) and positive for $\\tau > \\tau^*$ (falling hazard: $\\lambda(\\tau_i)$ overestimates). The annotated orange point marks the location of maximum relative error within the displayed range. For the reference parameters ($\\mu_0 = 1.0$ s, $\\kappa = 20$), the hazard peak lies at $\\tau^* \\approx 2.0$ s; beats are concentrated near $\\tau \\approx \\mu_0 = 1.0$ s in the rising-hazard (negative-error) regime. The Bernoulli approximation therefore produces a *net underestimate* of event counts across a full simulation; the survival-ratio method eliminates this bias by evaluating the exact step probability $P = -\\mathrm{expm1}(\\log S(\\tau+\\Delta t) - \\log S(\\tau))$."
 
 fs <- study_firing_bias(mu = PARAMS$free$mu_0, 
                         kappa = kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho),
@@ -1089,10 +1092,10 @@ where $R_k = \hat\mu_k^3/\kappa$ is the IG variance outer-linearized at the pred
 
 $$
 \log p(\tau_k \mid \Theta) \;\approx\;
-\sum_i W_i^m\, \log f_{\mathrm{IG}}\!\left(\tau_k;\; h(\boldsymbol{\sigma}_i),\; \kappa\right)
-$$ 
+\log \sum_i W_i^m\, f_{\mathrm{IG}}\!\left(\tau_k;\; h(\boldsymbol{\sigma}_i),\; \kappa\right)
+$$
 
-This weighted log-density approximation avoids the linearization error of the standard Gaussian innovation approximation $\log\mathcal{N}(\tau_k;\,\hat\mu_k,\,S_k)$.
+This sigma-point quadrature approximation to the marginal density avoids both the linearization error of the Gaussian innovation approximation $\log\mathcal{N}(\tau_k;\,\hat\mu_k,\,S_k)$ and the Jensen gap introduced by commuting $\log$ and $\sum$, which would produce a lower bound rather than an approximation to $\log p(\tau_k \mid \Theta)$. The sum is evaluated in log-sum-exp form; with $W_0^m = 0$ under the symmetric curvature rule, only the four off-centre sigma-points contribute.
 
 The filter's posterior geometry reflects the single-stream observability: each IBI update contracts uncertainty primarily along the differential direction $\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta = s - p$ subspace). Variance along the common-mode direction $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$ is governed by the OU prior and remains larger than the differential variance, but is bounded — not unbounded — because the OU prior confines both $p(t)$ and $s(t)$ to neighborhoods of zero with variances $\sigma_p^2/(2a_p)$ and $\sigma_s^2/(2a_s)$ respectively. Consequently, the filter delivers per-branch posterior means $[\hat p_k, \hat s_k]$ with per-branch uncertainty (reported in @tbl-filter-summary and shown as branch-specific posterior SD bands in @fig-filter-recovery), rather than purely a scalar $\hat\Delta_k$ estimate.
 
@@ -1392,6 +1395,59 @@ knitr::kable(delta_tbl, escape = FALSE,
 The pattern expected from the identifiability geometry is precisely what emerges. The OU branch parameters ($a_p$, $a_s$, $\sigma_p$, $\sigma_s$) show the largest relative RMSE inflation from conditional to marginal: these are identified through the spectral curvature of the innovation sequence, which is an indirect and lower-resolution signal compared with direct observation of the state trajectory. The IG parameters ($\mu_0$, $\rho$) are less affected, the inter-beat interval sequence directly constrains the mean and coefficient of variation of the effective distribution regardless of whether states are observed or integrated. The input sensitivities ($c_p$, $c_s$) are the noisiest in the marginal case, as expected: their identification relies on detecting the systematic shift in the innovation mean during the 60-second stress window, a weaker signal than the full OU log-likelihood available in the conditional setting.
 
 The RMSE inflation ratio for $\hat\Delta(t)$, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of `r sprintf("%.2f", mean(MARG_REC$rmse_delta[is.finite(MARG_REC$rmse_delta)]) / sqrt(mean((flt_grid$delta - RES_IDENT$delta)^2, na.rm = TRUE)))`× places the pipeline in the well-identified regime: the dominant source of $\hat\Delta(t)$ error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.
+
+Another question that arises from the model is, how much data is enough to properly recover the parameter values of the model from the spike train alone?  This question raises profound implications given that it can guide methodological recommendations on a minimum-length of recordings to be able to fully separate the signal from the noise. This section cover another simulation study whereas we test if the ten model parameters are recoverable from different recording durations, ranging from 120 seconds (2 minutes), to 1800 seconds (30 minutes).
+
+```{r}
+#| label: duration-run
+#| cache: true
+#| include: false
+
+# Conditional duration study — fast, establishes CR-bound scaling baseline
+DUR_COND <- duration_recovery_study(
+  durations    = c(120, 300, 600, 1200, 1800),
+  true_params  = PARAMS_IDENT,
+  N_per_dur    = 50L,
+  dt           = 0.005,
+  mode         = "conditional",
+  use_parallel = TRUE
+)
+
+# Marginal duration study — slower
+DUR_MARG <- duration_recovery_study(
+  durations    = c(300, 600, 1200, 1800),
+  true_params  = PARAMS_IDENT,
+  N_per_dur    = 50L,
+  dt           = 0.005,
+  mode         = "marginal",
+  use_parallel = TRUE
+)
+```
+
+```{r}
+#| label: fig-duration-study
+#| fig-cap: >
+#|   Relative RMSE as a function of recording duration for conditional (left)
+#|   and marginal (right) MLE. The dashed reference line shows the $T^{-1/2}$
+#|   scaling predicted by the Cramér–Rao bound under iid observations. Parameters
+#|   that track this slope are efficiently identified; parameters that plateau
+#|   early indicate a structural information bottleneck at that recording length.
+#|   The marginal panel additionally overlays the median filter RMSE on
+#|   $\hat\Delta(t)$ (triangles) scaled by $\sigma_\Delta$ for comparability.
+#|   Intersection of each curve with the 5\% RMSE line defines the minimum
+#|   recording length recommendation for that parameter.
+#| fig-height: 5
+
+par(mfrow = c(1, 2), oma = c(0, 0, 2, 0))
+plot_duration_study(DUR_COND,
+                    main = "Conditional MLE",
+                    show_delta_rmse = FALSE)
+plot_duration_study(DUR_MARG,
+                    main = "Marginal MLE",
+                    show_delta_rmse = TRUE)
+mtext("Parameter Recovery vs Recording Duration", outer = TRUE,
+      font = 2, cex = 1.05)
+```
 
 #  Simulation Results
 

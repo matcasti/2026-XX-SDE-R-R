@@ -473,3 +473,207 @@ marginal_recovery_study <- function(N = 100L, true_params, duration = 300,
        rmse_delta = rmse_delta_vec,
        N_total    = N, N_valid = length(results))
 }
+
+# ---- Recording-duration sensitivity study ----
+#
+# Tests how parameter recovery (bias, RMSE) and filter RMSE on Delta(t) depend
+# on recording length for either the conditional or marginal pipeline.
+#
+# Arguments:
+#   durations    : numeric vector of recording lengths in seconds (e.g. 120 to 1800)
+#   true_params  : make_model_params() output; must have c_p = c_s = 0 so that
+#                  theta_true = theta* and recovery measures estimator precision only.
+#   N_per_dur    : Monte Carlo replications per duration (20–50 for screening,
+#                  100+ for publication-quality curves)
+#   dt           : simulation time step
+#   mode         : "conditional" — recovery given true states (fast, isolates
+#                    estimation from latent-state integration);
+#                  "marginal"    — full pipeline from spike train alone (slow but
+#                    operationally relevant; requires the UKF LL fix in filter.R)
+#   use_parallel : forwarded to the underlying study function
+#
+# Returns a list with:
+#   summary_df : data.frame — one row per (duration × parameter), columns
+#                  (duration, parameter, true_value, mean_hat, bias,
+#                   rel_bias_pct, rmse, rmse_rel_pct, coverage_95, n_valid)
+#                  For marginal mode an additional row with parameter =
+#                  "delta_rmse_median" records the median filter RMSE on Delta(t).
+#   N_per_dur, mode, durations, true_params : input arguments, for plotting
+
+duration_recovery_study <- function(durations    = c(120, 300, 600, 1200),
+                                    true_params,
+                                    N_per_dur    = 50L,
+                                    dt           = 0.005,
+                                    mode         = c("conditional", "marginal"),
+                                    use_parallel = TRUE) {
+  mode <- match.arg(mode)
+
+  per_dur <- lapply(durations, function(dur) {
+    message(sprintf(
+      "duration_recovery_study: %g s (%s mode, N = %d)",
+      dur, mode, N_per_dur))
+
+    if (mode == "conditional") {
+      rec <- recovery_study(N            = N_per_dur,
+                            true_params  = true_params,
+                            duration     = dur,
+                            dt           = dt,
+                            input_fn     = function(t) 0,
+                            use_parallel = use_parallel)
+      df      <- rec$summary
+      n_valid <- rec$N_valid
+
+    } else {
+      rec <- marginal_recovery_study(N            = N_per_dur,
+                                     true_params  = true_params,
+                                     duration     = dur,
+                                     dt           = dt,
+                                     input_fn     = function(t) 0,
+                                     use_parallel = use_parallel)
+      df      <- rec$summary
+      n_valid <- rec$N_valid
+
+      # Append a synthetic row for the median filter RMSE on Delta(t)
+      rmse_v <- rec$rmse_delta[is.finite(rec$rmse_delta)]
+      if (length(rmse_v) > 0L) {
+        df <- rbind(df, data.frame(
+          parameter    = "delta_rmse_median",
+          true_value   = NA_real_,
+          mean_hat     = NA_real_,
+          bias         = NA_real_,
+          rel_bias_pct = NA_real_,
+          rmse         = median(rmse_v),
+          rmse_rel_pct = NA_real_,
+          coverage_95  = NA_real_,
+          n_valid      = length(rmse_v),
+          stringsAsFactors = FALSE
+        ))
+      }
+    }
+
+    df$duration <- dur
+    df$n_valid_total <- n_valid
+    df
+  })
+
+  list(
+    summary_df  = do.call(rbind, per_dur),
+    N_per_dur   = N_per_dur,
+    mode        = mode,
+    durations   = durations,
+    true_params = true_params
+  )
+}
+
+# ---- Plot: relative RMSE vs recording duration ----
+#
+# Produces a log-log line plot (one line per parameter) showing how estimation
+# precision scales with recording length. Overlays a -1/2 reference slope for
+# comparison against the Cramér–Rao sqrt(T) scaling expected under iid conditions.
+#
+# Arguments:
+#   dur_study       : output of duration_recovery_study()
+#   params_to_show  : parameter names to plot (subset of dur_study summary)
+#   show_delta_rmse : if TRUE and mode == "marginal", overlay the Delta filter RMSE
+#   main            : plot title (auto-generated if NULL)
+
+plot_duration_study <- function(dur_study,
+                                params_to_show  = c("a_p","a_s","sigma_p",
+                                                    "sigma_s","mu0","rho"),
+                                show_delta_rmse = TRUE,
+                                main            = NULL) {
+  df   <- dur_study$summary_df
+  mode <- dur_study$mode
+  if (is.null(main))
+    main <- sprintf("Recovery vs Recording Duration — %s MLE",
+                    if (mode == "conditional") "Conditional" else "Marginal")
+
+  par_labels <- c(
+    a_p              = expression(a[p]),
+    a_s              = expression(a[s]),
+    sigma_p          = expression(sigma[p]),
+    sigma_s          = expression(sigma[s]),
+    mu0              = expression(mu[0]),
+    rho              = expression(rho),
+    a_ps             = expression(a[ps]),
+    a_sp             = expression(a[sp]),
+    delta_rmse_median = expression("Filter RMSE "~hat(Delta)(t))
+  )
+  base_cols <- c("#0072B2","#56B4E9","#D55E00","#E69F00",
+                 "#2C5F2E","#CC79A7","#009E73","#999999")
+
+  show_pars <- intersect(params_to_show, unique(df$parameter))
+  if (show_delta_rmse && "delta_rmse_median" %in% df$parameter)
+    show_pars <- c(show_pars, "delta_rmse_median")
+
+  np   <- length(show_pars)
+  cols <- setNames(
+    c(base_cols[seq_len(min(np, 8L))],
+      rep("black", max(np - 8L, 0L))),
+    show_pars
+  )
+  durs <- sort(unique(df$duration))
+
+  # Collect y values for axis range
+  yvals <- df$rmse_rel_pct[df$parameter %in% setdiff(show_pars, "delta_rmse_median")]
+  if (show_delta_rmse && "delta_rmse_median" %in% show_pars) {
+    # delta RMSE is in absolute seconds; convert to % of sd(true delta) for comparability
+    # Rough reference: sd(true delta) ~ sqrt(sigma_p^2/(2*a_p) + sigma_s^2/(2*a_s))
+    fp <- dur_study$true_params$free
+    sd_delta <- sqrt(fp$sigma_p^2 / (2 * fp$a_p) + fp$sigma_s^2 / (2 * fp$a_s))
+    df_d      <- df[df$parameter == "delta_rmse_median", ]
+    delta_pct <- 100 * df_d$rmse / sd_delta
+    yvals     <- c(yvals, delta_pct)
+  }
+  yvals <- yvals[is.finite(yvals) & yvals > 0]
+  ylim  <- if (length(yvals) > 0L) range(yvals) * c(0.5, 2) else c(0.1, 200)
+
+  par(mar = c(4.5, 5, 3, 2))
+  plot(NA,
+       xlim = range(durs),
+       ylim = ylim,
+       log  = "xy",
+       xlab = "Recording duration (s)",
+       ylab = "Relative RMSE (%)",
+       main = main,
+       frame.plot = FALSE)
+
+  # Reference -1/2 slope (sqrt(T) CR bound)
+  t_ref <- seq(min(durs), max(durs), length.out = 50)
+  ref_y <- 5 * (t_ref / min(durs))^(-0.5)   # anchored at 5% for min duration
+  lines(t_ref, ref_y, lty = 3, col = "gray60", lwd = 1.5)
+  text(max(t_ref) * 0.85, min(ref_y) * 1.3, expression("CR slope"~T^{-1/2}),
+       adj = 0, cex = 0.75, col = "gray50")
+
+  abline(h = c(1, 5, 10), lty = 1, col = "lightgray")
+
+  for (i in seq_along(show_pars)) {
+    p <- show_pars[i]
+    if (p == "delta_rmse_median") {
+      if (!show_delta_rmse) next
+      pd  <- df[df$parameter == p, ]
+      pd  <- pd[order(pd$duration), ]
+      yy  <- 100 * pd$rmse / sd_delta
+      lines(pd$duration, yy, col = cols[p], lwd = 2.5,
+            type = "b", pch = 17, lty = 2)
+    } else {
+      pd <- df[df$parameter == p, ]
+      pd <- pd[order(pd$duration), ]
+      ok <- is.finite(pd$rmse_rel_pct) & pd$rmse_rel_pct > 0
+      if (!any(ok)) next
+      lines(pd$duration[ok], pd$rmse_rel_pct[ok], col = cols[p], lwd = 2,
+            type = "b", pch = 19)
+    }
+  }
+
+  legend_labels <- sapply(show_pars, function(p) {
+    lbl <- par_labels[[p]]
+    if (is.null(lbl)) as.expression(p) else lbl
+  })
+  legend("topright", legend = legend_labels,
+         col = unname(cols), lwd = 2,
+         pch = ifelse(show_pars == "delta_rmse_median", 17, 19),
+         lty = ifelse(show_pars == "delta_rmse_median", 2, 1),
+         bty = "n", cex = 0.85)
+  grid(col = "lightgray", lty = 1)
+}

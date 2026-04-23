@@ -152,8 +152,16 @@
   P2_raw <- P1 - outer(K, K) * S
   P2     <- 0.5 * (P2_raw + t(P2_raw)) + 1e-9 * diag(.ukf_weights$L)
 
-  ll_pts <- log_ig_pdf(tau_k, h_pts, kappa)   # evaluate IG log-pdf at each sigma point
-  ll_k   <- sum(.ukf_weights$Wm * ll_pts)     # weighted average in log-space
+  ll_pts  <- log_ig_pdf(tau_k, h_pts, kappa)
+  log_w   <- log(.ukf_weights$Wm)          # [-Inf, -1.386, -1.386, -1.386, -1.386]
+  lw_ll   <- log_w + ll_pts                # log(W_i * f_IG_i); -Inf for W_i = 0
+  finite  <- is.finite(lw_ll)
+  ll_k    <- if (any(finite)) {
+    lw_max <- max(lw_ll[finite])
+    lw_max + log(sum(exp(lw_ll[finite] - lw_max)))
+  } else {
+    -Inf
+  }
 
   list(m = m2, P = P2, innov = innov, S = S, mu_hat = mu_hat, ll = ll_k)
 }
