@@ -25,9 +25,13 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
     if (length(idx) > 0L) {
       neg_d  <- -delta_vec[idx]
       d_max  <- max(neg_d)
-      # log-sum-exp: log(sum(exp(neg_d))) = d_max + log(sum(exp(neg_d - d_max)))
+      # log-sum-exp numerically stable: log(sum(exp(-delta)))
       lse    <- d_max + log(sum(exp(neg_d - d_max)))
-      lse - log(length(idx))   # = -log(mean(exp(-delta)))
+      # bar_delta_k = -log(mean_IBI(exp(-delta(t)))):
+      # ensures exp(-bar_delta_k) = mean_IBI(exp(-delta)) so that
+      # mu_k = mu_0 * mean_IBI(exp(-delta))  [interval-averaged effective mean].
+      # Note: lse - log(n) = +log(mean(exp(-delta))); negating gives the correct sign.
+      log(length(idx)) - lse
     } else {
       # No grid points inside (t_start, t_end] — IBI < dt.
       # This should not occur at dt = 0.005 s with physiological IBIs.

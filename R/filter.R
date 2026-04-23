@@ -326,8 +326,26 @@ pp_mle <- function(spikes,
     )
   }
 
-  lower_v <- c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf)   # log-space: unconstrained
-  if (use_coupled) lower_v <- c(lower_v, 0, 0)        # a_ps, a_sp >= 0
+  # Lower bounds in log-space: enforce physiologically plausible floor.
+  # log(a_p)     >= log(0.05): vagal decay >= 0.05 Hz (time constant <= 20 s)
+  # log(a_s)     >= log(0.005): sympathetic decay >= 0.005 Hz
+  # log(sigma_p) >= log(1e-4): diffusion amplitude >= 0.0001
+  # log(sigma_s) >= log(1e-4)
+  # log(mu_0)    >= log(0.25): mean IBI >= 0.25 s (max HR 240 bpm)
+  # log(rho)     >= log(0.01): baseline CV >= 1%
+  lower_v <- c(log(0.05), log(0.005), log(1e-4), log(1e-4), log(0.25), log(0.01))
+  # Upper bounds: prevent the optimizer escaping to implausible extremes
+  # log(a_p)     <= log(100): time constant >= 10 ms
+  # log(a_s)     <= log(10)
+  # log(sigma_p) <= log(10): diffusion amplitude <= 10
+  # log(sigma_s) <= log(10)
+  # log(mu_0)    <= log(4.0): mean IBI <= 4 s (min HR ~15 bpm)
+  # log(rho)     <= log(2.0): baseline CV <= 200%
+  upper_v <- c(log(100), log(10), log(10), log(10), log(4.0), log(2.0))
+  if (use_coupled) {
+    lower_v <- c(lower_v, 0, 0)    # a_ps, a_sp >= 0
+    upper_v <- c(upper_v, 10, 10)  # coupling terms <= 10 (stability enforced separately)
+  }
 
   neg_ll <- function(v) {
     fp_v <- unpack(v)
@@ -344,8 +362,9 @@ pp_mle <- function(spikes,
     fn      = neg_ll,
     method  = "L-BFGS-B",
     lower   = lower_v,
-    control = list(maxit = 500L,
-                   factr = 1e7,
+    upper   = upper_v,
+    control = list(maxit = 1000L,
+                   factr = 1e6,     # tighter convergence tolerance
                    trace = if (verbose) 1L else 0L)
   )
 

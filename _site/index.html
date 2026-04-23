@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Matías Castillo-Aguilar">
-<meta name="dcterms.date" content="2026-04-21">
+<meta name="dcterms.date" content="2026-04-22">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -390,7 +390,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">April 21, 2026</p>
+              <p class="date">April 22, 2026</p>
             </div>
           </div>
           
@@ -1249,9 +1249,9 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 </tr>
 <tr class="odd">
 <td style="text-align: left;">IG observations <span class="math inline">\((\log\mu_0,\, \log\rho)\)</span></td>
-<td style="text-align: left;">1.36e+03</td>
-<td style="text-align: left;">7.44e+03</td>
-<td style="text-align: left;">5.31e+00</td>
+<td style="text-align: left;">1.41e+03</td>
+<td style="text-align: left;">1.54e+04</td>
+<td style="text-align: left;">1.06e+01</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Full <span class="math inline">\(6 \times 6\)</span> matrix</td>
@@ -1266,7 +1266,7 @@ Table&nbsp;2: Fisher information matrix diagnostics. All quantities are in the l
 </figure>
 </div>
 </div>
-<p>The FIM is evaluated on the 720-second reference simulation. The OU blocks have large eigenvalues because the full trajectory provides <span class="math inline">\(n \approx 144{,}000\)</span> independent Gaussian transition observations of <span class="math inline">\((a_p, \sigma_p, c_p)\)</span> and <span class="math inline">\((a_s, \sigma_s, c_s)\)</span>. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 720\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive. The condition number of the <span class="math inline">\(2\times2\)</span> observation FIM is read directly from the numerical eigenvalue table <a href="#tbl-fim" class="quarto-xref">Table&nbsp;2</a> and equals 5.3 for the reference parameters, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>. In the special case <span class="math inline">\(\mu_0=1\)</span> this coincides with <span class="math inline">\(\kappa/2\)</span>; for general <span class="math inline">\(\mu_0\)</span> the condition number scales as <span class="math inline">\(\mu_0 \kappa / (2\mu_0) = \kappa/2\)</span> at the stationary point, but the general formula requires propagation of the FIM through the (<span class="math inline">\(\log \mu_0\)</span>, <span class="math inline">\(\log \rho\)</span>) Jacobian and is computed numerically here.</p>
+<p>The FIM is evaluated on the 720-second reference simulation. The OU blocks have large eigenvalues because the full trajectory provides <span class="math inline">\(n \approx 144{,}000\)</span> independent Gaussian transition observations of <span class="math inline">\((a_p, \sigma_p, c_p)\)</span> and <span class="math inline">\((a_s, \sigma_s, c_s)\)</span>. The IG block has smaller but strictly positive eigenvalues, reflecting the information available from <span class="math inline">\(N \approx 720\)</span> inter-beat intervals. The condition number of the IG block is the most sensitive. The condition number of the <span class="math inline">\(2\times2\)</span> observation FIM is read directly from the numerical eigenvalue table <a href="#tbl-fim" class="quarto-xref">Table&nbsp;2</a> and equals 10.6 for the reference parameters, well within the identifiable regime and far below <span class="math inline">\(10^3\)</span>. In the special case <span class="math inline">\(\mu_0=1\)</span> this coincides with <span class="math inline">\(\kappa/2\)</span>; for general <span class="math inline">\(\mu_0\)</span> the condition number scales as <span class="math inline">\(\mu_0 \kappa / (2\mu_0) = \kappa/2\)</span> at the stationary point, but the general formula requires propagation of the FIM through the (<span class="math inline">\(\log \mu_0\)</span>, <span class="math inline">\(\log \rho\)</span>) Jacobian and is computed numerically here.</p>
 </section>
 <section id="sec-recovery" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="sec-recovery"><span class="header-section-number">4.3</span> Simulation Recovery Study</h2>
@@ -1518,20 +1518,20 @@ Table&nbsp;4: Moment consistency check. Observed HRV statistics compared to the 
 <tr class="odd">
 <td style="text-align: left;">Mean RR (s)</td>
 <td style="text-align: right;">0.9917</td>
-<td style="text-align: right;">1.0352</td>
-<td style="text-align: right;">-4.4%</td>
+<td style="text-align: right;">1.0063</td>
+<td style="text-align: right;">-1.5%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">SDNN (s)</td>
 <td style="text-align: right;">0.2571</td>
-<td style="text-align: right;">0.3735</td>
-<td style="text-align: right;">-45.3%</td>
+<td style="text-align: right;">0.2709</td>
+<td style="text-align: right;">-5.4%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">RMSSD (s)</td>
 <td style="text-align: right;">0.3304</td>
-<td style="text-align: right;">0.3946</td>
-<td style="text-align: right;">-19.4%</td>
+<td style="text-align: right;">0.2846</td>
+<td style="text-align: right;">13.9%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">LF power (s)</td>
