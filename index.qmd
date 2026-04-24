@@ -3,11 +3,10 @@ title: "A Continuous-Time Stochastic State-Space Framework for Heart Rate Variab
 subtitle: "The SDE-Inverse Gaussian Model"
 author: 
   - name: "Matías Castillo-Aguilar"
-    affiliation: "Escuela de Medicina, Universidad de Magallanes"
+    affiliation: "Escuela de Medicina, Universidad de Magallanes, Punta Arenas, Chile"
     orcid: "0000-0001-7291-247X"
   - name: "Noah Beelders"
-    affiliation: "Escuela de Medicina, Universidad de Magallanes"
-    orcid: "0000-0001-7291-247X"
+    affiliation: "Some institution, Munich, Germany"
 bibliography: references.bib
 date: today
 title-block-style: manuscript
