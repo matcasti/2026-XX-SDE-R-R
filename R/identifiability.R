@@ -536,7 +536,9 @@ duration_recovery_study <- function(durations    = c(120, 300, 600, 1200),
       # Append a synthetic row for the median filter RMSE on Delta(t)
       rmse_v <- rec$rmse_delta[is.finite(rec$rmse_delta)]
       if (length(rmse_v) > 0L) {
-        df <- rbind(df, data.frame(
+        # Build the extra row using only the columns that exist in df,
+        # which comes from marginal_recovery_study() and has no coverage_95.
+        extra_row <- data.frame(
           parameter    = "delta_rmse_median",
           true_value   = NA_real_,
           mean_hat     = NA_real_,
@@ -544,10 +546,13 @@ duration_recovery_study <- function(durations    = c(120, 300, 600, 1200),
           rel_bias_pct = NA_real_,
           rmse         = median(rmse_v),
           rmse_rel_pct = NA_real_,
-          coverage_95  = NA_real_,
           n_valid      = length(rmse_v),
           stringsAsFactors = FALSE
-        ))
+        )
+        # Add any columns present in df but absent in extra_row as NA
+        missing_cols <- setdiff(names(df), names(extra_row))
+        for (col in missing_cols) extra_row[[col]] <- NA_real_
+        df <- rbind(df, extra_row[, names(df)])
       }
     }
 
