@@ -156,9 +156,8 @@
   log_w   <- log(.ukf_weights$Wm)          # [-Inf, -1.386, -1.386, -1.386, -1.386]
   lw_ll   <- log_w + ll_pts                # log(W_i * f_IG_i); -Inf for W_i = 0
   finite  <- is.finite(lw_ll)
-  ll_k    <- if (any(finite)) {
-    lw_max <- max(lw_ll[finite])
-    lw_max + log(sum(exp(lw_ll[finite] - lw_max)))
+  ll_k <- if (S > 0 && is.finite(S)) {
+    dnorm(tau_k, mean = mu_hat, sd = sqrt(S), log = TRUE)
   } else {
     -Inf
   }
