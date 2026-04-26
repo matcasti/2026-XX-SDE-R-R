@@ -158,8 +158,8 @@ band_filtered_coupling_init <- function(rr_vec, a_p, a_s, fs = 4.0) {
   alpha_sp <- (ss2 * ssnp - sps_c * ssns) / det_c   # p→s  in discrete time
 
   # First-order continuous-time conversion
-  a_ps_hat <- alpha_ps / dt_filt
-  a_sp_hat <- alpha_sp / dt_filt
+  a_ps_hat <- -alpha_ps / dt_filt
+  a_sp_hat <- -alpha_sp / dt_filt
 
   # Stability guard: |a_ps · a_sp| < 0.8 · a_p · a_s
   max_cpl <- 0.8 * a_p * a_s

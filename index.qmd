@@ -848,7 +848,7 @@ Profile likelihood curves provide the final identifiability check: a peaked, uni
 #| cache: true
 #| include: false
 
-PROFILES <- all_profile_likelihoods(RES_IDENT, n_grid = 80, width = 3.0)
+PROFILES <- all_profile_likelihoods(RES_IDENT, n_grid = 80, width = 4.0)
 ```
 
 ```{r}
@@ -892,9 +892,9 @@ RES_COUPLED_IDENT <- sim_sde_ig(300, 0.005, PARAMS_COUPLED_IDENT, function(t) 0)
 
 if (FALSE) {
   par(mfrow = c(1,3))
-  plot(RES_COUPLED_IDENT$time, RES_COUPLED$p, type = "l")
-  plot(RES_COUPLED_IDENT$time, RES_COUPLED$s, type = "l")
-  plot(RES_COUPLED_IDENT$time, RES_COUPLED$mu, type = "l")
+  plot(RES_COUPLED_IDENT$time, RES_COUPLED_IDENT$p, type = "l")
+  plot(RES_COUPLED_IDENT$time, RES_COUPLED_IDENT$s, type = "l")
+  plot(RES_COUPLED_IDENT$time, RES_COUPLED_IDENT$mu, type = "l")
 }
 ```
 
@@ -905,7 +905,7 @@ if (FALSE) {
 
 MLE_COUPLED   <- full_conditional_mle(RES_COUPLED_IDENT)
 FIM_COUPLED   <- full_conditional_fim(RES_COUPLED_IDENT)
-PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED_IDENT, n_grid = 60, width = 3.0)
+PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED_IDENT, n_grid = 80, width = 4.0)
 ```
 
 ```{r}
@@ -1412,11 +1412,10 @@ DUR_COND <- duration_recovery_study(
   use_parallel = TRUE
 )
 
-# Multi-epoch protocol: total length 480 s — set to matching PARAMS_IDENT so
-# that θ_true = θ* (c_p = c_s = 0, input drives variation via the OU spectral
-# structure absorbed into σ_p, σ_s).  The durations grid starts at 480 s to
-# ensure the full two-epoch layout is present in each replication.
-MULTI_EPOCH_FN <- make_multi_epoch_protocol()
+# Marginal duration study: multi-epoch protocol (480 s baseline).
+# The minimum duration is 480 s to include both the burst (120–165 s)
+# and the full sustained-load epoch (240–420 s); shorter recordings
+# truncate the epoch that constrains a_s.
 DUR_MARG <- duration_recovery_study(
   durations    = c(480, 720, 1200, 1800),
   true_params  = PARAMS_IDENT,

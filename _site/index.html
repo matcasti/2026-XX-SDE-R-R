@@ -8,7 +8,7 @@
 
 <meta name="author" content="Matías Castillo-Aguilar">
 <meta name="author" content="Noah Beelders">
-<meta name="dcterms.date" content="2026-04-25">
+<meta name="dcterms.date" content="2026-04-26">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -403,7 +403,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">April 25, 2026</p>
+              <p class="date">April 26, 2026</p>
             </div>
           </div>
           
@@ -1710,7 +1710,7 @@ Table&nbsp;5: Filter performance summary. RMSE and mean absolute error of <span 
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Filter log-likelihood</td>
-<td style="text-align: right;">-28.6</td>
+<td style="text-align: right;">25.1</td>
 </tr>
 </tbody>
 </table>
@@ -1782,55 +1782,55 @@ Table&nbsp;6: Marginal MLE recovery summary (<span class="math inline">\(N = 250
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(a_p\)</span></td>
 <td style="text-align: left;">2.000</td>
-<td style="text-align: left;">46.004</td>
-<td style="text-align: left;">2200.18%</td>
-<td style="text-align: left;">64.8929</td>
-<td style="text-align: left;">3244.65%</td>
+<td style="text-align: left;">1.838</td>
+<td style="text-align: left;">-8.12%</td>
+<td style="text-align: left;">1.0283</td>
+<td style="text-align: left;">51.41%</td>
 <td style="text-align: left;">5.41%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_s\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.673</td>
-<td style="text-align: left;">236.52%</td>
-<td style="text-align: left;">1.7386</td>
-<td style="text-align: left;">869.31%</td>
+<td style="text-align: left;">1.084</td>
+<td style="text-align: left;">441.82%</td>
+<td style="text-align: left;">1.2404</td>
+<td style="text-align: left;">620.20%</td>
 <td style="text-align: left;">17.96%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\sigma_p\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.274</td>
-<td style="text-align: left;">36.82%</td>
-<td style="text-align: left;">0.3811</td>
-<td style="text-align: left;">190.54%</td>
+<td style="text-align: left;">4.281</td>
+<td style="text-align: left;">2040.35%</td>
+<td style="text-align: left;">4.2503</td>
+<td style="text-align: left;">2125.17%</td>
 <td style="text-align: left;">0.28%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\sigma_s\)</span></td>
 <td style="text-align: left;">0.070</td>
-<td style="text-align: left;">0.108</td>
-<td style="text-align: left;">53.97%</td>
-<td style="text-align: left;">0.1268</td>
-<td style="text-align: left;">181.14%</td>
+<td style="text-align: left;">0.668</td>
+<td style="text-align: left;">854.98%</td>
+<td style="text-align: left;">1.9673</td>
+<td style="text-align: left;">2810.48%</td>
 <td style="text-align: left;">0.31%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">1.000</td>
-<td style="text-align: left;">0.995</td>
-<td style="text-align: left;">-0.48%</td>
-<td style="text-align: left;">0.0271</td>
-<td style="text-align: left;">2.71%</td>
+<td style="text-align: left;">1.704</td>
+<td style="text-align: left;">70.36%</td>
+<td style="text-align: left;">0.7080</td>
+<td style="text-align: left;">70.80%</td>
 <td style="text-align: left;">1.33%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\rho\)</span></td>
 <td style="text-align: left;">0.224</td>
-<td style="text-align: left;">0.121</td>
-<td style="text-align: left;">-45.89%</td>
-<td style="text-align: left;">0.1349</td>
-<td style="text-align: left;">60.34%</td>
+<td style="text-align: left;">0.125</td>
+<td style="text-align: left;">-44.13%</td>
+<td style="text-align: left;">0.1052</td>
+<td style="text-align: left;">47.04%</td>
 <td style="text-align: left;">4.54%</td>
 </tr>
 </tbody>
@@ -1850,8 +1850,8 @@ Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <sp
 <div class="cell-output-display">
 <table class="do-not-create-environment cell caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 76%">
-<col style="width: 23%">
+<col style="width: 77%">
+<col style="width: 22%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1866,27 +1866,27 @@ Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <sp
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marginal filter: mean RMSE across replications</td>
-<td style="text-align: right;">0.1650</td>
+<td style="text-align: right;">1.6474</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marginal filter: median RMSE</td>
-<td style="text-align: right;">0.1666</td>
+<td style="text-align: right;">1.5462</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marginal filter: SD of RMSE</td>
-<td style="text-align: right;">0.0297</td>
+<td style="text-align: right;">0.1510</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marginal filter: 10th–90th percentile range</td>
-<td style="text-align: right;">0.1267 – 0.2009</td>
+<td style="text-align: right;">1.4979 – 1.8506</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">RMSE inflation ratio (marginal mean / oracle)</td>
-<td style="text-align: right;">1.38×</td>
+<td style="text-align: right;">13.76×</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Convergence rate (L-BFGS-B code 0)</td>
-<td style="text-align: right;">100.0% (250 / 250)</td>
+<td style="text-align: right;">99.6% (249 / 250)</td>
 </tr>
 </tbody>
 </table>
@@ -1896,7 +1896,7 @@ Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <sp
 </div>
 </div>
 <p>The pattern expected from the identifiability geometry is precisely what emerges. The OU branch parameters (<span class="math inline">\(a_p\)</span>, <span class="math inline">\(a_s\)</span>, <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>) show the largest relative RMSE inflation from conditional to marginal: these are identified through the spectral curvature of the innovation sequence, which is an indirect and lower-resolution signal compared with direct observation of the state trajectory. The IG parameters (<span class="math inline">\(\mu_0\)</span>, <span class="math inline">\(\rho\)</span>) are less affected, the inter-beat interval sequence directly constrains the mean and coefficient of variation of the effective distribution regardless of whether states are observed or integrated. The input sensitivities (<span class="math inline">\(c_p\)</span>, <span class="math inline">\(c_s\)</span>) are the noisiest in the marginal case, as expected: their identification relies on detecting the systematic shift in the innovation mean during the 60-second stress window, a weaker signal than the full OU log-likelihood available in the conditional setting.</p>
-<p>The RMSE inflation ratio for <span class="math inline">\(\hat\Delta(t)\)</span>, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of 1.38× places the pipeline in the well-identified regime: the dominant source of <span class="math inline">\(\hat\Delta(t)\)</span> error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.</p>
+<p>The RMSE inflation ratio for <span class="math inline">\(\hat\Delta(t)\)</span>, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of 13.76× places the pipeline in the well-identified regime: the dominant source of <span class="math inline">\(\hat\Delta(t)\)</span> error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.</p>
 <p>Another question that arises from the model is, how much data is enough to properly recover the parameter values of the model from the spike train alone? This question raises profound implications given that it can guide methodological recommendations on a minimum-length of recordings to be able to fully separate the signal from the noise. This section cover another simulation study whereas we test if the ten model parameters are recoverable from different recording durations, ranging from 120 seconds (2 minutes), to 1800 seconds (30 minutes).</p>
 <div class="cell">
 <details class="code-fold">

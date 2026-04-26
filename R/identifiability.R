@@ -383,7 +383,7 @@ plot_profiles <- function(profiles,
 # Full pipeline: simulate → pp_mle (marginal MLE from spike train) → filter
 # This is the key validation of the fully marginal identifiability claim.
 
-marginal_recovery_one <- function(true_params, duration = 300, dt = 0.005,
+marginal_recovery_one <- function(true_params, duration = 480, dt = 0.005,
                                   input_fn = make_multi_epoch_protocol(),
                                   seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
@@ -425,7 +425,7 @@ marginal_recovery_one <- function(true_params, duration = 300, dt = 0.005,
   )
 }
 
-marginal_recovery_study <- function(N = 100L, true_params, duration = 300,
+marginal_recovery_study <- function(N = 100L, true_params, duration = 480,
                                     dt = 0.005,
                                     input_fn = make_multi_epoch_protocol(),
                                     use_parallel = TRUE) {
