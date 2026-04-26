@@ -1258,9 +1258,9 @@ Two quantities of interest emerge from this study. The parameter recovery compar
 MARG_REC <- marginal_recovery_study(
   N           = 250L,
   true_params = PARAMS_IDENT,
-  duration    = 300,
+  duration    = 480,          # covers both burst and sustained epochs
   dt          = 0.005,
-  input_fn    = function(t) 0,
+  input_fn    = make_multi_epoch_protocol(),
   use_parallel = TRUE
 )
 ```
@@ -1412,9 +1412,13 @@ DUR_COND <- duration_recovery_study(
   use_parallel = TRUE
 )
 
-# Marginal duration study — slower
+# Multi-epoch protocol: total length 480 s — set to matching PARAMS_IDENT so
+# that θ_true = θ* (c_p = c_s = 0, input drives variation via the OU spectral
+# structure absorbed into σ_p, σ_s).  The durations grid starts at 480 s to
+# ensure the full two-epoch layout is present in each replication.
+MULTI_EPOCH_FN <- make_multi_epoch_protocol()
 DUR_MARG <- duration_recovery_study(
-  durations    = c(300, 600, 1200, 1800),
+  durations    = c(480, 720, 1200, 1800),
   true_params  = PARAMS_IDENT,
   N_per_dur    = 50L,
   dt           = 0.005,

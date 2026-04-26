@@ -21,6 +21,40 @@ make_double_logistic <- function(t_on, t_off, k = 10) {
   function(t) plogis(k * (t - t_on)) * plogis(k * (t_off - t))
 }
 
+# ---- Multi-epoch autonomic protocol ----
+# Two perturbation epochs with deliberately different time scales:
+#   Epoch 1 (t_b_on → t_b_off): SHORT steep burst — primarily drives
+#     fast vagal withdrawal, constraining a_p from the rapid onset dynamics.
+#   Epoch 2 (t_l_on → t_l_off): SUSTAINED gradual load — primarily drives
+#     slow sympathetic accumulation, constraining a_s from the long recovery tail.
+#
+# This asymmetric design ensures that the marginal log-likelihood surface has
+# independent curvature along the a_p and a_s directions: the burst residuals
+# carry FIM mass on a_p, while the sustained epoch residuals carry FIM mass on a_s.
+# For the conditional MLE a single 60-s window suffices; for the marginal MLE
+# the additional a_s epoch substantially reduces the κ–σ_Δ confound.
+#
+# Default layout (total = 480 s):
+#   0 – 120 s : baseline (establishes μ₀, ρ, σ_Δ)
+#   120 – 165 s: steep burst (k_b = 0.5 Hz; constrains a_p ≈ 2 Hz)
+#   165 – 240 s: first recovery
+#   240 – 420 s: sustained load (k_l = 0.1 Hz; constrains a_s ≈ 0.2 Hz)
+#   420 – 480 s: second recovery
+
+make_multi_epoch_protocol <- function(
+    t_b_on  = 120, t_b_off  = 165, k_b  = 0.5,   # burst
+    t_l_on  = 240, t_l_off  = 420, k_l  = 0.1,   # sustained load
+    amp_b   = 1.0, amp_l    = 0.7) {              # amplitudes
+  force(t_b_on); force(t_b_off); force(k_b)
+  force(t_l_on); force(t_l_off); force(k_l)
+  force(amp_b);  force(amp_l)
+  function(t) {
+    burst <- amp_b * plogis(k_b * (t - t_b_on)) * plogis(k_b * (t_b_off - t))
+    load  <- amp_l * plogis(k_l * (t - t_l_on))  * plogis(k_l * (t_l_off - t))
+    burst + load
+  }
+}
+
 # ---- Parameter object ----
 
 make_model_params <- function(

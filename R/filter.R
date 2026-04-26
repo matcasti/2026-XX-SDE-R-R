@@ -288,9 +288,24 @@ pp_mle <- function(spikes,
       params_init
     }
   )
-  # Preserve coupling and gain terms from the caller's params_init
-  params_spectral$free$a_ps <- params_init$free$a_ps
-  params_spectral$free$a_sp <- params_init$free$a_sp
+  # For coupled models: replacing hard-coded carry-over from params_init with
+  # the data-driven band-filtered AR(1) coupling estimate, which gives a
+  # better starting point than either zero or an arbitrary literature value.
+  if ((abs(params_init$free$a_ps) + abs(params_init$free$a_sp)) > 1e-12 ||
+      TRUE) {   # always attempt; guard inside band_filtered_coupling_init
+    cpl <- tryCatch(
+      band_filtered_coupling_init(diff(spikes),
+                                  a_p = params_spectral$free$a_p,
+                                  a_s = params_spectral$free$a_s),
+      error = function(e) list(a_ps = params_init$free$a_ps,
+                               a_sp = params_init$free$a_sp)
+    )
+    params_spectral$free$a_ps <- cpl$a_ps
+    params_spectral$free$a_sp <- cpl$a_sp
+  } else {
+    params_spectral$free$a_ps <- params_init$free$a_ps
+    params_spectral$free$a_sp <- params_init$free$a_sp
+  }
   params_spectral$free$c_p  <- params_init$free$c_p
   params_spectral$free$c_s  <- params_init$free$c_s
 

@@ -26,6 +26,154 @@
 # Requires: model_functions.R sourced first.
 # ============================================================
 
+# ---- Power-weighted spectral band centroid ----
+# Internal helper used by band_centroid_init() and spectral_init().
+# Returns the power-weighted centroid frequency within [f_lo, f_hi] from
+# a one-sided PSD defined on a uniform frequency grid.
+
+.band_centroid <- function(freqs, psd, f_lo, f_hi) {
+  idx <- freqs >= f_lo & freqs <= f_hi & freqs > 0
+  if (!any(idx)) return((f_lo + f_hi) / 2)
+  num <- sum(freqs[idx] * psd[idx])
+  den <- sum(psd[idx])
+  if (den < .Machine$double.eps) return((f_lo + f_hi) / 2)
+  num / den
+}
+
+# ---- Band-centroid decay-rate initializer ----
+# Estimates (a_p, a_s, sigma_p, sigma_s, mu_0, rho) from the tachogram
+# spectrum without any nonlinear fitting. Directly analogous to
+# estimateParams() in the JS client-side implementation.
+#
+# For an OU process with spectral density S(f) ∝ 1/(a² + (2πf)²),
+# the power-weighted centroid of the HF (LF) band estimates a/(2π),
+# giving a = 2π·f_centroid. More robust than biexponential ACF fitting
+# for short (<300 s) or spectrally flat recordings.
+#
+# sigma decomposition follows from S_Δ = σ_p²/(2a_p) + σ_s²/(2a_s)
+# and the empirical spectral fractions hfFrac, lfFrac:
+#   σ_p² = hfFrac · σ_Δ² · 2a_p  (spectral variance allocation)
+#   σ_s² = lfFrac · σ_Δ² · 2a_s
+
+band_centroid_init <- function(rr_vec, fs = 4.0) {
+  stopifnot(is.numeric(rr_vec), length(rr_vec) >= 20L, all(rr_vec > 0))
+
+  mu_obs   <- mean(rr_vec)
+  rho_obs  <- sd(rr_vec) / mu_obs     # observed CV (upper bound on σ_Δ)
+
+  # Resample to uniform 4-Hz grid via linear interpolation
+  cum_t    <- cumsum(c(0, rr_vec))
+  t_rs     <- seq(0, tail(cum_t, 1L), by = 1 / fs)
+  rr_rs    <- approx(cum_t[-length(cum_t)], rr_vec, xout = t_rs, rule = 2L)$y
+  n_rs     <- length(rr_rs)
+
+  # Hanning window + zero-pad to next power of 2
+  w     <- 0.5 * (1 - cos(2 * pi * seq_len(n_rs) / (n_rs - 1)))
+  N_fft <- nextn(n_rs * 2L, factors = 2L)
+  padded <- c((rr_rs - mean(rr_rs)) * w, rep(0, N_fft - n_rs))
+
+  sp_full <- Mod(fft(padded))[seq_len(N_fft / 2L + 1L)]^2 / (n_rs * fs)
+  freqs   <- seq(0, fs / 2, length.out = N_fft / 2L + 1L)
+  df      <- freqs[2L]
+  # One-sided PSD scaling
+  sp_full[-c(1L, length(sp_full))] <- sp_full[-c(1L, length(sp_full))] * 2
+
+  # Decay rates from band centroids: a = 2π·f_centroid
+  a_p_hat <- max(min(2 * pi * .band_centroid(freqs, sp_full, 0.15, 0.40), 5.0), 0.5)
+  a_s_hat <- max(min(2 * pi * .band_centroid(freqs, sp_full, 0.04, 0.15), 1.5), 0.1)
+  if (a_p_hat <= a_s_hat) a_p_hat <- a_s_hat * 5
+
+  # LF/HF band powers → spectral fractions
+  hf_pow  <- sum(sp_full[freqs >= 0.15 & freqs <= 0.40]) * df
+  lf_pow  <- sum(sp_full[freqs >= 0.04 & freqs <= 0.15]) * df
+  tot_pow <- max(hf_pow + lf_pow, .Machine$double.eps)
+  hf_frac <- hf_pow / tot_pow
+  lf_frac <- lf_pow / tot_pow
+
+  # σ_Δ² ≈ ρ_obs² (tachogram CV is a good proxy for the OU variance)
+  var_d       <- rho_obs^2
+  sigma_p_hat <- sqrt(max(hf_frac * var_d * 2 * a_p_hat, 1e-6))
+  sigma_s_hat <- sqrt(max(lf_frac * var_d * 2 * a_s_hat, 1e-6))
+
+  # μ₀ with log-normal mean correction
+  mu_0_hat <- max(mu_obs * exp(-var_d / 2), 0.30)
+
+  # ρ from stationary IG MLE
+  harm_excess <- mean(1 / rr_vec) - 1 / mu_obs
+  kappa_hat   <- max(min(if (harm_excess > 1e-8) 1 / harm_excess else 10.0, 1e4), 0.5)
+  rho_hat     <- max(min(sqrt(mu_0_hat / kappa_hat), 0.80), 0.05)
+
+  make_model_params(
+    a_p     = a_p_hat,   a_s     = a_s_hat,
+    sigma_p = sigma_p_hat, sigma_s = sigma_s_hat,
+    mu_0    = mu_0_hat,  rho     = rho_hat
+  )
+}
+
+# ---- Bivariate AR(1) coupling initializer on band-filtered proxies ----
+# Band-pass filtered RR intervals serve as surrogates for p(t) (HF) and
+# s(t) (LF). A bivariate AR(1) on these proxies estimates the off-diagonal
+# elements alpha_ps and alpha_sp; converting to continuous time via
+# a_ps ≈ alpha_ps / Δt gives deterministic O(n) starting values for the
+# coupled OU MLE. Stability is enforced by the same guard used in estimateCoupling()
+# of the JS client-side code (Castillo-Aguilar 2026).
+
+band_filtered_coupling_init <- function(rr_vec, a_p, a_s, fs = 4.0) {
+  stopifnot(is.numeric(rr_vec), length(rr_vec) >= 40L)
+  dt_filt <- 1 / fs
+
+  # Resample
+  cum_t <- cumsum(c(0, rr_vec))
+  t_rs  <- seq(0, tail(cum_t, 1L), by = dt_filt)
+  rr_rs <- approx(cum_t[-length(cum_t)], rr_vec, xout = t_rs, rule = 2L)$y
+  nr    <- length(rr_rs)
+  if (nr < 40L) return(list(a_ps = 0, a_sp = 0))
+  x <- rr_rs - mean(rr_rs)
+
+  # FFT band-pass filter
+  bp_fft <- function(xv, f_lo, f_hi) {
+    N_f    <- nextn(length(xv) * 2L, factors = 2L)
+    sp_f   <- fft(c(xv, rep(0, N_f - length(xv))))
+    f_vec  <- seq(0, fs, length.out = N_f)
+    keep   <- (f_vec >= f_lo & f_vec <= f_hi) |
+      (f_vec >= (fs - f_hi) & f_vec <= (fs - f_lo))
+    sp_f[!keep] <- 0 + 0i
+    Re(fft(sp_f, inverse = TRUE) / N_f)[seq_len(length(xv))]
+  }
+
+  pP <- bp_fft(x, 0.15, 0.40)   # HF proxy ≡ p(t)
+  sP <- bp_fft(x, 0.04, 0.15)   # LF proxy ≡ s(t)
+
+  m    <- nr - 1L
+  pp   <- pP[seq_len(m)]; spv <- sP[seq_len(m)]
+  pn   <- pP[-1L];        sn  <- sP[-1L]
+
+  sp2   <- sum(pp^2); ss2   <- sum(spv^2); sps_c <- sum(pp * spv)
+  spnp  <- sum(pp * pn); spns <- sum(spv * pn)
+  ssnp  <- sum(pp * sn); ssns <- sum(spv * sn)
+  det_c <- sp2 * ss2 - sps_c^2 + .Machine$double.eps
+
+  # OLS off-diagonals of the bivariate AR(1)
+  alpha_ps <- (sp2 * spns - sps_c * spnp) / det_c   # s→p  in discrete time
+  alpha_sp <- (ss2 * ssnp - sps_c * ssns) / det_c   # p→s  in discrete time
+
+  # First-order continuous-time conversion
+  a_ps_hat <- alpha_ps / dt_filt
+  a_sp_hat <- alpha_sp / dt_filt
+
+  # Stability guard: |a_ps · a_sp| < 0.8 · a_p · a_s
+  max_cpl <- 0.8 * a_p * a_s
+  mag     <- sqrt(abs(a_ps_hat * a_sp_hat)) + .Machine$double.eps
+  if (mag^2 > max_cpl) {
+    sc       <- sqrt(max_cpl) / mag
+    a_ps_hat <- a_ps_hat * sc;  a_sp_hat <- a_sp_hat * sc
+  }
+  a_ps_hat <- max(min(a_ps_hat, a_p * 0.85), 0)
+  a_sp_hat <- max(min(a_sp_hat, a_s * 0.85), 0)
+
+  list(a_ps = a_ps_hat, a_sp = a_sp_hat)
+}
+
 # ---- Biexponential ACF fitting ----
 # Internal helper: fit r(j) = wp*exp(-dp*j) + (1-wp)*exp(-ds*j)
 # where dp = a_p*mu_obs and ds = a_s*mu_obs are dimensionless.
@@ -95,25 +243,36 @@ spectral_init <- function(rr_vec, max_lag = 20L, verbose = FALSE) {
   acf_v <- as.numeric(acf(rr_vec, lag.max = max_lag, plot = FALSE)$acf)[-1L]
   biexp <- .fit_biexp_acf(acf_v, max_lag)
 
+  # Band-centroid estimates: always computed as a reliability check.
+  bc    <- band_centroid_init(rr_vec)
+  bc_ap <- bc$free$a_p;  bc_as <- bc$free$a_s
+
   if (!is.null(biexp)) {
-    wp_hat <- biexp$wp; ws_hat <- biexp$ws
     a_p_hat <- biexp$dp / mu_obs
     a_s_hat <- biexp$ds / mu_obs
-    # Enforce a_p > a_s: vagal branch has faster decay
+    wp_hat  <- biexp$wp;  ws_hat <- biexp$ws
     if (a_p_hat < a_s_hat) {
-      a_p_hat <- biexp$ds / mu_obs
-      a_s_hat <- biexp$dp / mu_obs
-      wp_hat  <- biexp$ws
-      ws_hat  <- biexp$wp
+      a_p_hat <- biexp$ds / mu_obs;  a_s_hat <- biexp$dp / mu_obs
+      wp_hat  <- biexp$ws;           ws_hat  <- biexp$wp
     }
+    # Ensemble: average log-scale estimates from ACF and band-centroid.
+    # This damps the ACF estimator's tendency to lock onto a single dominant
+    # ACF lag when the spectrum is non-peaked (a common failure mode for
+    # stationary recordings with low LF/HF ratio).
+    a_p_hat <- exp(0.7 * log(a_p_hat) + 0.3 * log(bc_ap))
+    a_s_hat <- exp(0.7 * log(a_s_hat) + 0.3 * log(bc_as))
     if (verbose) message(sprintf(
-      "spectral_init: ACF fit (%s) a_p=%.3f a_s=%.3f wp=%.3f",
+      "spectral_init: ACF fit (%s) + band centroid ensemble a_p=%.3f a_s=%.3f wp=%.3f",
       biexp$source, a_p_hat, a_s_hat, wp_hat))
   } else {
-    # Literature fallback — identical to make_model_params() defaults
-    a_p_hat <- 2.0; a_s_hat <- 0.2
-    wp_hat  <- 0.25; ws_hat  <- 0.75
-    if (verbose) message("spectral_init: ACF fit failed; using literature defaults")
+    # ACF fit failed: fall back entirely to band-centroid estimates
+    a_p_hat <- bc_ap;  a_s_hat <- bc_as
+    wp_hat  <- bc$free$sigma_p^2 / (2 * bc_ap) /
+      (bc$free$sigma_p^2 / (2 * bc_ap) + bc$free$sigma_s^2 / (2 * bc_as))
+    ws_hat  <- 1 - wp_hat
+    if (verbose) message(sprintf(
+      "spectral_init: ACF fit failed; using band centroid a_p=%.3f a_s=%.3f",
+      a_p_hat, a_s_hat))
   }
 
   # Clamp to physiologically plausible range

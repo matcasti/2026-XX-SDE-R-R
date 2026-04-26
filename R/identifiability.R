@@ -384,7 +384,7 @@ plot_profiles <- function(profiles,
 # This is the key validation of the fully marginal identifiability claim.
 
 marginal_recovery_one <- function(true_params, duration = 300, dt = 0.005,
-                                  input_fn = make_double_logistic(120, 180),
+                                  input_fn = make_multi_epoch_protocol(),
                                   seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
 
@@ -427,7 +427,7 @@ marginal_recovery_one <- function(true_params, duration = 300, dt = 0.005,
 
 marginal_recovery_study <- function(N = 100L, true_params, duration = 300,
                                     dt = 0.005,
-                                    input_fn = make_double_logistic(120, 180),
+                                    input_fn = make_multi_epoch_protocol(),
                                     use_parallel = TRUE) {
   set.seed(RECOVERY_MASTER_SEED + 1L)   # distinct from conditional study
   seeds <- sample.int(1e6L, N)
@@ -528,7 +528,7 @@ duration_recovery_study <- function(durations    = c(120, 300, 600, 1200),
                                      true_params  = true_params,
                                      duration     = dur,
                                      dt           = dt,
-                                     input_fn     = function(t) 0,
+                                     input_fn     = make_multi_epoch_protocol(),
                                      use_parallel = use_parallel)
       df      <- rec$summary
       n_valid <- rec$N_valid
