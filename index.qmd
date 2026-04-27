@@ -3,10 +3,10 @@ title: "A Continuous-Time Stochastic State-Space Framework for Heart Rate Variab
 subtitle: "The SDE-Inverse Gaussian Model"
 author: 
   - name: "Matías Castillo-Aguilar"
-    affiliation: "Escuela de Medicina, Universidad de Magallanes, Punta Arenas, Chile"
+    affiliation: "Escuela de Medicina, Universidad de Magallanes, Punta Arenas, Chile."
     orcid: "0000-0001-7291-247X"
   - name: "Noah Beelders"
-    affiliation: "Some institution, Munich, Germany"
+    affiliation: "Department of Mathematics, University of Munich, Theresienstraße 39, 80333 Munich, Germany."
 bibliography: references.bib
 date: today
 title-block-style: manuscript
@@ -36,10 +36,6 @@ Heart rate variability is widely used to probe autonomic cardiovascular regulati
 #|   resulting spike train is the sole observable; all ten free parameters are
 #|   estimated from it via a spike-to-spike UKF (inference, right panel).
 
-# TODO: Replace with DiagrammeR or knitr::include_graphics() once figure is created.
-# Minimum viable version: grViz() call producing a left-to-right flowchart.
-# Required boxes: [OU_p, OU_s] → [Δ(t)] → [log link] → [IG hazard] → [spike train]
-# Required annotation: parameter labels on each component box.
 knitr::include_graphics("fig/schematic-model.png")
 ```
 
@@ -74,46 +70,51 @@ Here we show that this synthesis is achievable and productive. We introduce the 
 source("R/model_functions.R")
 source("R/spectral_init.R")
 
-# ---- Shared simulation parameters ----
+# ---- Canonical protocol (single design used everywhere) ----
+# Double-logistic transient stressor: smooth, differentiable, physiologically
+# realistic (Castillo-Aguilar et al., 2025), and sufficient to decouple
+# (σ_p, σ_s) from (μ₀, ρ) through the non-stationarity it introduces.
+# c_p and c_s are FIXED KNOWN CONSTANTS in both simulation and inference.
+CANONICAL_INPUT_FN <- make_double_logistic(t_on = 120, t_off = 180, k = 10)
+CANONICAL_DURATION <- 300L   # 120 s baseline + 60 s stress + 120 s recovery
 
-PARAMS <- make_model_params(
-  a_p = 2.0, a_s = 0.2,               # decay rates (now free; these are sim ground truth)
-  a_ps = 0.0, a_sp = 0.0,             # uncoupled baseline
-  sigma_p = 0.20, sigma_s = 0.07,
-  mu_0 = 1.0, rho = 0.2236068,        # rho = sqrt(mu_0/kappa): gives kappa = mu_0/rho^2 = 20
-  c_p = -1.0, c_s = 0.1               # simulation-only; inference always uses c_p = c_s = 0
-)
-# Derived quantity for inline use:
-KAPPA_REF <- kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)  # = 20
-
-# ---- Identifiability parameters: c_p = c_s = 0 ----
-# The inference model always treats u(t) ≡ 0.  For the recovery study,
-# profile likelihood, and FIM to test the ESTIMATOR (not the mismatch
-# between generative and inference model), the simulation parameters must
-# coincide with the pseudo-true parameters under u ≡ 0.  Setting c_p = c_s = 0
-# guarantees θ_true = θ* (no systematic distance between simulation and
-# estimator target).  The stress-protocol demonstration (fig-results-main)
-# retains PARAMS with c_p = -1, c_s = 0.1 to show physiological realism.
+# ---- Reference parameters — uncoupled sub-model ----
+# Used for: FIM, profile likelihoods, conditional recovery (Section 3).
+# Closed-form estimators and block-diagonal FIM apply here.
 PARAMS_IDENT <- make_model_params(
-  a_p = 2.0, a_s = 0.2,
-  a_ps = 0.0, a_sp = 0.0,
+  a_p     = 2.0,  a_s     = 0.2,
+  a_ps    = 0.0,  a_sp    = 0.0,
   sigma_p = 0.20, sigma_s = 0.07,
-  mu_0 = 1.0, rho = 0.2236068,
-  c_p = 0.0, c_s = 0.0
+  mu_0    = 1.0,  rho     = 0.2236068,
+  c_p     = -1.0, c_s     = 0.1       # fixed known; not estimated
 )
 KAPPA_REF_IDENT <- kappa_from_rho(PARAMS_IDENT$free$mu_0, PARAMS_IDENT$free$rho)
 
 set.seed(2026)
+RES_IDENT <- sim_sde_ig(CANONICAL_DURATION, 0.005, PARAMS_IDENT, CANONICAL_INPUT_FN)
 
-RES_IDENT <- sim_sde_ig(720, 0.005, PARAMS_IDENT, function(t) 0)
-
-INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 0.1)
+# ---- Reference parameters — coupled full model ----
+# Used for: coupling identifiability study (Section 3.5), demonstration
+# figures (Section 4), and filter validation (Section 5).
+# Stability: det(A) = 2.0×0.2 − 0.15×0.10 = 0.385 > 0.
+# PARAMS_COUPLED_IDENT aliases PARAMS: identical parameter object,
+# separate seeds for each use.
+PARAMS <- make_model_params(
+  a_p     = 2.0,  a_s     = 0.2,
+  a_ps    = 0.15, a_sp    = 0.10,
+  sigma_p = 0.20, sigma_s = 0.07,
+  mu_0    = 1.0,  rho     = 0.2236068,
+  c_p     = -1.0, c_s     = 0.1       # fixed known; not estimated
+)
+PARAMS_COUPLED_IDENT <- PARAMS        # same object; alias for expository clarity
+KAPPA_REF            <- kappa_from_rho(PARAMS$free$mu_0, PARAMS$free$rho)
+KAPPA_REF_IDENT      <- KAPPA_REF_IDENT  # identical; alias for inline use
 
 set.seed(1234)
-RES <- sim_sde_ig(720, 0.005, PARAMS, INPUT_FN)
+RES <- sim_sde_ig(CANONICAL_DURATION, 0.005, PARAMS, CANONICAL_INPUT_FN)
 
 if (FALSE) {
-  par(mfrow = c(1,3))
+  par(mfrow = c(2,2))
   plot(RES$time, RES$mu, type = "l")
   plot(RES$time, RES$p, type = "l")
   plot(RES$time, RES$s, type = "l")
@@ -189,7 +190,7 @@ param_table <- data.frame(
     "Vagal noise amplitude $\\to$ spectral power near $a_p/(2\\pi)$",
     "Sympathetic noise amplitude $\\to$ spectral power near $a_s/(2\\pi)$",
     "Baseline mean RR interval at autonomic neutrality",
-    "$\\rho = \\sqrt{\\mu_0/\\kappa}$: baseline coefficient of variation of intervals; $\\kappa = \\mu_0/\\rho^2$",
+    "$\\rho = \\sqrt{\\mu_0\\kappa}$: baseline coefficient of variation of intervals; $\\kappa = \\mu_0/\\rho^2$",
     "Branch sensitivities to the generative input $u(t)$; unobserved in practice, so dynamical variation is absorbed by $\\{\\sigma_p, \\sigma_s, a_p, a_s\\}$"
   ),
   stringsAsFactors = FALSE
@@ -262,7 +263,6 @@ legend("topright",
          bquote("Sympathetic"     ~~ (a[s] == .(PARAMS$free$a_s) ~ Hz ~
                                       "," ~ tau[s] == .(tau_s_val) ~ s))
        ), col = c("#0072B2", "#D55E00"), lwd = 2.5, bty = "n", cex = 0.85)
-grid(col = "lightgray", lty = 1)
 ```
 
 ###  Sympathetic Inertia and the LF Band
@@ -275,11 +275,11 @@ Figure @fig-latent-sde shows simulated trajectories under baseline conditions, i
 
 ```{r}
 #| label: fig-latent-sde
-#| fig-cap: "Simulated trajectories of the latent autonomic states under baseline conditions ($u(t) = 0$, all free parameters at their reference values). **Top:** Parasympathetic state $p(t)$, high-frequency texture driven by the fast decay rate. **Middle:** Sympathetic state $s(t)$, smooth, slow-trending trajectory. **Bottom:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$, the quantity directly identified by the RR interval series. Positive values indicate sympathetic dominance; negative values indicate vagal dominance."
+#| fig-cap: "Simulated trajectories of the latent autonomic states under the canonical double-logistic protocol ($t_{\\rm on} = 120$ s, $t_{\\rm off} = 180$ s, $k = 10$ Hz; coupled full model, $a_{ps} = 0.15$, $a_{sp} = 0.10$). **Top:** Parasympathetic state $p(t)$, high-frequency texture; rapid withdrawal at stress onset reflects the fast vagal time constant $\\tau_p = 0.5$ s. **Middle:** Sympathetic state $s(t)$, smooth slow-trending trajectory; the gradual accumulation and extended recovery reflect $\\tau_s = 5$ s. **Bottom:** Net autonomic drive $\\Delta(t) = s(t) - p(t)$, the sole quantity directly identified from the RR interval series. The asymmetric onset–recovery arc — fast withdrawal, slow return — is an emergent consequence of $a_p \\gg a_s$ and requires no special modeling."
 #| fig-height: 6
 
 set.seed(101)
-r0 <- sim_sde_ig(300, 0.005, PARAMS)
+r0 <- sim_sde_ig(CANONICAL_DURATION, 0.005, PARAMS, CANONICAL_INPUT_FN)
 
 layout(matrix(1:3, 3, 1))
 par(mar = c(1.5, 5, 1, 1.5), oma = c(3, 0, 0, 0))
@@ -495,7 +495,7 @@ plot(tau_v, h_base, type = "l", lwd = 2.5, col = "black",
      main = "Hazard Function", frame.plot = FALSE)
 lines(tau_v, h_sym,  lwd = 2.5, col = "#D55E00", lty = 2)
 lines(tau_v, h_para, lwd = 2.5, col = "#0072B2", lty = 3)
-legend("topright",
+legend("topleft",
        legend = c(bquote(mu == .(mu_base) ~ s ~ "(baseline)"),
                   bquote(mu == .(round(mu_base * 0.60, 2)) ~ s ~ "(sympathetic \u2191)"),
                   bquote(mu == .(round(mu_base * 1.40, 2)) ~ s ~ "(vagal \u2191)")),
@@ -634,8 +634,8 @@ plot(fs$tau, fs$lambda, type = "l", lwd = 2.5, col = "#0072B2",
 pk  <- fs$tau[which.max(fs$lambda)]
 lmx <- max(fs$lambda)
 abline(v = pk, lty = 2, col = "gray50")
-text(pk + 0.04, lmx * 0.95, sprintf("\u03c4* = %.2f s", pk),
-     adj = 0, cex = 0.8, col = "gray40")
+text(pk - 0.04, lmx * 0.9, sprintf("\u03c4* = %.2f s", pk),
+     adj = 1, cex = 0.8, col = "gray40")
 
 plot(fs$tau, fs$rel_error_pct, type = "l", lwd = 2.5, col = "#D55E00",
      xlab = "Time since last beat (s)",
@@ -646,8 +646,8 @@ abline(v = pk, lty = 2, col = "gray50")
 pk_err <- fs$rel_error_pct[which.max((fs$rel_error_pct))]
 pk_tau <- fs$tau[which.max((fs$rel_error_pct))]
 points(pk_tau, pk_err, pch = 19, col = "#D55E00", cex = 1.5)
-text(pk_tau + 0.06, pk_err,
-     sprintf("Peak overestimate: +%.2f%%", pk_err), adj = 0, cex = 0.8, col = "#D55E00")
+text(pk_tau - 0.1, -1,
+     sprintf("Peak overestimate: +%.2f%%", pk_err), adj = 1, cex = 0.8, col = "#D55E00")
 ```
 
 ###  Exogenous Input Protocol
@@ -676,7 +676,7 @@ Identifiability is established at three progressive levels, each answering a har
 
 Each stage is a necessary prerequisite for the next. Failure at Stage 1 would preclude stages 2–3; failure at Stage 2 would mean the parameters are nominally identifiable but practically unestimable at realistic sample sizes; failure at Stage 3 would mean the marginal likelihood surface is too flat for optimisation to succeed. All three stages pass for the reference parameter set.
 
-The framework introduces up to ten parameters in the generative model: $\Theta = \{a_p,\, a_s,\, a_{ps},\, a_{sp},\, \sigma_p,\, \sigma_s,\, \mu_0,\, \rho,\, c_p,\, c_s\}$. Of these, $c_p$ and $c_s$ are fixed at zero in the inference model (external input is unobserved), so the active inference parameter set is eight-dimensional. The input sensitivities $c_p$ and $c_s$ are identifiable only when $u(t) \not\equiv 0$. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are simulation-only parameters that drive the generative stress protocol [@sec-simulation]. Since $u(t)$ is never observed during inference, $c_p = c_s = 0$ in the inference model. This has a precise consequence for the identifiability study: the recovery study must use $c_p = c_s = 0$ in simulation as well, so that the simulation parameters $\theta_\text{true}$ and the pseudo-true parameters $\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]$ coincide. When $c_p \neq 0$ or $c_s \neq 0$, the MLE correctly converges to $\theta^* \neq \theta_\text{true}$, not because the estimator is biased, but because the inference model is correctly specified only for $u \equiv 0$, and $\theta^*$ is the identifiable projection of $\theta_\text{true}$ onto the inference model. Reporting $\hat\theta - \theta_\text{true}$ in that setting confounds estimator precision with model projection distance; reporting $\hat\theta - \theta^*$ is the correct measure of estimator quality. Using $c_p = c_s = 0$ makes $\theta_\text{true} = \theta^*$ and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.
+The input sensitivities $c_p$ and $c_s$ are *fixed known constants* in the inference model, they are not estimated, but they are also not zeroed out. The canonical double-logistic protocol [@REF] with known $(c_p, c_s)$ is supplied to the estimator, which removes the deterministic input contribution from the OU residuals before profiling $(a, \sigma)$. This keeps $\theta_{\text{true}} = \theta^*$ (no mismatch between generative and inference model) while providing the non-stationarity needed to decouple $(\sigma_p, \sigma_s)$ from $(\mu_0, \rho)$: the transient stressor creates a temporal structure in the tachogram that the IG observation block cannot explain, sharpening the curvature of the log-likelihood surface along the OU noise-amplitude directions. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are simulation-only parameters that drive the generative stress protocol [@sec-simulation]. Since $u(t)$ is never observed during inference, $c_p = c_s = 0$ in the inference model. This has a precise consequence for the identifiability study: the recovery study must use $c_p = c_s = 0$ in simulation as well, so that the simulation parameters $\theta_\text{true}$ and the pseudo-true parameters $\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]$ coincide. When $c_p \neq 0$ or $c_s \neq 0$, the MLE correctly converges to $\theta^* \neq \theta_\text{true}$, not because the estimator is biased, but because the inference model is correctly specified only for $u \equiv 0$, and $\theta^*$ is the identifiable projection of $\theta_\text{true}$ onto the inference model. Reporting $\hat\theta - \theta_\text{true}$ in that setting confounds estimator precision with model projection distance; reporting $\hat\theta - \theta^*$ is the correct measure of estimator quality. Using $c_p = c_s = 0$ makes $\theta_\text{true} = \theta^*$ and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.
 
 The FIM analysis below covers the $6 \times 6$ system for the uncoupled sub-model ($a_{ps} = a_{sp} = 0$, $c_p = c_s = 0$); the $8 \times 8$ coupled-model FIM is computed in @sec-coupling. Before applying the model to data, we must establish that the parameters are identifiable and recoverable with quantified precision. We address this in two stages. The present section establishes conditional identifiability: given the latent state trajectory $\{p(t), s(t)\}_{0 \le t \le T}$, the full parameter set $\Theta$ is recoverable from the resulting beat times with sub-percent bias and nominal confidence interval coverage. Three interlocking demonstrations are provided: an analytical argument based on log-likelihood separability, a numerical eigenspectrum of the observed FIM, and a Monte Carlo recovery study ($N = 500$ replications). For the uncoupled sub-model ($a_{ps} = a_{sp} = 0$) with a non-trivial input ($u(t) \not\equiv 0$), the FIM is $8 \times 8$ and block-diagonal — this separability yields closed-form estimators for each block, which we exploit for the primary demonstrations. Identifiability of the coupling terms in the full $8 \times 8$ coupled system (where the block-diagonal structure breaks down) is established in @sec-coupling via a numerical FIM and a dedicated recovery study. Marginal identifiability, i.e. recovery from the spike train alone, integrating over unobserved latent states, is established in @sec-inference via the UKF marginal likelihood.
 
@@ -733,7 +733,7 @@ These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\ha
 
 ## Observed Fisher Information Matrix
 
-The block-diagonal structure of the conditional log-likelihood (Section 4.1) implies a corresponding block-diagonal expected FIM. For each block the condition number is analytically characterised. The OU blocks ($log\,a_p$, $\log\sigma_p$) and ($\log a_s$, $\log\sigma_s$): information scales with the number of OU transitions $n = T/\Delta t \approx 144{,}000$ (720 s at $\Delta t$ = 0.005s). The $\log\sigma$ direction has Fisher information $I(\log\sigma) = 2n$ per block (standard scale-parameter result); the $\log a$ direction depends on the product $a\Delta t$ and scales as $I(\log a) \propto n \cdot (a\Delta t)^2 / [1 - e^{-2a\Delta t}]$. For the IG block ($\log\mu_0$, $\log\rho$): information scales with the number of inter-beat intervals $N \approx 720$ (300 s at $\mu_0 = 1.0$). The analytical expressions $I(\log\mu_0) = \kappa N/\mu_0$ and $I(\log\rho) = N/2$ give a theoretical condition number of $2\kappa/\mu_0$; for the reference parameters this equals $2 \times 20 / 1 = 40$, well-conditioned.
+The block-diagonal structure of the conditional log-likelihood implies a corresponding block-diagonal expected FIM. For each block the condition number is analytically characterised. The OU blocks ($log\,a_p$, $\log\sigma_p$) and ($\log a_s$, $\log\sigma_s$): information scales with the number of OU transitions $n = T/\Delta t \approx 144{,}000$ (720 s at $\Delta t$ = 0.005s). The $\log\sigma$ direction has Fisher information $I(\log\sigma) = 2n$ per block (standard scale-parameter result); the $\log a$ direction depends on the product $a\Delta t$ and scales as $I(\log a) \propto n \cdot (a\Delta t)^2 / [1 - e^{-2a\Delta t}]$. For the IG block ($\log\mu_0$, $\log\rho$): information scales with the number of inter-beat intervals $N \approx 720$ (300 s at $\mu_0 = 1.0$). The analytical expressions $I(\log\mu_0) = \kappa N/\mu_0$ and $I(\log\rho) = N/2$ give a theoretical condition number of $2\kappa/\mu_0$; for the reference parameters this equals $2 \times 20 / 1 = 40$, well-conditioned.
 
 Numerical verification of these quantities from the reference simulation is given in Table @tbl-fim. Empirical identifiability evidence — sub-percent bias and nominal 95% CI coverage for all parameters, is reported in Section @sec-recovery.
 
@@ -742,7 +742,7 @@ Numerical verification of these quantities from the reference simulation is give
 #| tbl-cap: "Fisher information diagnostics per block of the conditional log-likelihood, computed numerically at the MLE of the reference simulation. All quantities use the log-parameterisation. The theoretical floor for each block's condition number is given by the analytical expressions in the text. A condition number below 10^3 is considered well-conditioned for the sample sizes involved"
 #| echo: false
 
-fim_result <- full_conditional_fim(RES_IDENT)
+fim_result <- full_conditional_fim(RES_IDENT, input_fn = CANONICAL_INPUT_FN)
 
 fim_tbl <- data.frame(
   Block = c("Parasympathetic OU $(\\log a_p,\\, \\log\\sigma_p)$",
@@ -785,17 +785,13 @@ We generated $N = 250$ independent realizations from the reference parameter set
 #| cache: true
 #| include: false
 
-# Recovery study uses PARAMS_IDENT (c_p = c_s = 0, no input).
-# This ensures the estimator target θ* equals the simulation θ_true,
-# so the recovery study cleanly tests estimator precision without
-# the confound of input-model mismatch.
 REC_STUDY <- recovery_study(
-  N           = 250,
-  true_params = PARAMS_IDENT,
-  duration    = 300,
-  dt          = 0.005,
-  input_fn    = function(t) 0,
-  use_parallel = TRUE
+  N            = 2,
+  true_params  = PARAMS_IDENT,
+  duration     = CANONICAL_DURATION,
+  dt           = 0.005,
+  input_fn     = CANONICAL_INPUT_FN,
+  use_parallel = FALSE
 )
 ```
 
@@ -848,7 +844,12 @@ Profile likelihood curves provide the final identifiability check: a peaked, uni
 #| cache: true
 #| include: false
 
-PROFILES <- all_profile_likelihoods(RES_IDENT, n_grid = 80, width = 4.0)
+PROFILES <- all_profile_likelihoods(
+  RES_IDENT, 
+  n_grid = 80, 
+  width = 4.0,
+  input_fn = CANONICAL_INPUT_FN
+)
 ```
 
 ```{r}
@@ -875,20 +876,12 @@ The full model estimates ten free parameters: $\{a_p,\, a_s,\, a_{ps},\, a_{sp},
 #| label: coupling-setup
 #| include: false
 
-# Physiologically motivated coupling values.
-# Stability requires det(A) = a_p*a_s - b_ps*b_sp > 0, i.e. b_ps*b_sp < 0.4.
-# Stability check: det(A) = a_p*a_s - a_ps*a_sp = 2.0*0.2 - 0.15*0.10 = 0.385 > 0.
-PARAMS_COUPLED_IDENT <- make_model_params(
-  a_p = 2.0, a_s = 0.2,
-  a_ps = 0.15, a_sp = 0.10,
-  sigma_p = 0.20, sigma_s = 0.07,
-  mu_0 = PARAMS_IDENT$free$mu_0,
-  rho  = PARAMS_IDENT$free$rho,
-  c_p = 0.0, c_s = 0.0        # identifiability analysis: no input
-)
-
+# PARAMS_COUPLED_IDENT is defined in the setup chunk (= PARAMS).
+# A separate seed produces a statistically independent replicate for the
+# identifiability study, distinct from RES used for demonstration figures.
 set.seed(5678)
-RES_COUPLED_IDENT <- sim_sde_ig(300, 0.005, PARAMS_COUPLED_IDENT, function(t) 0)
+RES_COUPLED_IDENT <- sim_sde_ig(CANONICAL_DURATION, 0.005,
+                                 PARAMS_COUPLED_IDENT, CANONICAL_INPUT_FN)
 
 if (FALSE) {
   par(mfrow = c(1,3))
@@ -903,9 +896,10 @@ if (FALSE) {
 #| cache: true
 #| include: false
 
-MLE_COUPLED   <- full_conditional_mle(RES_COUPLED_IDENT)
-FIM_COUPLED   <- full_conditional_fim(RES_COUPLED_IDENT)
-PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED_IDENT, n_grid = 80, width = 4.0)
+MLE_COUPLED   <- full_conditional_mle(RES_COUPLED_IDENT, input_fn = CANONICAL_INPUT_FN)
+FIM_COUPLED   <- full_conditional_fim(RES_COUPLED_IDENT, input_fn = CANONICAL_INPUT_FN)
+PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED_IDENT, n_grid = 80, width = 4.0,
+                                         input_fn = CANONICAL_INPUT_FN)
 ```
 
 ```{r}
@@ -1001,7 +995,7 @@ These six moment conditions define an exactly identified system for $(a_p, a_s, 
 #|   powers are computed from the FFT of the 4~Hz resampled tachogram.
 #| echo: false
 
-MLE_IDENT  <- full_conditional_mle(RES_IDENT)
+MLE_IDENT  <- full_conditional_mle(RES_IDENT, input_fn = CANONICAL_INPUT_FN)
 RR_IDENT   <- diff(RES_IDENT$spikes)
 MOMENT_CHK <- check_moment_consistency(RR_IDENT, MLE_IDENT)
 
@@ -1118,7 +1112,7 @@ source("R/filter.R")
 
 # Oracle filter: true parameters, no input (PARAMS_IDENT, c_p=c_s=0).
 # This isolates filter state-estimation error from parameter estimation error.
-FLT       <- pp_ukf(RES_IDENT$spikes, PARAMS_IDENT, function(t) 0)
+FLT       <- pp_ukf(RES_IDENT$spikes, PARAMS_IDENT, CANONICAL_INPUT_FN)
 flt_grid  <- filter_to_grid(FLT, RES_IDENT$time)
 ```
 
@@ -1256,11 +1250,11 @@ Two quantities of interest emerge from this study. The parameter recovery compar
 #| include: false
 
 MARG_REC <- marginal_recovery_study(
-  N           = 250L,
-  true_params = PARAMS_IDENT,
-  duration    = 480,          # covers both burst and sustained epochs
-  dt          = 0.005,
-  input_fn    = make_multi_epoch_protocol(),
+  N            = 250L,
+  true_params  = PARAMS_IDENT,
+  duration     = CANONICAL_DURATION,
+  dt           = 0.005,
+  input_fn     = CANONICAL_INPUT_FN,
   use_parallel = TRUE
 )
 ```
@@ -1402,22 +1396,16 @@ Another question that arises from the model is, how much data is enough to prope
 #| cache: true
 #| include: false
 
-# Conditional duration study — fast, establishes CR-bound scaling baseline
 DUR_COND <- duration_recovery_study(
-  durations    = c(120, 300, 600, 1200, 1800),
+  durations    = c(300, 600, 1200, 1800),
   true_params  = PARAMS_IDENT,
   N_per_dur    = 50L,
   dt           = 0.005,
   mode         = "conditional",
   use_parallel = TRUE
 )
-
-# Marginal duration study: multi-epoch protocol (480 s baseline).
-# The minimum duration is 480 s to include both the burst (120–165 s)
-# and the full sustained-load epoch (240–420 s); shorter recordings
-# truncate the epoch that constrains a_s.
 DUR_MARG <- duration_recovery_study(
-  durations    = c(480, 720, 1200, 1800),
+  durations    = c(300, 600, 1200, 1800),
   true_params  = PARAMS_IDENT,
   N_per_dur    = 50L,
   dt           = 0.005,
@@ -1471,7 +1459,7 @@ mu_beats <- approx(RES$time, RES$mu, xout = beat_t)$y
 
 ```{r}
 #| label: fig-results-main
-#| fig-cap: "Simulation of the autonomic response to a double-logistic stress protocol ($t_{\\rm on} = 300$ s, $t_{\\rm off} = 420$ s, $k = 0.1$ Hz). **Row 1:** Exogenous input $u(t)$; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. **Row 2:** True net autonomic drive $\\Delta(t) = s(t) - p(t)$ from the generative model. The inference engine (UKF) recovers an estimate $\\hat\\Delta(t)$ of this quantity from the RR series alone; see @fig-filter-recovery for the correspondence between true and filtered trajectories under the identifiability-clean parameter set. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
+#| fig-cap: "Simulation of the autonomic response under the canonical double-logistic protocol ($t_{\\rm on} = 120$ s, $t_{\\rm off} = 180$ s, $k = 10$ Hz; coupled full model, $a_{ps} = 0.15$, $a_{sp} = 0.10$, $c_p = -1.0$, $c_s = 0.1$). **Row 1:** Exogenous input $u(t)$; the smooth onset and offset approximate a physiological exercise bout while preserving differentiability. **Row 2:** True net autonomic drive $\\Delta(t) = s(t) - p(t)$ from the generative model. The inference engine (UKF) recovers an estimate $\\hat\\Delta(t)$ of this quantity from the RR series alone; see @fig-filter-recovery for the correspondence between true and filtered trajectories under the identifiability-clean parameter set. Positive values indicate sympathetic dominance. **Row 3:** Individual latent states $p(t)$ (blue, vagal) and $s(t)$ (red, sympathetic), shown for mechanistic interpretation; these are not individually identified from RR data alone. **Row 4:** Tachogram of observed R-R intervals (grey) with the instantaneous mean $\\mu(t) = \\mu_0\\exp(-\\Delta(t))$ overlaid (black)."
 #| fig-height: 9
 
 layout(matrix(1:4, 4, 1), heights = c(0.6, 0.9, 0.9, 1.4))
@@ -1516,7 +1504,7 @@ legend("bottomleft",
 mtext("Time (s)", side = 1, outer = TRUE, line = 2)
 ```
 
-The onset of stress at $t = 300$ s produces an immediate drop in $\Delta(t)$ as vagal tone withdraws rapidly (high $a_p$), followed by a slower rise as sympathetic tone accumulates (low $a_s$). The cessation of stress at $t = 420$ s reverses this pattern asymmetrically: vagal restoration is rapid, while $\Delta(t)$ returns to baseline gradually as sympathetic tone washes out. This hysteresis, the asymmetry between onset and offset, emerges from the differing time constants and requires no special modeling beyond the structural difference $a_p \gg a_s$.
+The onset of stress at $t = 120$ s produces an immediate drop in $\Delta(t)$ as vagal tone withdraws rapidly ($a_p = 2$ Hz, $\tau_p = 0.5$ s), followed by a slower rise as sympathetic tone accumulates ($a_s = 0.2$ Hz, $\tau_s = 5$ s). The antagonistic coupling ($a_{ps} = 0.15$, $a_{sp} = 0.10$) amplifies these excursions: sympathetic activation actively suppresses $p(t)$ beyond its autonomous decay, deepening the stress trough. The cessation of stress at $t = 180$ s reverses this pattern asymmetrically: vagal restoration is rapid, while $\Delta(t)$ returns to baseline gradually as sympathetic tone washes out. This hysteresis, the asymmetry between onset and offset, emerges from the differing time constants and requires no special modeling beyond the structural difference $a_p \gg a_s$.
 
 ##  Heteroscedasticity and Variance Scaling
 

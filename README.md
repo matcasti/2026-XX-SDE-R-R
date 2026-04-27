@@ -59,11 +59,14 @@ All random seeds are set explicitly:
 
 | Seed | Location | Purpose |
 |------|----------|---------|
-| `2026` | `index.qmd` setup chunk | Main simulation (`RES`) |
+| `2026` | `index.qmd` setup chunk | `RES_IDENT` — identifiability reference (canonical input) |
+| `1234` | `index.qmd` setup chunk | `RES` — visualization stress protocol |
 | `101`  | `index.qmd` latent-state figure | Baseline OU visualization |
 | `123`  | `index.qmd` log-link figure | Log vs linear link comparison |
 | `321`  | `index.qmd` OU bias figure | Euler-Maruyama comparison |
-| `2026` | `identifiability.R` (`RECOVERY_MASTER_SEED`) | Recovery study seed stream |
+| `5678` | `index.qmd` coupling-setup chunk | Coupled-model reference simulation |
+| `2026` | `identifiability.R` (`RECOVERY_MASTER_SEED`) | Conditional recovery seed stream |
+| `2027` | `identifiability.R` (`RECOVERY_MASTER_SEED + 1`) | Marginal recovery seed stream |
 
 Rendering on a different platform may produce bit-identical results only
 within the same R version and OS due to `.Random.seed` portability.
@@ -76,7 +79,7 @@ Numerical results should be stable to the precision reported in the paper.
 | Component | Approx. runtime (single core) | Notes |
 |-----------|-------------------------------|-------|
 | Main simulation (720 s, dt=0.005) | ~15 s | Cached after first render |
-| Recovery study (N=200, 300 s each) | ~5 min | Parallelized on Unix; cached |
+| Recovery study (N=250, 300 s, canonical double-logistic) | ~5 min | Parallelized on Unix; cached |
 | Profile likelihoods (6 parameters) | ~30 s | Cached |
 | All figures and tables | ~2 min | — |
 

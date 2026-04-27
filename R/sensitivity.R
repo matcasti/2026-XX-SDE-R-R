@@ -14,8 +14,8 @@
 # (2) re-run the filter on the reference simulation and record
 # filter RMSE on Delta(t) and total log-likelihood.
 #
-# Requires: model_functions.R, mle.R, identifiability.R,
-#           filter.R sourced first.
+# Requires: model_functions.R, mle.R, identifiability.R, filter.R sourced first.
+# CANONICAL_INPUT_FN and CANONICAL_DURATION are defined in identifiability.R.
 # ============================================================
 
 SENSITIVITY_SEED <- 9999L
@@ -43,11 +43,11 @@ sensitivity_grid <- function(ref_ap = 2.0,
 
 sensitivity_one <- function(a_p_val, a_s_val,
                             base_params,
-                            sim_res_ref,    # reference simulation (fixed seed)
+                            sim_res_ref,
                             N_rep   = 50L,
-                            duration = 300,
+                            duration = CANONICAL_DURATION,
                             dt       = 0.005,
-                            input_fn = make_double_logistic(120, 180)) {
+                            input_fn = CANONICAL_INPUT_FN) {
 
   # Build modified parameter object — vary true decay rates across the grid
   params_mod <- base_params
@@ -91,11 +91,13 @@ sensitivity_one <- function(a_p_val, a_s_val,
     params_for_filter          <- base_params
     params_for_filter$free$a_p <- a_p_val
     params_for_filter$free$a_s <- a_s_val
-    # Inference model: c_p = c_s = 0, input unobserved
-    params_for_filter$free$c_p <- 0
-    params_for_filter$free$c_s <- 0
+    # c_p and c_s are fixed known constants carried from base_params.
+    # The stored input_fn removes their contribution from the prediction step,
+    # isolating decay-rate misspecification as the sole source of filter error.
+    input_ref <- if (!is.null(sim_res_ref$input_fn)) sim_res_ref$input_fn
+    else CANONICAL_INPUT_FN
     pp_ukf(sim_res_ref$spikes, params_for_filter,
-           input_fn = function(t) 0)
+           input_fn = input_ref)
   }, error = function(e) NULL)
 
   flt_rmse <- NA_real_

@@ -14,21 +14,35 @@
 # The master seed produces all per-replication seeds deterministically.
 RECOVERY_MASTER_SEED <- 2026L
 
+# ---- Canonical recovery protocol ----
+# Used uniformly across ALL Monte Carlo studies (conditional, marginal,
+# duration, sensitivity) to ensure a single principled, physiologically
+# realistic design.  The double-logistic transient stressor:
+#   - is smooth and differentiable everywhere
+#   - creates sufficient non-stationarity to decouple (σ_p, σ_s) from (μ₀, ρ)
+#   - has known c_p, c_s treated as fixed constants during inference
+#   - makes θ_true = θ* so recovery metrics measure estimator precision only
+
+CANONICAL_INPUT_FN <- make_double_logistic(t_on = 120, t_off = 180, k = 10)
+CANONICAL_DURATION <- 300L   # 120 s baseline + 60 s stress + 120 s recovery
+
 # ---- Single recovery experiment ----
 #
 # Simulates one dataset from true_params, runs the conditional MLE,
 # and returns true values, estimates, and SEs side-by-side.
 #
-# NOTE: this is *conditional* identifiability — parameters are estimated
+# NOTE: this is *conditional* identifiability, meaning parameters are estimated
 # given the true state trajectory. Full marginal recovery (from spike
-# times alone) requires the filter in Phase 4.
+# times alone) requires UKF
 
 single_recovery <- function(true_params,
-                             duration = 300, dt = 0.005,
-                             input_fn = make_double_logistic(120, 180),
-                             seed = NULL) {
+                            duration = CANONICAL_DURATION, dt = 0.005,
+                            input_fn = CANONICAL_INPUT_FN,
+                            seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
-  mle     <- full_conditional_mle(sim_res)
+  # Pass input_fn so the conditional MLE removes the known input contribution
+  # from OU residuals.  c_p and c_s are taken from true_params (fixed, not estimated).
+  mle     <- full_conditional_mle(sim_res, input_fn = input_fn)
 
   fp           <- true_params$free
   use_coupled  <- (abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12
@@ -63,9 +77,9 @@ single_recovery <- function(true_params,
 
 recovery_study <- function(N = 200L,
                            true_params,
-                           duration = 300,
+                           duration = CANONICAL_DURATION,
                            dt = 0.005,
-                           input_fn = make_double_logistic(120, 180),
+                           input_fn = CANONICAL_INPUT_FN,
                            use_parallel = TRUE) {
   set.seed(RECOVERY_MASTER_SEED)
   seeds <- sample.int(1e6L, N)
@@ -383,16 +397,17 @@ plot_profiles <- function(profiles,
 # Full pipeline: simulate → pp_mle (marginal MLE from spike train) → filter
 # This is the key validation of the fully marginal identifiability claim.
 
-marginal_recovery_one <- function(true_params, duration = 480, dt = 0.005,
-                                  input_fn = make_multi_epoch_protocol(),
+marginal_recovery_one <- function(true_params, duration = CANONICAL_DURATION, dt = 0.005,
+                                  input_fn = CANONICAL_INPUT_FN,
                                   seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
 
-  # Inference ignores the external input: pp_mle always uses c_p = c_s = 0
-  # and attributes all dynamics to the OU spectral structure.
+  # c_p and c_s are fixed known constants: pass the same input_fn to pp_mle
+  # so the UKF prediction step removes the known input contribution.
+  # The optimization covers {a_p, a_s, σ_p, σ_s, μ₀, ρ} only.
   mle_result <- tryCatch(
     pp_mle(sim_res$spikes, true_params,
-           input_fn = function(t) 0,   # no external input seen by the filter
+           input_fn = input_fn,
            verbose  = FALSE),
     error = function(e) NULL
   )
@@ -425,9 +440,10 @@ marginal_recovery_one <- function(true_params, duration = 480, dt = 0.005,
   )
 }
 
-marginal_recovery_study <- function(N = 100L, true_params, duration = 480,
+marginal_recovery_study <- function(N = 100L, true_params,
+                                    duration = CANONICAL_DURATION,
                                     dt = 0.005,
-                                    input_fn = make_multi_epoch_protocol(),
+                                    input_fn = CANONICAL_INPUT_FN,
                                     use_parallel = TRUE) {
   set.seed(RECOVERY_MASTER_SEED + 1L)   # distinct from conditional study
   seeds <- sample.int(1e6L, N)
@@ -500,7 +516,7 @@ marginal_recovery_study <- function(N = 100L, true_params, duration = 480,
 #                  "delta_rmse_median" records the median filter RMSE on Delta(t).
 #   N_per_dur, mode, durations, true_params : input arguments, for plotting
 
-duration_recovery_study <- function(durations    = c(120, 300, 600, 1200),
+duration_recovery_study <- function(durations    = c(300, 600, 1200, 1800),
                                     true_params,
                                     N_per_dur    = 50L,
                                     dt           = 0.005,
@@ -518,7 +534,7 @@ duration_recovery_study <- function(durations    = c(120, 300, 600, 1200),
                             true_params  = true_params,
                             duration     = dur,
                             dt           = dt,
-                            input_fn     = function(t) 0,
+                            input_fn     = CANONICAL_INPUT_FN,
                             use_parallel = use_parallel)
       df      <- rec$summary
       n_valid <- rec$N_valid
@@ -528,7 +544,7 @@ duration_recovery_study <- function(durations    = c(120, 300, 600, 1200),
                                      true_params  = true_params,
                                      duration     = dur,
                                      dt           = dt,
-                                     input_fn     = make_multi_epoch_protocol(),
+                                     input_fn     = CANONICAL_INPUT_FN,
                                      use_parallel = use_parallel)
       df      <- rec$summary
       n_valid <- rec$N_valid

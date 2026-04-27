@@ -344,8 +344,8 @@ pp_mle <- function(spikes,
       sigma_s = exp(v[4L]),
       mu_0    = exp(v[5L]),
       rho     = exp(v[6L]),
-      c_p     = 0,        # always zero: external input unobserved in inference
-      c_s     = 0
+      c_p     = fp0$c_p,  # fixed known constant carried from params_init
+      c_s     = fp0$c_s   # not estimated; input contribution analytically removed
     )
   }
 

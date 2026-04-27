@@ -60,10 +60,8 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
 # Closed-form solution from OLS (for c) + method-of-moments (for sigma).
 
 ou_mle <- function(x_vec, u_vec, a_init, dt,
-                   log_a_bounds = c(log(0.01), log(500))) {
-  # Estimates (a, sigma, c_gain) for one uncoupled OU branch.
-  # Strategy: profile over log(a) via optimize(); conditional on a, the
-  # MLE for (c, sigma) is closed-form (OLS / method-of-moments).
+                   log_a_bounds = c(log(0.01), log(500)),
+                   c_fixed = NULL) {
   n <- length(x_vec) - 1L
   if (n < 2L)
     return(list(a = a_init, sigma = NA_real_, c_gain = NA_real_,
@@ -78,8 +76,14 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
     z      <- u_vec[idx] / a * (-expm1(-a * dt))  # input basis
     y      <- x_vec[-1L] - x_vec[idx] * e_adt
     C_a    <- (-expm1(-2 * a * dt)) / (2 * a)
-    ssz    <- sum(z^2)
-    c_hat  <- if (ssz > 1e-14) sum(y * z) / ssz else 0
+    c_hat  <- if (!is.null(c_fixed)) {
+      c_fixed
+    } else {
+      ssz <- sum(z^2)
+      if (ssz > 1e-14) {
+        sum(y * z) / ssz
+      } else { 0 }
+    }
     resid  <- y - c_hat * z
     sigma2 <- max(mean(resid^2) / C_a, 1e-14)
     ll     <- sum(dnorm(resid, 0, sqrt(sigma2 * C_a), log = TRUE))
@@ -103,7 +107,9 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
   # making the 3×3 Hessian singular. Detect this case and use a 2×2 Hessian
   # in (log a, log σ) only; c_se is set to NA (not estimable).
   th0    <- c(log(a_hat), log(pf$sigma), pf$c_gain)
-  u_is_zero <- all(abs(u_vec[idx]) < .Machine$double.eps * 100)
+
+  # c is not a free parameter when c_fixed is supplied OR when u ≡ 0.
+  u_is_zero <- !is.null(c_fixed) || all(abs(u_vec[idx]) < .Machine$double.eps * 100)
 
   nll_3d <- function(th) {
     a_v   <- exp(th[1L]); sig_v <- exp(th[2L]); c_v <- th[3L]
@@ -343,13 +349,17 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
 
 # ---- Combined conditional MLE for all free parameters ----
 
-full_conditional_mle <- function(sim_res) {
+full_conditional_mle <- function(sim_res, input_fn = NULL) {
   fp    <- sim_res$params$free
   dt    <- sim_res$time[2L] - sim_res$time[1L]
 
-  # Inference uses u(t) ≡ 0: the external input is unobserved in practice.
-  # All dynamical variation is attributed to the OU spectral structure.
-  u_vec <- rep(0.0, length(sim_res$time))
+  # Resolve input: caller-supplied > stored in sim_res > zero.
+  # c_p and c_s are treated as KNOWN fixed constants (not estimated).
+  # Supplying the actual u(t) removes the input-driven drift from OU residuals,
+  # sharpening identification of (a, σ) and eliminating the θ_true ≠ θ* mismatch.
+  if (is.null(input_fn))
+    input_fn <- if (!is.null(sim_res$input_fn)) sim_res$input_fn else function(t) 0
+  u_vec <- vapply(sim_res$time, input_fn, numeric(1L))
 
   use_coupled <- (abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12
 
@@ -366,8 +376,8 @@ full_conditional_mle <- function(sim_res) {
                    c_se = mle_ou$c_s_se, log_lik = NA_real_)
   } else {
     mle_ou <- NULL
-    mle_p  <- ou_mle(sim_res$p, u_vec, a_init = fp$a_p, dt)
-    mle_s  <- ou_mle(sim_res$s, u_vec, a_init = fp$a_s, dt)
+    mle_p  <- ou_mle(sim_res$p, u_vec, a_init = fp$a_p, dt, c_fixed = fp$c_p)
+    mle_s  <- ou_mle(sim_res$s, u_vec, a_init = fp$a_s, dt, c_fixed = fp$c_s)
   }
 
   spk <- sim_res$spikes
@@ -643,10 +653,9 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt) {
 # c_p and c_s are excluded: they are simulation-only and unidentified from u(t) ≡ 0.
 # Returns the full FIM, all eigenvalues, overall condition number, and per-param SEs.
 
-full_conditional_fim <- function(sim_res) {
-  dt <- sim_res$time[2L] - sim_res$time[1L]
-
-  mle <- full_conditional_mle(sim_res)
+full_conditional_fim <- function(sim_res, input_fn = NULL) {
+  dt  <- sim_res$time[2L] - sim_res$time[1L]
+  mle <- full_conditional_mle(sim_res, input_fn = input_fn)
 
   if ((abs(sim_res$params$free$a_ps) + abs(sim_res$params$free$a_sp)) > 1e-12)
     return(.full_fim_coupled(sim_res, mle, dt))
@@ -705,26 +714,33 @@ ou_log_lik_at <- function(x_vec, u_vec, a, sigma, c_gain, dt) {
   sum(dnorm(x_vec[idx + 1L], mean = means, sd = sqrt(var_v), log = TRUE))
 }
 
-profile_lik_one <- function(param, grid, sim_res, mle) {
+profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
   dt    <- sim_res$time[2L] - sim_res$time[1L]
-  # Inference uses u(t) ≡ 0: c_p and c_s are not profiled.
-  u_vec <- rep(0.0, length(sim_res$time))
+  # c_p and c_s are fixed known constants.  u(t) is supplied so their
+  # contribution is removed from OU residuals before profiling (a, σ).
+  if (is.null(input_fn))
+    input_fn <- if (!is.null(sim_res$input_fn)) sim_res$input_fn else function(t) 0
+  u_vec <- vapply(sim_res$time, input_fn, numeric(1L))
+  fp    <- sim_res$params$free
 
   a_p_mle <- mle$a_p
   a_s_mle <- mle$a_s
 
-  # Parasympathetic branch pre-computation (c_p ≡ 0 → z_p ≡ 0)
-  n_p  <- length(sim_res$p) - 1L
-  e_p  <- exp(-a_p_mle * dt)
-  y_p  <- sim_res$p[-1L] - sim_res$p[seq_len(n_p)] * e_p
-  C_ap <- (-expm1(-2 * a_p_mle * dt)) / (2 * a_p_mle)
+  # Branch pre-computations: residuals after removing known input contribution.
+  n_p    <- length(sim_res$p) - 1L
+  idx_p  <- seq_len(n_p)
+  e_p    <- exp(-a_p_mle * dt)
+  z_p    <- u_vec[idx_p] / a_p_mle * (-expm1(-a_p_mle * dt))
+  y_p    <- sim_res$p[-1L] - sim_res$p[idx_p] * e_p - fp$c_p * z_p
+  C_ap   <- (-expm1(-2 * a_p_mle * dt)) / (2 * a_p_mle)
   sig_p_hat <- sqrt(max(mean(y_p^2) / C_ap, 1e-14))
 
-  # Sympathetic branch pre-computation (c_s ≡ 0 → z_s ≡ 0)
-  n_s  <- length(sim_res$s) - 1L
-  e_s  <- exp(-a_s_mle * dt)
-  y_s  <- sim_res$s[-1L] - sim_res$s[seq_len(n_s)] * e_s
-  C_as <- (-expm1(-2 * a_s_mle * dt)) / (2 * a_s_mle)
+  n_s    <- length(sim_res$s) - 1L
+  idx_s  <- seq_len(n_s)
+  e_s    <- exp(-a_s_mle * dt)
+  z_s    <- u_vec[idx_s] / a_s_mle * (-expm1(-a_s_mle * dt))
+  y_s    <- sim_res$s[-1L] - sim_res$s[idx_s] * e_s - fp$c_s * z_s
+  C_as   <- (-expm1(-2 * a_s_mle * dt)) / (2 * a_s_mle)
   sig_s_hat <- sqrt(max(mean(y_s^2) / C_as, 1e-14))
 
   tau_vec <- diff(sim_res$spikes)
@@ -734,10 +750,12 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
   w       <- exp(delta_v)
   mu0_hat <- sum(tau_vec * w^2) / sum(w)
 
-  profile_at_a_internal <- function(x_vec_b, a_v, dt_b) {
+  # profile_at_a_internal: profile over a with c_known fixed and σ eliminated.
+  profile_at_a_internal <- function(x_vec_b, u_vec_b, c_known, a_v, dt_b) {
     n_b   <- length(x_vec_b) - 1L;  idx_b <- seq_len(n_b)
     e_adt <- exp(-a_v * dt_b)
-    y_b   <- x_vec_b[-1L] - x_vec_b[idx_b] * e_adt   # c = 0
+    z_b   <- u_vec_b[idx_b] / a_v * (-expm1(-a_v * dt_b))
+    y_b   <- x_vec_b[-1L] - x_vec_b[idx_b] * e_adt - c_known * z_b
     C_b   <- (-expm1(-2 * a_v * dt_b)) / (2 * a_v)
     sig2  <- max(mean(y_b^2) / C_b, 1e-14)
     list(ll = sum(dnorm(y_b, 0, sqrt(sig2 * C_b), log = TRUE)))
@@ -824,18 +842,18 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
            },
            sigma_p = {
              if (v <= 0) return(-Inf)
-             ou_log_lik_at(sim_res$p, u_vec, a_p_mle, v, 0, dt)
+             ou_log_lik_at(sim_res$p, u_vec, a_p_mle, v, fp$c_p, dt)
            },
            sigma_s = {
              if (v <= 0) return(-Inf)
-             ou_log_lik_at(sim_res$s, u_vec, a_s_mle, v, 0, dt)
+             ou_log_lik_at(sim_res$s, u_vec, a_s_mle, v, fp$c_s, dt)
            },
            a_p = {
              if (v <= 0) return(-Inf)
              use_coupled_loc <- (abs(sim_res$params$free$a_ps) +
                                    abs(sim_res$params$free$a_sp)) > 1e-12
              if (!use_coupled_loc) {
-               profile_at_a_internal(sim_res$p, v, dt)$ll
+               profile_at_a_internal(sim_res$p, u_vec, fp$c_p, v, dt)$ll
              } else {
                # In coupled model, profile a_p within the full joint OU LL,
                # maximising over (a_s, a_ps, a_sp, sigma_p, sigma_s).
@@ -870,7 +888,7 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
              use_coupled_loc <- (abs(sim_res$params$free$a_ps) +
                                    abs(sim_res$params$free$a_sp)) > 1e-12
              if (!use_coupled_loc) {
-               profile_at_a_internal(sim_res$s, v, dt)$ll
+               profile_at_a_internal(sim_res$s, u_vec, fp$c_s, v, dt)$ll
              } else {
                x_mat_loc  <- cbind(sim_res$p, sim_res$s)
                u_zero_loc <- rep(0.0, nrow(x_mat_loc))
@@ -920,8 +938,9 @@ profile_lik_one <- function(param, grid, sim_res, mle) {
 
 # ---- All profile likelihoods in one call ----
 
-all_profile_likelihoods <- function(sim_res, n_grid = 60, width = 3.0) {
-  mle <- full_conditional_mle(sim_res)
+all_profile_likelihoods <- function(sim_res, n_grid = 60, width = 3.0,
+                                    input_fn = NULL) {
+  mle <- full_conditional_mle(sim_res, input_fn = input_fn)
 
   fp_sim      <- sim_res$params$free
   use_coupled <- (abs(fp_sim$a_ps) + abs(fp_sim$a_sp)) > 1e-12
@@ -957,7 +976,7 @@ all_profile_likelihoods <- function(sim_res, n_grid = 60, width = 3.0) {
       spread <- max(abs(s$center) * eff_width, 0.5)
       seq(s$center - spread, s$center + spread, length.out = n_grid)
     }
-    ll <- profile_lik_one(p, grid, sim_res, mle = mle)
+    ll <- profile_lik_one(p, grid, sim_res, mle = mle, input_fn = input_fn)
     list(param = p, grid = grid, ll = ll,
          mle = s$center, label = s$label,
          ll_mle = max(ll, na.rm = TRUE))
