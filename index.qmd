@@ -786,12 +786,12 @@ We generated $N = 250$ independent realizations from the reference parameter set
 #| include: false
 
 REC_STUDY <- recovery_study(
-  N            = 2,
+  N            = 250,
   true_params  = PARAMS_IDENT,
   duration     = CANONICAL_DURATION,
   dt           = 0.005,
   input_fn     = CANONICAL_INPUT_FN,
-  use_parallel = FALSE
+  use_parallel = TRUE
 )
 ```
 
@@ -1466,7 +1466,7 @@ layout(matrix(1:4, 4, 1), heights = c(0.6, 0.9, 0.9, 1.4))
 par(mar = c(1.2, 5.5, 1.2, 2), oma = c(3.5, 0, 2, 0))
 
 # Row 1: Input
-plot(RES$time, sapply(RES$time, INPUT_FN), type = "l", lwd = 2,
+plot(RES$time, sapply(RES$time, CANONICAL_INPUT_FN), type = "l", lwd = 2,
      ylab = "u(t)", xaxt = "n", frame.plot = FALSE,
      col = "black", ylim = c(-0.1, 1.3))
 mtext("Autonomic Response to a Sustained Stress Protocol",

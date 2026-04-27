@@ -88,7 +88,7 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
     sigma2 <- max(mean(resid^2) / C_a, 1e-14)
     ll     <- sum(dnorm(resid, 0, sqrt(sigma2 * C_a), log = TRUE))
     list(a = a, c_gain = c_hat, sigma = sqrt(sigma2),
-         ll = ll, C_a = C_a, ssz = ssz)
+         ll = ll, C_a = C_a)
   }
 
   # 1-D profile optimisation over log(a)
@@ -126,7 +126,7 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
   if (u_is_zero) {
     # 2×2 Hessian in (log a, log σ); c is absorbed into the residual variance.
     th0_2 <- th0[1:2]
-    nll_2 <- function(th) nll_3d(c(th, 0))   # c_gain fixed at 0
+    nll_2 <- function(th) nll_3d(c(th, if (!is.null(c_fixed)) c_fixed else 0))
     eps2 <- 1e-4; np2 <- 2L
     H2   <- matrix(0, np2, np2)
     for (i in seq_len(np2)) for (j in i:np2) {
@@ -140,7 +140,7 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
     return(list(
       a        = a_hat,
       sigma    = pf$sigma,
-      c_gain   = 0,
+      c_gain   = if (!is.null(c_fixed)) c_fixed else 0,
       a_se     = a_hat    * safe2(1L),
       sigma_se = pf$sigma * safe2(2L),
       c_se     = NA_real_,
