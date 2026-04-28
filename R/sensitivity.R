@@ -54,8 +54,11 @@ sensitivity_one <- function(a_p_val, a_s_val,
   params_mod$free$a_p <- a_p_val
   params_mod$free$a_s <- a_s_val
 
-  # NOTE: if base_params has c_p = c_s = 0, the input_fn has no generative
-  # effect. The argument is retained for API compatibility with single_recovery().
+  # NOTE: c_p and c_s are taken from base_params as fixed known constants.
+  # When base_params = PARAMS_IDENT (c_p = -1.0, c_s = 0.1), the input_fn
+  # drives the OU dynamics and introduces non-stationarity that helps
+  # decouple (sigma_p, sigma_s) from (mu_0, rho) in the recovery sub-study.
+
   # (1) Conditional MLE recovery — N_rep short replications
   set.seed(SENSITIVITY_SEED)
   seeds <- sample.int(1e6L, N_rep)

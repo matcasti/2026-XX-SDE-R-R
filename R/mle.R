@@ -218,7 +218,7 @@ ou_coupled_mle <- function(x_mat, a_p_init, a_s_init,
   init_s <- ou_mle(x_mat[, 2L], u_zero, a_s_init, dt)
 
   th0 <- c(log(init_p$a), log(init_s$a),
-           max(a_ps_init, 0), max(a_sp_init, 0),
+           max(a_ps_init, 1e-6), max(a_sp_init, 1e-6),
            log(max(init_p$sigma, 1e-5)), log(max(init_s$sigma, 1e-5)))
 
   neg_ll <- function(th) {

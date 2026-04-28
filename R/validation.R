@@ -37,11 +37,10 @@ load_tilt_rr <- function(subject_id, path = getOption("sde_ig.tilt_path")) {
 
 fit_sde_ig <- function(rr_vec, params_init = make_model_params(),
                        input_fn = function(t) 0,
-                       optimize_gains = FALSE, verbose = FALSE) {
+                       verbose = FALSE) {
   spikes <- c(0, cumsum(rr_vec))
-  result <- pp_mle(spikes, params_init, input_fn,
-                   optimize_gains = optimize_gains, verbose = verbose)
-  result$n_params_estimated <- 6L + 2L * optimize_gains +
+  result <- pp_mle(spikes, params_init, input_fn, verbose = verbose)
+  result$n_params_estimated <- 6L +
     2L * ((abs(params_init$free$a_ps) + abs(params_init$free$a_sp)) > 1e-12)
   result
 }

@@ -288,11 +288,13 @@ pp_mle <- function(spikes,
       params_init
     }
   )
-  # For coupled models: replacing hard-coded carry-over from params_init with
-  # the data-driven band-filtered AR(1) coupling estimate, which gives a
-  # better starting point than either zero or an arbitrary literature value.
-  if ((abs(params_init$free$a_ps) + abs(params_init$free$a_sp)) > 1e-12 ||
-      TRUE) {   # always attempt; guard inside band_filtered_coupling_init
+
+  # Model structure (coupled vs uncoupled) is determined exclusively by params_init,
+  # not by data-driven spectral estimates.  Band-filtered coupling initialisation is
+  # applied only when params_init requests the coupled model.
+  use_coupled <- (abs(params_init$free$a_ps) + abs(params_init$free$a_sp)) > 1e-12
+
+  if (use_coupled) {
     cpl <- tryCatch(
       band_filtered_coupling_init(diff(spikes),
                                   a_p = params_spectral$free$a_p,
@@ -300,32 +302,23 @@ pp_mle <- function(spikes,
       error = function(e) list(a_ps = params_init$free$a_ps,
                                a_sp = params_init$free$a_sp)
     )
-    params_spectral$free$a_ps <- cpl$a_ps
-    params_spectral$free$a_sp <- cpl$a_sp
-  } else {
-    params_spectral$free$a_ps <- params_init$free$a_ps
-    params_spectral$free$a_sp <- params_init$free$a_sp
-  }
-  params_spectral$free$c_p  <- params_init$free$c_p
-  params_spectral$free$c_s  <- params_init$free$c_s
-
-  fp0         <- params_spectral$free
-  use_coupled <- (abs(fp0$a_ps) + abs(fp0$a_sp)) > 1e-12
-
-  if (use_coupled) {
-    if (fp0$a_p * fp0$a_s - fp0$a_ps * fp0$a_sp <= 0) {
-      # Starting values violate stability: fall back to params_init
+    # Clamp away from the L-BFGS-B lower boundary so gradients are finite at init.
+    params_spectral$free$a_ps <- max(cpl$a_ps, 1e-6)
+    params_spectral$free$a_sp <- max(cpl$a_sp, 1e-6)
+    # Stability guard: fall back if det(A) <= 0 at the starting point.
+    if (params_spectral$free$a_p * params_spectral$free$a_s -
+        params_spectral$free$a_ps * params_spectral$free$a_sp <= 0) {
       if (verbose)
-        message("pp_mle: spectral_init starting values violate det(A)>0 after coupling patch; using params_init.")
+        message("pp_mle: coupling starting values violate det(A)>0; using params_init.")
       params_spectral <- params_init
-      fp0 <- params_spectral$free   # must update fp0 so pack() and use_coupled use the fallback
     }
+  } else {
+    params_spectral$free$a_ps <- 0
+    params_spectral$free$a_sp <- 0
   }
-
-  # Log-space packing: (log a_p, log a_s, log σ_p, log σ_s, log μ₀, log ρ)
-  # + 2 if coupled: (a_ps, a_sp) with lower bound 0.
-  # c_p and c_s are NEVER estimated from RR data; always fixed at 0.
-  use_coupled <- (abs(fp0$a_ps) + abs(fp0$a_sp)) > 1e-12
+  params_spectral$free$c_p <- params_init$free$c_p
+  params_spectral$free$c_s <- params_init$free$c_s
+  fp0 <- params_spectral$free
 
   pack <- function(fp) {
     v <- c(log(fp$a_p), log(fp$a_s),
