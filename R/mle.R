@@ -337,9 +337,34 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   #   SE(rho) = rho * SE(log rho)  [delta method]
   se_log_mu0   <- if (!is.na(mu0_se))   mu0_se   / mu0_hat   else NA_real_
   se_log_kappa <- if (!is.na(kappa_se)) kappa_se / kappa_hat else NA_real_
-  rho_se <- if (!is.na(se_log_mu0) && !is.na(se_log_kappa))
-    rho_hat * 0.5 * sqrt(se_log_mu0^2 + se_log_kappa^2)
-  else NA_real_
+  # Off-diagonal of the observed FIM via numerical cross-derivative, so
+  # rho_se uses the full delta-method including the covariance term:
+  #   Var(log rho) = (1/4)[Var(log mu0) + Var(log kappa) - 2*Cov(log mu0, log kappa)]
+  # For the analytical (expected) FIM the cross term is zero; use the two-point
+  # numerical estimate of the mixed partial as a correction.
+  cov_log <- if (!is.na(se_log_mu0) && !is.na(se_log_kappa)) {
+    eps_c  <- 1e-5
+    th_mu  <- log(mu0_hat); th_kap <- log(kappa_hat)
+    nll_mk <- function(dlmu, dlk) {
+      mu_v  <- exp(th_mu  + dlmu);  kap_v <- exp(th_kap + dlk)
+      mu_k  <- mu_v * g
+      -sum(log_ig_pdf(tau_vec, mu_k, kap_v))
+    }
+    # mixed second derivative of nll → negative of mixed FIM entry
+    cross <- (nll_mk(eps_c, eps_c) - nll_mk(eps_c, -eps_c) -
+              nll_mk(-eps_c, eps_c) + nll_mk(-eps_c, -eps_c)) / (4 * eps_c^2)
+    # cov = (FIM^{-1})_{12} ≈ -cross / (i_log_mu0 * i_log_kappa) * ...
+    # Simpler: full 2x2 inversion
+    fim22  <- matrix(c(i_log_mu0, -cross, -cross, i_log_kappa), 2, 2)
+    fim_inv22 <- tryCatch(solve(fim22), error = function(e) matrix(NA_real_, 2, 2))
+    fim_inv22[1, 2]
+  } else NA_real_
+
+  rho_se <- if (!is.na(se_log_mu0) && !is.na(se_log_kappa)) {
+    var_log_rho <- 0.25 * (se_log_mu0^2 + se_log_kappa^2 -
+                           2 * if (!is.na(cov_log)) cov_log else 0)
+    rho_hat * sqrt(max(var_log_rho, 0))
+  } else NA_real_
 
 
   list(mu0 = mu0_hat, kappa = max(kappa_hat, 1e-4),

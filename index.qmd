@@ -777,7 +777,7 @@ Table @tbl-fim confirms the analytical predictions. Both OU blocks are well cond
 
 ## Simulation Recovery Study {#sec-recovery}
 
-We generated $N = 250$ independent realizations from the reference parameter set under baseline conditions ($u(t) \equiv 0$, $c_p = c_s = 0$, 300-second recordings), applied the conditional MLE to each, and compared estimates to the ground truth. This study conditions on the true latent state trajectory; @sec-inference addresses the fully marginal problem of recovering $\Theta$ and $\hat\Delta(t)$ from the spike train alone. 
+We generated $N = 250$ independent realizations from the reference parameter set under the canonical double-logistic protocol ($t_\text{on} = 120$ s, $t_\text{off} = 180$ s, $k = 10$ Hz), with input sensitivities $c_p = -1.0$ and $c_s = 0.1$ treated as fixed known constants in both simulation and inference (see @sec-identifiability). The conditional MLE receives the same $u(t)$ used in simulation and removes the deterministic input contribution from the OU residuals before profiling $(a, \sigma)$, so $\theta_\text{true} = \theta^*$ as required. We applied the conditional MLE to each of the 300-second recordings, and compared estimates to the ground truth. This study conditions on the true latent state trajectory; @sec-inference addresses the fully marginal problem of recovering $\Theta$ and $\hat\Delta(t)$ from the spike train alone. 
 
 ```{r}
 #| label: recovery-run

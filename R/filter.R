@@ -428,7 +428,7 @@ filter_to_grid <- function(ukf_result, time_grid) {
     p        = interp(ukf_result$m_filt[, "p"]),
     s        = interp(ukf_result$m_filt[, "s"]),
     mu       = interp(ukf_result$mu_filt),
-    sd_delta = interp(sqrt(sapply(ukf_result$P_filt,
-                                  function(P) P[1,1] + P[2,2] - 2*P[1,2])))
+    sd_delta = interp(sqrt(pmax(sapply(ukf_result$P_filt,
+                                       function(P) P[1,1] + P[2,2] - 2*P[1,2]), 0)))
   )
 }
