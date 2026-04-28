@@ -471,6 +471,11 @@ check_moment_consistency <- function(rr_vec, mle) {
   psd_rs  <- (Mod(fft(rr_rs - mean(rr_rs)))[seq_along(freq_rs)])^2 /
     (n_rs * (1 / dt_rs))
 
+  # Convert to one-sided PSD: double all positive non-Nyquist bins
+  n_half <- length(psd_rs)
+  if (n_half > 2L)
+    psd_rs[2L:(n_half - 1L)] <- 2 * psd_rs[2L:(n_half - 1L)]
+
   band_power <- function(f_lo, f_hi) {
     idx <- freq_rs >= f_lo & freq_rs <= f_hi
     if (!any(idx)) return(NA_real_)
@@ -942,18 +947,18 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
            },
            rho = {
              if (v <= 0) return(-Inf)
-             opt <- optimize(
-               function(mu0_v) {
-                 if (mu0_v <= 0) return(-Inf)
-                 kap_v  <- kappa_from_rho(mu0_v, v)
-                 mu_k_v <- mu0_v * g
-                 val    <- sum(log_ig_pdf(tau_vec, mu_k_v, kap_v))
-                 if (is.finite(val)) val else -Inf
-               },
-               interval = c(mu0_hat * 0.05, mu0_hat * 20),
-               maximum  = TRUE, tol = 1e-6
-             )
-             opt$objective
+             # Optimal mu_0 given rho = v is the positive root of:
+             #   C2 * mu_0^2 + N * v^2 * mu_0 - C1 = 0
+             # where C1 = sum(tau_k * w_k^2), C2 = sum(1/tau_k).
+             # Derivation: score d ell/d mu_0 = 0 with kappa = mu_0/rho^2.
+             C1      <- sum(tau_vec * w^2)          # w = exp(delta_v), already in scope
+             C2      <- sum(1 / tau_vec)
+             n_obs   <- length(tau_vec)
+             disc    <- sqrt((n_obs * v^2)^2 + 4 * C2 * C1)
+             mu0_opt <- (-n_obs * v^2 + disc) / (2 * C2)
+             if (!is.finite(mu0_opt) || mu0_opt <= 0) return(-Inf)
+             kap_opt <- kappa_from_rho(mu0_opt, v)
+             sum(log_ig_pdf(tau_vec, mu0_opt * g, kap_opt))
            },
            -Inf
     )

@@ -355,10 +355,10 @@ predicted_hrv_moments <- function(a_p, a_s, sigma_p, sigma_s, mu_0, rho) {
   lorentz_integral <- function(a, f_lo, f_hi) {
     (1 / pi) * (atan(2 * pi * f_hi / a) - atan(2 * pi * f_lo / a))
   }
-  hf_power <- sigma_p^2 / (2 * a_p) * lorentz_integral(a_p, 0.15, 0.40) +
-    sigma_s^2 / (2 * a_s) * lorentz_integral(a_s, 0.15, 0.40)
-  lf_power <- sigma_p^2 / (2 * a_p) * lorentz_integral(a_p, 0.04, 0.15) +
-    sigma_s^2 / (2 * a_s) * lorentz_integral(a_s, 0.04, 0.15)
+  hf_power <- sigma_p^2 / a_p * lorentz_integral(a_p, 0.15, 0.40) +
+    sigma_s^2 / a_s * lorentz_integral(a_s, 0.15, 0.40)
+  lf_power <- sigma_p^2 / a_p * lorentz_integral(a_p, 0.04, 0.15) +
+    sigma_s^2 / a_s * lorentz_integral(a_s, 0.04, 0.15)
 
   list(
     e_tau    = e_tau,

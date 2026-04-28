@@ -169,7 +169,7 @@ ou_coupled_matrices <- function(a_p, a_s, a_ps, a_sp,
 
   eig_q <- eigen(Q_mat, symmetric = TRUE)
   if (any(eig_q$values <= 0)) {
-    Q_mat <- Q_mat + 1e-10 * diag(2L)
+    Q_mat <- Q_mat + (abs(min(eig_q$values)) + 1e-10) * diag(2L)
     eig_q <- eigen(Q_mat, symmetric = TRUE)
   }
   log_det_Q <- sum(log(eig_q$values))
