@@ -211,11 +211,12 @@ ou_coupled_log_lik <- function(a_ps, a_sp, a_p, a_s, sigma_p, sigma_s, c_p, c_s,
 # to the OU spectral structure.
 
 ou_coupled_mle <- function(x_mat, a_p_init, a_s_init,
-                           a_ps_init = 0, a_sp_init = 0, dt) {
-  u_zero <- rep(0.0, nrow(x_mat))
+                           a_ps_init = 0, a_sp_init = 0, dt,
+                           u_vec = NULL, c_p = 0, c_s = 0) {
+  if (is.null(u_vec)) u_vec <- rep(0.0, nrow(x_mat))
 
-  init_p <- ou_mle(x_mat[, 1L], u_zero, a_p_init, dt)
-  init_s <- ou_mle(x_mat[, 2L], u_zero, a_s_init, dt)
+  init_p <- ou_mle(x_mat[, 1L], u_vec, a_p_init, dt, c_fixed = c_p)
+  init_s <- ou_mle(x_mat[, 2L], u_vec, a_s_init, dt, c_fixed = c_s)
 
   th0 <- c(log(init_p$a), log(init_s$a),
            max(a_ps_init, 1e-6), max(a_sp_init, 1e-6),
@@ -228,8 +229,8 @@ ou_coupled_mle <- function(x_mat, a_p_init, a_s_init,
     ll <- tryCatch(
       ou_coupled_log_lik(a_ps_v, a_sp_v, a_p_v, a_s_v,
                          exp(th[5L]), exp(th[6L]),
-                         0, 0,            # c_p = c_s = 0
-                         x_mat, u_zero, dt),
+                         c_p, c_s,
+                         x_mat, u_vec, dt),
       error = function(e) -Inf
     )
     if (is.finite(ll)) -ll else 1e10
@@ -367,7 +368,8 @@ full_conditional_mle <- function(sim_res, input_fn = NULL) {
     x_mat  <- cbind(sim_res$p, sim_res$s)
     mle_ou <- ou_coupled_mle(x_mat,
                              a_p_init = fp$a_p, a_s_init = fp$a_s,
-                             a_ps_init = fp$a_ps, a_sp_init = fp$a_sp, dt)
+                             a_ps_init = fp$a_ps, a_sp_init = fp$a_sp, dt,
+                             u_vec = u_vec, c_p = fp$c_p, c_s = fp$c_s)
     mle_p  <- list(a = mle_ou$a_p,   sigma = mle_ou$sigma_p, c_gain = mle_ou$c_p,
                    a_se = mle_ou$a_p_se, sigma_se = mle_ou$sigma_p_se,
                    c_se = mle_ou$c_p_se, log_lik = NA_real_)
@@ -547,16 +549,18 @@ ig_obs_fim <- function(mu0, rho_val, tau_vec, delta_vec, eps = 1e-5) {
 # c_gain is excluded: inference always uses u(t) ≡ 0, so c is unidentified
 # and must not appear in the FIM (it would produce a structural zero eigenvalue).
 
-ou_fim <- function(a_val, sigma_val, x_vec, dt) {
+ou_fim <- function(a_val, sigma_val, x_vec, dt, u_vec = NULL, c_fixed = 0) {
   th0 <- c(log(a_val), log(sigma_val))
   n   <- length(x_vec) - 1L
   idx <- seq_len(n)
+  if (is.null(u_vec)) u_vec <- rep(0.0, length(x_vec))
 
   nll_2d <- function(th) {
     a_v   <- exp(th[1L]); sig_v <- exp(th[2L])
     if (a_v <= 0 || sig_v <= 0) return(1e10)
     e_adt <- exp(-a_v * dt)
-    y_v   <- x_vec[-1L] - x_vec[idx] * e_adt   # c = 0, u = 0
+    z_v   <- u_vec[idx] / a_v * (-expm1(-a_v * dt))
+    y_v   <- x_vec[-1L] - x_vec[idx] * e_adt - c_fixed * z_v  # remove known input
     C_v   <- (-expm1(-2 * a_v * dt)) / (2 * a_v)
     ll_v  <- tryCatch(sum(dnorm(y_v, 0, sig_v * sqrt(C_v), log = TRUE)),
                       error = function(e) -Inf)
@@ -591,9 +595,10 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt) {
 # Parameterisation: (b_ps, b_sp, log σ_p, log σ_s, c_p, c_s, log μ₀, log κ).
 # The block-diagonal structure no longer holds when b_ps or b_sp ≠ 0.
 
-.full_fim_coupled <- function(sim_res, mle, dt) {
+.full_fim_coupled <- function(sim_res, mle, dt, u_vec = NULL) {
   x_mat   <- cbind(sim_res$p, sim_res$s)
-  u_zero  <- rep(0.0, nrow(x_mat))
+  if (is.null(u_vec)) u_vec <- rep(0.0, nrow(x_mat))
+  fp_sim  <- sim_res$params$free
   spk     <- sim_res$spikes
   tau_vec <- diff(spk)
   delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
@@ -614,8 +619,9 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt) {
 
     ll_ou <- tryCatch(
       ou_coupled_log_lik(a_ps_v, a_sp_v, a_p_v, a_s_v,
-                         exp(th[5L]), exp(th[6L]), 0, 0,
-                         x_mat, u_zero, dt),
+                         exp(th[5L]), exp(th[6L]),
+                         fp_sim$c_p, fp_sim$c_s,
+                         x_mat, u_vec, dt),
       error = function(e) -Inf)
     mu_k   <- exp(th[7L]) * exp(-delta_v)
     kap_v  <- kappa_from_rho(exp(th[7L]), exp(th[8L]))
@@ -655,13 +661,25 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt) {
 
 full_conditional_fim <- function(sim_res, input_fn = NULL) {
   dt  <- sim_res$time[2L] - sim_res$time[1L]
-  mle <- full_conditional_mle(sim_res, input_fn = input_fn)
+  if (is.null(input_fn)) {
+    if (!is.null(sim_res$input_fn)) {
+      input_fn <- sim_res$input_fn
+    } else {
+      input_fn <- function(t) { 0 }
+    }
+  }
+  u_vec  <- vapply(sim_res$time, input_fn, numeric(1L))
+  fp_sim <- sim_res$params$free
+  mle    <- full_conditional_mle(sim_res, input_fn = input_fn)
 
-  if ((abs(sim_res$params$free$a_ps) + abs(sim_res$params$free$a_sp)) > 1e-12)
-    return(.full_fim_coupled(sim_res, mle, dt))
+  if ((abs(fp_sim$a_ps) + abs(fp_sim$a_sp)) > 1e-12) {
+    return(.full_fim_coupled(sim_res, mle, dt, u_vec = u_vec))
+  }
 
-  fim_p <- ou_fim(mle$a_p, mle$sigma_p, sim_res$p, dt)
-  fim_s <- ou_fim(mle$a_s, mle$sigma_s, sim_res$s, dt)
+  fim_p <- ou_fim(mle$a_p, mle$sigma_p, sim_res$p, dt,
+                  u_vec = u_vec, c_fixed = fp_sim$c_p)
+  fim_s <- ou_fim(mle$a_s, mle$sigma_s, sim_res$s, dt,
+                  u_vec = u_vec, c_fixed = fp_sim$c_s)
 
   spk     <- sim_res$spikes
   tau_vec <- diff(spk)
@@ -766,7 +784,6 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
   # Warm starts: pass previous converged solution as initialization for next point.
   if (param %in% c("a_ps", "a_sp")) {
     x_mat  <- cbind(sim_res$p, sim_res$s)
-    u_zero <- rep(0.0, nrow(x_mat))
     is_ps  <- (param == "a_ps")
 
     # Initialize from the joint MLE; th_warm is updated after each convergence.
@@ -792,8 +809,9 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
             if (a_sp_v < 0 || a_p_v * a_s_v - vv * a_sp_v <= 0) return(1e10)
             ll <- tryCatch(
               ou_coupled_log_lik(vv, a_sp_v, a_p_v, a_s_v,
-                                 exp(th[4L]), exp(th[5L]), 0, 0,
-                                 x_mat, u_zero, dt),
+                                 exp(th[4L]), exp(th[5L]),
+                                 fp$c_p, fp$c_s,
+                                 x_mat, u_vec, dt),
               error = function(e) -Inf)
             if (is.finite(ll)) -ll else 1e10
           }
@@ -806,8 +824,9 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
             if (a_ps_v < 0 || a_p_v * a_s_v - a_ps_v * vv <= 0) return(1e10)
             ll <- tryCatch(
               ou_coupled_log_lik(a_ps_v, vv, a_p_v, a_s_v,
-                                 exp(th[4L]), exp(th[5L]), 0, 0,
-                                 x_mat, u_zero, dt),
+                                 exp(th[4L]), exp(th[5L]),
+                                 fp$c_p, fp$c_s,
+                                 x_mat, u_vec, dt),
               error = function(e) -Inf)
             if (is.finite(ll)) -ll else 1e10
           }
@@ -858,7 +877,6 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
                # In coupled model, profile a_p within the full joint OU LL,
                # maximising over (a_s, a_ps, a_sp, sigma_p, sigma_s).
                x_mat_loc  <- cbind(sim_res$p, sim_res$s)
-               u_zero_loc <- rep(0.0, nrow(x_mat_loc))
                th0_loc <- c(log(mle$a_s),
                             max(mle$a_ps, 1e-6), max(mle$a_sp, 1e-6),
                             log(max(mle$sigma_p, 1e-5)),
@@ -872,8 +890,9 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
                        vv * a_s_v - a_ps_v * a_sp_v <= 0) return(1e10)
                    ll <- tryCatch(
                      ou_coupled_log_lik(a_ps_v, a_sp_v, vv, a_s_v,
-                                        exp(th[4L]), exp(th[5L]), 0, 0,
-                                        x_mat_loc, u_zero_loc, dt),
+                                        exp(th[4L]), exp(th[5L]),
+                                        fp$c_p, fp$c_s,
+                                        x_mat_loc, u_vec, dt),
                      error = function(e) -Inf)
                    if (is.finite(ll)) -ll else 1e10
                  }
@@ -891,7 +910,6 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
                profile_at_a_internal(sim_res$s, u_vec, fp$c_s, v, dt)$ll
              } else {
                x_mat_loc  <- cbind(sim_res$p, sim_res$s)
-               u_zero_loc <- rep(0.0, nrow(x_mat_loc))
                th0_loc <- c(log(mle$a_p),
                             max(mle$a_ps, 1e-6), max(mle$a_sp, 1e-6),
                             log(max(mle$sigma_p, 1e-5)),
@@ -905,8 +923,9 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
                        a_p_v * vv - a_ps_v * a_sp_v <= 0) return(1e10)
                    ll <- tryCatch(
                      ou_coupled_log_lik(a_ps_v, a_sp_v, a_p_v, vv,
-                                        exp(th[4L]), exp(th[5L]), 0, 0,
-                                        x_mat_loc, u_zero_loc, dt),
+                                        exp(th[4L]), exp(th[5L]),
+                                        fp$c_p, fp$c_s,
+                                        x_mat_loc, u_vec, dt),
                      error = function(e) -Inf)
                    if (is.finite(ll)) -ll else 1e10
                  }

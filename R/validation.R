@@ -66,11 +66,17 @@ barbieri_ig_fit <- function(rr_vec) {
   bic <- -2 * ll + log(length(rr_vec)) * n_params
 
   # KS statistic against IG(mu_hat, kappa_hat) CDF
-  ks <- ks.test(rr_vec, function(x) {
-    pnorm(sqrt(kappa_hat / x) * (x / mu_hat - 1)) +
-      exp(2 * kappa_hat / mu_hat) *
-      pnorm(-sqrt(kappa_hat / x) * (x / mu_hat + 1))
-  })
+  ig_cdf_safe <- function(x, mu, kappa) {
+    z1     <- sqrt(kappa / x) * (x / mu - 1)
+    z2     <- sqrt(kappa / x) * (x / mu + 1)
+    term1  <- pnorm(z1)
+    # log(exp(2κ/μ) · Φ(−z2)) = 2κ/μ + log Φ(−z2); stays finite in log-space
+    log_t2 <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)
+    term2  <- exp(log_t2)
+    pmin(term1 + term2, 1)
+  }
+  ks <- ks.test(rr_vec, ig_cdf_safe,
+                mu = mu_hat, kappa = kappa_hat)
 
   list(mu = mu_hat, kappa = kappa_hat,
        ll = ll, aic = aic, bic = bic,

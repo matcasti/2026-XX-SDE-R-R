@@ -865,7 +865,7 @@ plot_profiles(PROFILES, true_vals = true_vals,
               main = "Profile Likelihoods, Reference Parameter Set")
 ```
 
-All six profiles are strictly unimodal and sharply peaked. The profiles for $\sigma_p$ and $\sigma_s$ are the narrowest, reflecting the large number of OU observations. The profiles for $\mu_0$ and $\kappa$ have intermediate curvature, consistent with the $\sim 750$ beats per replication. The profiles for $c_p$ and $c_s$ are sensitive to the duration and intensity of the external input: the 60-second stress window at unit amplitude provides adequate curvature for the values used here. Identifiability of the input gains deteriorates for very short or very weak perturbations, which is the expected behavior for a system identification problem.
+All six profiles are strictly unimodal and sharply peaked. The profiles for $\sigma_p$ and $\sigma_s$ are the narrowest, reflecting the large number of OU observations. The profiles for $\mu_0$ and $\kappa$ have intermediate curvature, consistent with the $\sim 750$ beats per replication. Because $c_p$ and $c_s$ are fixed known constants in the inference model (they are not free parameters and are not profiled), the six displayed curves cover the complete inference parameter set $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$.
 
 ## Cross-Branch Coupling Identifiability {#sec-coupling}
 

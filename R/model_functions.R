@@ -460,7 +460,8 @@ study_firing_bias <- function(mu = 0.85, kappa = 12, dt = 0.005,
   tau_v  <- seq(tau_range[1], tau_range[2], length.out = 600)
   p_surv <- vapply(tau_v, function(t) p_fire_survival_ratio(t, t + dt, mu, kappa), numeric(1))
 
-  # Evaluate hazard at midpoint to isolate the Bernoulli truncation bias
+  # Evaluate hazard at step entry (tau_v) — consistent with the survival-ratio simulation.
+  # Compares p_bern = lambda(tau_start)*dt  against  p_surv = 1 - S(tau+dt)/S(tau).
   lam_start <- vapply(tau_v, ig_hazard, numeric(1), mu = mu, kappa = kappa)
   p_bern    <- pmin(lam_start * dt, 1)
 
