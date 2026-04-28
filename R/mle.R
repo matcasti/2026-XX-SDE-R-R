@@ -179,11 +179,10 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
 # (dt constant), so these are computed once per call.
 
 ou_coupled_log_lik <- function(a_ps, a_sp, a_p, a_s, sigma_p, sigma_s, c_p, c_s,
-                               x_mat, u_vec, dt,
-                               n_q_steps = 40L) {
+                               x_mat, u_vec, dt) {
   if (a_p * a_s - a_ps * a_sp <= 0) return(-Inf)
   mats <- tryCatch(
-    ou_coupled_matrices(a_p, a_s, a_ps, a_sp, sigma_p, sigma_s, dt, n_q_steps),
+    ou_coupled_matrices(a_p, a_s, a_ps, a_sp, sigma_p, sigma_s, dt),
     error = function(e) NULL
   )
   if (is.null(mats) || !is.finite(mats$log_det_Q)) return(-Inf)
@@ -331,40 +330,20 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   ll <- sum(log_ig_pdf(tau_vec, mu_k, kappa_hat))
 
   rho_hat <- sqrt(mu0_hat / kappa_hat)
-  # SE(rho) via delta method: rho = sqrt(mu0/kappa), so log(rho) = (log(mu0) - log(kappa))/2.
-  # Since the FIM is block-diagonal in (log mu0, log kappa), the covariance term is zero, giving:
-  #   Var(log rho) = (1/4)*(Var(log mu0) + Var(log kappa))
-  #   SE(rho) = rho * SE(log rho)  [delta method]
-  se_log_mu0   <- if (!is.na(mu0_se))   mu0_se   / mu0_hat   else NA_real_
-  se_log_kappa <- if (!is.na(kappa_se)) kappa_se / kappa_hat else NA_real_
-  # Off-diagonal of the observed FIM via numerical cross-derivative, so
-  # rho_se uses the full delta-method including the covariance term:
-  #   Var(log rho) = (1/4)[Var(log mu0) + Var(log kappa) - 2*Cov(log mu0, log kappa)]
-  # For the analytical (expected) FIM the cross term is zero; use the two-point
-  # numerical estimate of the mixed partial as a correction.
-  cov_log <- if (!is.na(se_log_mu0) && !is.na(se_log_kappa)) {
-    eps_c  <- 1e-5
-    th_mu  <- log(mu0_hat); th_kap <- log(kappa_hat)
-    nll_mk <- function(dlmu, dlk) {
-      mu_v  <- exp(th_mu  + dlmu);  kap_v <- exp(th_kap + dlk)
-      mu_k  <- mu_v * g
-      -sum(log_ig_pdf(tau_vec, mu_k, kap_v))
-    }
-    # mixed second derivative of nll → negative of mixed FIM entry
-    cross <- (nll_mk(eps_c, eps_c) - nll_mk(eps_c, -eps_c) -
-              nll_mk(-eps_c, eps_c) + nll_mk(-eps_c, -eps_c)) / (4 * eps_c^2)
-    # cov = (FIM^{-1})_{12} ≈ -cross / (i_log_mu0 * i_log_kappa) * ...
-    # Simpler: full 2x2 inversion
-    fim22  <- matrix(c(i_log_mu0, -cross, -cross, i_log_kappa), 2, 2)
-    fim_inv22 <- tryCatch(solve(fim22), error = function(e) matrix(NA_real_, 2, 2))
-    fim_inv22[1, 2]
-  } else NA_real_
-
-  rho_se <- if (!is.na(se_log_mu0) && !is.na(se_log_kappa)) {
-    var_log_rho <- 0.25 * (se_log_mu0^2 + se_log_kappa^2 -
-                           2 * if (!is.na(cov_log)) cov_log else 0)
-    rho_hat * sqrt(max(var_log_rho, 0))
-  } else NA_real_
+  # SE(rho): exact analytical formula via the (log mu_0, log rho) FIM.
+  # At the MLE, d²L/d(log mu_0)d(log kappa) = 0 exactly (the score
+  # d(log mu_0)L = -kappa*mu_0*dQ/dmu_0/2 vanishes, and differentiating
+  # by log kappa leaves the same expression = 0). The Jacobian
+  # d(log kappa)/d(log rho) = -2 then transforms the block-diagonal
+  # (log mu_0, log kappa) FIM to:
+  #   FIM(log mu_0, log rho) = [[i_log_mu0 + n/2,  -n],
+  #                             [-n,              2*n]]
+  # det = 2*n*i_log_mu0  (exact; no cancellation).
+  # Var(log rho) = (i_log_mu0 + n/2) / (2*n*i_log_mu0).
+  det_fim     <- 2 * n * i_log_mu0
+  var_log_rho <- if (is.finite(det_fim) && det_fim > 0)
+    (i_log_mu0 + n / 2) / det_fim else NA_real_
+  rho_se      <- if (!is.na(var_log_rho)) rho_hat * sqrt(max(var_log_rho, 0)) else NA_real_
 
 
   list(mu0 = mu0_hat, kappa = max(kappa_hat, 1e-4),
@@ -537,34 +516,35 @@ check_moment_consistency <- function(rr_vec, mle) {
 # condition number.
 
 ig_obs_fim <- function(mu0, rho_val, tau_vec, delta_vec, eps = 1e-5) {
-  # FIM parameterised directly in (log mu_0, log rho).
-  # kappa = mu_0 / rho^2 is derived internally.
-  th0 <- c(log(mu0), log(rho_val))
-
-  obj <- function(lth) {
-    mu0_v <- exp(lth[1L]); rho_v <- exp(lth[2L])
-    kap_v <- kappa_from_rho(mu0_v, rho_v)
-    mk    <- mu0_v * exp(-delta_vec)
-    if (any(mk <= 0) || !is.finite(kap_v)) return(-Inf)
-    sum(log_ig_pdf(tau_vec, mk, kap_v))
-  }
-
-  H <- matrix(0, 2, 2)
-  for (i in 1:2) for (j in i:2) {
-    ei <- ej <- rep(0, 2)
-    ei[i] <- eps; ej[j] <- eps
-    H[i, j] <- (obj(th0+ei+ej) - obj(th0+ei-ej) -
-                  obj(th0-ei+ej) + obj(th0-ei-ej)) / (4 * eps^2)
-    H[j, i] <- H[i, j]
-  }
-  fim     <- -H
-  fim_inv <- tryCatch(solve(fim), error = function(e) matrix(NA_real_, 2, 2))
+  # Analytical observed FIM in (log mu_0, log rho) parameterisation.
+  # The (log mu_0, log kappa) observed FIM is block-diagonal at the MLE
+  # (cross-term exactly zero; see ig_obs_mle comment for proof).
+  # Jacobian d(log kappa)/d(log rho) = -2 gives:
+  #   FIM = [[i_mu0 + n/2,  -n],
+  #          [-n,         2*n]]
+  # with i_mu0 = kappa * sum(exp(delta_k)) / mu_0.
+  # det = 2*n*i_mu0  (exact).
+  # FIM^{-1} = [[2n, n], [n, i_mu0 + n/2]] / det.
+  n     <- length(tau_vec)
+  kap   <- kappa_from_rho(mu0, rho_val)
+  w     <- exp(delta_vec)
+  i_mu0 <- kap * sum(w) / mu0
+  fim   <- matrix(c(i_mu0 + n / 2, -n, -n, 2 * n), 2L, 2L)
+  det_v <- 2 * n * i_mu0
+  fim_inv <- if (is.finite(det_v) && det_v > 0)
+    matrix(c(2 * n, n, n, i_mu0 + n / 2), 2L, 2L) / det_v
+  else
+    matrix(NA_real_, 2L, 2L)
+  eig_v <- tryCatch(
+    eigen(fim, symmetric = TRUE, only.values = TRUE)$values,
+    error = function(e) rep(NA_real_, 2L)
+  )
   list(
     fim  = fim,
-    se   = sqrt(abs(diag(fim_inv))),   # SE in log-space: (SE log mu0, SE log rho)
-    cond = tryCatch(kappa(fim), error = function(e) NA_real_),
-    eig  = tryCatch(eigen(fim, symmetric = TRUE, only.values = TRUE)$values,
-                    error = function(e) rep(NA_real_, 2))
+    se   = sqrt(pmax(diag(fim_inv), 0, na.rm = TRUE)),
+    cond = if (all(is.finite(eig_v)) && min(eig_v) > 0)
+      max(eig_v) / min(eig_v) else NA_real_,
+    eig  = eig_v
   )
 }
 

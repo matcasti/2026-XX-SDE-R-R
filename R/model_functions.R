@@ -154,15 +154,18 @@ ou_coupled_Q <- function(A_mat, sigma_p, sigma_s, dt) {
 # Calling this once per parameter vector avoids redundant matrix exponentials.
 
 ou_coupled_matrices <- function(a_p, a_s, a_ps, a_sp,
-                                sigma_p, sigma_s, dt,
-                                n_q_steps = 40L) {
+                                sigma_p, sigma_s, dt) {
   # A = [[-a_p, -a_ps], [-a_sp, -a_s]]:
   #   dp = -a_p*p - a_ps*s  (s inhibits p — accentuated antagonism)
   #   ds = -a_sp*p - a_s*s  (p inhibits s — accentuated antagonism)
   # Stability: det(A) = a_p*a_s - a_ps*a_sp > 0 (enforced by make_model_params)
   A_mat <- matrix(c(-a_p, -a_sp, -a_ps, -a_s), 2L, 2L)
   F_mat <- mat2x2_exp(A_mat, dt)
-  Q_mat <- ou_coupled_Q(A_mat, sigma_p, sigma_s, dt)
+  # Reuse F_mat: Q(dt) = P_inf - F(dt) P_inf F(dt)^T (exact Lyapunov identity).
+  # Avoids the redundant mat2x2_exp call that ou_coupled_Q would otherwise make.
+  P_inf <- ou_stationary_cov(a_p, a_s, a_ps, a_sp, sigma_p, sigma_s)
+  Q_raw <- P_inf - F_mat %*% P_inf %*% t(F_mat)
+  Q_mat <- 0.5 * (Q_raw + t(Q_raw))
 
   eig_q <- eigen(Q_mat, symmetric = TRUE)
   if (any(eig_q$values <= 0)) {
