@@ -16,7 +16,7 @@
 #
 # Usage:  INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420)
 
-make_double_logistic <- function(t_on, t_off, k = 10) {
+make_double_logistic <- function(t_on, t_off, k = 0.1) {
   force(t_on); force(t_off); force(k)
   function(t) plogis(k * (t - t_on)) * plogis(k * (t_off - t))
 }
@@ -61,7 +61,7 @@ make_model_params <- function(
     a_p    = 2.0,  a_s   = 0.2,      # self-decay rates (estimated from data)
     a_ps   = 0.0,  a_sp  = 0.0,      # antagonism magnitudes: s→p and p→s inhibition
     sigma_p = 0.30, sigma_s = 0.20,
-    mu_0   = 0.85, rho   = 0.27,     # rho = sqrt(mu_0/kappa) = baseline CV of IBI
+    mu_0   = 0.85, rho   = 0.20,     # rho = sqrt(mu_0/kappa) = baseline CV of IBI
     c_p    = 0.0,  c_s   = 0.0) {    # input sensitivities (simulation / forced protocols)
   stopifnot(
     a_p > 0, a_s > 0,

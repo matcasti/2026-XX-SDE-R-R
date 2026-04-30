@@ -810,7 +810,6 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
       v <- grid[k]
       if (!is.finite(v) || v < 0) { ll_out[k] <- -Inf; next }
 
-      # nll_k closes over v (the fixed profile parameter) and x_mat/u_zero.
       nll_k <- if (is_ps) {
         local({
           vv <- v
@@ -948,14 +947,15 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
            rho = {
              if (v <= 0) return(-Inf)
              # Optimal mu_0 given rho = v is the positive root of:
-             #   C2 * mu_0^2 + N * v^2 * mu_0 - C1 = 0
-             # where C1 = sum(tau_k * w_k^2), C2 = sum(1/tau_k).
-             # Derivation: score d ell/d mu_0 = 0 with kappa = mu_0/rho^2.
+             #   C2 * mu_0^2 - N * v^2 * mu_0 - C1 = 0
+             # Score d ell/d mu_0 = N/(2*mu_0) + C1/(2*rho^2*mu_0^2) - C2/(2*rho^2) = 0
+             # => multiply by 2*rho^2*mu_0^2: N*rho^2*mu_0 + C1 - C2*mu_0^2 = 0
+             # Positive root: (N*rho^2 + sqrt(N^2*rho^4 + 4*C2*C1)) / (2*C2)
              C1      <- sum(tau_vec * w^2)          # w = exp(delta_v), already in scope
              C2      <- sum(1 / tau_vec)
              n_obs   <- length(tau_vec)
              disc    <- sqrt((n_obs * v^2)^2 + 4 * C2 * C1)
-             mu0_opt <- (-n_obs * v^2 + disc) / (2 * C2)
+             mu0_opt <- (n_obs * v^2 + disc) / (2 * C2)
              if (!is.finite(mu0_opt) || mu0_opt <= 0) return(-Inf)
              kap_opt <- kappa_from_rho(mu0_opt, v)
              sum(log_ig_pdf(tau_vec, mu0_opt * g, kap_opt))
