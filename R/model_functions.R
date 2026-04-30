@@ -404,7 +404,7 @@ sim_sde_ig <- function(duration, dt, params,
     }
     mu_v[i+1] <- compute_mu(p[i+1], s[i+1], fp$mu_0)
     dlt[i+1]  <- compute_delta(p[i+1], s[i+1])
-    loglam[i+1] <- obs_models[[1]]$log_intensity(tau_end, p[i+1], s[i+1], fp)
+    loglam[i+1] <- obs_models[[1]]$log_intensity(tg[i+1] - last_t, p[i+1], s[i+1], fp)
   }
   spikes <- spikes[seq_len(n_spikes)]
   # NOTE: input_fn is stored in the result to enable downstream MLE and

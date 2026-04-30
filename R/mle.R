@@ -257,7 +257,7 @@ ou_coupled_mle <- function(x_mat, a_p_init, a_s_init,
     a_p = a_p_h,    a_s = a_s_h,
     a_ps = th[3L],  a_sp = th[4L],
     sigma_p = sig_p, sigma_s = sig_s,
-    c_p = 0,         c_s = 0,         # fixed: not estimated from RR data
+    c_p = c_p,       c_s = c_s,       # carry through the fixed known constants
     a_p_se     = a_p_h  * s_se(1L),
     a_s_se     = a_s_h  * s_se(2L),
     a_ps_se    = s_se(3L),
