@@ -338,22 +338,15 @@ pp_mle <- function(spikes,
     )
   }
 
-  # Lower bounds in log-space: enforce physiologically plausible floor.
-  # log(a_p)     >= log(0.05): vagal decay >= 0.05 Hz (time constant <= 20 s)
-  # log(a_s)     >= log(0.005): sympathetic decay >= 0.005 Hz
-  # log(sigma_p) >= log(1e-4): diffusion amplitude >= 0.0001
-  # log(sigma_s) >= log(1e-4)
-  # log(mu_0)    >= log(0.25): mean IBI >= 0.25 s (max HR 240 bpm)
-  # log(rho)     >= log(0.01): baseline CV >= 1%
-  lower_v <- c(log(0.05), log(0.005), log(1e-4), log(1e-4), log(0.25), log(0.01))
-  # Upper bounds: prevent the optimizer escaping to implausible extremes
-  # log(a_p)     <= log(100): time constant >= 10 ms
-  # log(a_s)     <= log(10)
-  # log(sigma_p) <= log(10): diffusion amplitude <= 10
-  # log(sigma_s) <= log(10)
-  # log(mu_0)    <= log(4.0): mean IBI <= 4 s (min HR ~15 bpm)
-  # log(rho)     <= log(2.0): baseline CV <= 200%
-  upper_v <- c(log(100), log(10), log(10), log(10), log(4.0), log(2.0))
+  # Bounds reflect the physiological range of each parameter.
+  # a_p in [0.30, 10.0] Hz  (vagal time constant 0.1 – 3 s)
+  # a_s in [0.01,  2.0] Hz  (sympathetic time constant 0.5 – 100 s)
+  # Tight bounds prevent the optimizer from sliding along the marginal
+  # identifiability ridge  sigma_p^2/(2*a_p) = const  to implausible
+  # values such as a_p ~ 50 Hz.
+  lower_v <- c(log(0.30), log(0.01), log(1e-4), log(1e-4), log(0.25), log(0.01))
+  upper_v <- c(log(10.0), log(2.0),  log(10.0), log(10.0), log(4.0),  log(2.0))
+
   if (use_coupled) {
     lower_v <- c(lower_v, 0, 0)    # a_ps, a_sp >= 0
     upper_v <- c(upper_v, 10, 10)  # coupling terms <= 10 (stability enforced separately)
@@ -361,12 +354,26 @@ pp_mle <- function(spikes,
 
   neg_ll <- function(v) {
     fp_v <- unpack(v)
+    # Hard constraint: a_p > a_s ensures LF/HF pole separation and prevents
+    # the optimizer from swapping branch identities.
+    if (fp_v$a_p <= fp_v$a_s) return(1e10)
+    # Coupled-OU stability: det(A) > 0.
     if (fp_v$a_p * fp_v$a_s - fp_v$a_ps * fp_v$a_sp <= 0) return(1e10)
     params <- list(structural = params_init$structural, free = fp_v)
     flt    <- tryCatch(pp_ukf(spikes, params, input_fn),
-                       error = function(e) list(ll = -Inf))
-    if (!is.finite(flt$ll)) return(1e10)
-    -flt$ll
+                       error = function(e) list(innov = NULL))
+    if (is.null(flt$innov)) return(1e10)
+    # Gaussian innovation log-likelihood  log N(innov; 0, S_k).
+    # Provides continuous, well-defined gradients for L-BFGS-B throughout
+    # the parameter space.  The sigma-point IG average stored in flt$ll is
+    # reserved for state-estimation diagnostics; it can exhibit near-
+    # discontinuous Jacobians when sigma-points straddle the IG hazard peak,
+    # degrading gradient-based optimization.
+    fin <- is.finite(flt$innov) & is.finite(flt$S_innov) & flt$S_innov > 0
+    if (!any(fin)) return(1e10)
+    ll_g <- sum(dnorm(flt$innov[fin], 0, sqrt(flt$S_innov[fin]), log = TRUE))
+    if (!is.finite(ll_g)) return(1e10)
+    -ll_g
   }
 
   res <- optim(

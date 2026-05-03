@@ -778,6 +778,7 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
     is_ps  <- (param == "a_ps")
 
     # Initialize from the joint MLE; th_warm is updated after each convergence.
+    # Initialize from the joint MLE; th_warm is updated after each convergence.
     th_warm <- if (is_ps) {
       c(log(mle$a_p), log(mle$a_s), max(mle$a_sp, 1e-6),
         log(max(mle$sigma_p, 1e-5)), log(max(mle$sigma_s, 1e-5)))
@@ -785,6 +786,10 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
       c(log(mle$a_p), log(mle$a_s), max(mle$a_ps, 1e-6),
         log(max(mle$sigma_p, 1e-5)), log(max(mle$sigma_s, 1e-5)))
     }
+    # Fixed cold-start reference: joint MLE, never mutated.
+    # Used alongside the warm start to prevent cascading of local optima
+    # that produce the sawtooth pattern seen in jagged profile curves.
+    th_cold <- th_warm
 
     ll_out <- numeric(length(grid))
     for (k in seq_along(grid)) {
@@ -823,17 +828,26 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
         })
       }
 
-      res <- tryCatch(
+      # Warm-start optimization: follows the profile curve efficiently when smooth.
+      res_w <- tryCatch(
         optim(th_warm, nll_k, method = "L-BFGS-B",
               lower = c(-Inf, -Inf, 0, -Inf, -Inf),
               control = list(maxit = 300L, factr = 1e7)),
         error = function(e) list(value = 1e10, par = th_warm, convergence = 99L)
       )
+      # Cold-start from joint MLE: independent fallback that cannot inherit
+      # a local-minimum cascade from a previous grid point.
+      res_c <- tryCatch(
+        optim(th_cold, nll_k, method = "L-BFGS-B",
+              lower = c(-Inf, -Inf, 0, -Inf, -Inf),
+              control = list(maxit = 300L, factr = 1e7)),
+        error = function(e) list(value = 1e10, par = th_cold, convergence = 99L)
+      )
+      res <- if (res_c$value < res_w$value) res_c else res_w
 
       ll_out[k] <- if (is.finite(-res$value)) -res$value else -Inf
-      # Accept warm start unconditionally: even a partial solution is a better
-      # initialization than the fixed joint-MLE for distant grid points.
-      th_warm <- res$par
+      # Only advance the warm start from non-degenerate solutions.
+      if (is.finite(res$value) && res$value < 1e9) th_warm <- res$par
     }
     return(ll_out)
   }
