@@ -348,6 +348,8 @@ predicted_hrv_moments <- function(a_p, a_s, sigma_p, sigma_s, mu_0, rho) {
   wp      <- (sigma_p^2 / (2 * a_p)) / sigma_d2
   ws      <- 1 - wp
   r1      <- wp * exp(-a_p * e_tau) + ws * exp(-a_s * e_tau)
+  # RMSSD² = 2·Var[τ]·(1−r(1)): exacto para procesos gaussianos; aquí
+  # es una aproximación de orden 1 (el término cruzado IG-OU se desprecia).
   rmssd2  <- 2 * var_tau * (1 - r1)
 
   # LF and HF band powers: integral of Lorentzian S_p(f) + S_s(f)

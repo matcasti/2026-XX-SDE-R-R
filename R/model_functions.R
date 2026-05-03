@@ -88,6 +88,26 @@ kappa_from_rho <- function(mu_0, rho) {
   mu_0 / rho^2
 }
 
+# ---- Symmetric numerical Hessian via 4-point central differences ----
+# Exploits H[i,j] = H[j,i] to halve the number of function evaluations.
+# fn   : function of theta returning a scalar (negative log-likelihood)
+# theta: parameter vector at which to evaluate
+# eps  : step size (default 1e-4 works for log-scale parameterisations)
+numerical_hessian <- function(fn, theta, eps = 1e-4) {
+  np  <- length(theta)
+  H   <- matrix(0, np, np)
+  ep  <- diag(eps, np)              # column i is the i-th canonical basis vector × eps
+  for (i in seq_len(np)) {
+    for (j in i:np) {
+      H[i, j] <- (fn(theta + ep[, i] + ep[, j]) - fn(theta + ep[, i] - ep[, j]) -
+                    fn(theta - ep[, i] + ep[, j]) + fn(theta - ep[, i] - ep[, j])) /
+                   (4 * eps^2)
+      H[j, i] <- H[i, j]
+    }
+  }
+  H
+}
+
 # ---- Log link ----
 
 compute_mu    <- function(p, s, mu_0) {
@@ -136,20 +156,6 @@ ou_stationary_cov <- function(a_p, a_s, a_ps, a_sp, sigma_p, sigma_s) {
   matrix(c(p11, p12, p12, p22), 2L, 2L)
 }
 
-# Exact process noise covariance via the stationary-covariance identity:
-#   Q(Δt) = P∞ − F(Δt) P∞ F(Δt)ᵀ
-# Proof: d/dτ [F P∞ Fᵀ] = −F ΣΣᵀ Fᵀ (from the Lyapunov equation),
-# so ∫₀^Δt F(s)ΣΣᵀF(s)ᵀ ds = P∞ − F(Δt)P∞F(Δt)ᵀ  (exact for all Δt).
-# n_steps retained in signature for backward compatibility; no longer used.
-ou_coupled_Q <- function(A_mat, sigma_p, sigma_s, dt) {
-  a_p  <- -A_mat[1L, 1L];  a_s  <- -A_mat[2L, 2L]
-  a_ps <- -A_mat[1L, 2L];  a_sp <- -A_mat[2L, 1L]
-  P_inf <- ou_stationary_cov(a_p, a_s, a_ps, a_sp, sigma_p, sigma_s)
-  F_dt  <- mat2x2_exp(A_mat, dt)
-  Q     <- P_inf - F_dt %*% P_inf %*% t(F_dt)
-  0.5 * (Q + t(Q))          # symmetrize against floating-point drift
-}
-
 # ---- Pre-compute all objects needed for simulation and likelihood ----
 # Calling this once per parameter vector avoids redundant matrix exponentials.
 
@@ -167,19 +173,32 @@ ou_coupled_matrices <- function(a_p, a_s, a_ps, a_sp,
   Q_raw <- P_inf - F_mat %*% P_inf %*% t(F_mat)
   Q_mat <- 0.5 * (Q_raw + t(Q_raw))
 
-  eig_q <- eigen(Q_mat, symmetric = TRUE)
-  if (any(eig_q$values <= 0)) {
-    Q_mat <- Q_mat + (abs(min(eig_q$values)) + 1e-10) * diag(2L)
-    eig_q <- eigen(Q_mat, symmetric = TRUE)
+  # 2×2 symmetric PSD check via Sylvester's criterion: trace > 0 and det > 0.
+  # Avoids eigen() entirely — O(1) arithmetic replaces iterative QR.
+  det_Q <- Q_mat[1L, 1L] * Q_mat[2L, 2L] - Q_mat[1L, 2L]^2
+  if (Q_mat[1L, 1L] <= 0 || det_Q <= 0) {
+    tr_half <- (Q_mat[1L, 1L] + Q_mat[2L, 2L]) / 2
+    min_eig <- tr_half - sqrt(max(tr_half^2 - det_Q, 0))
+    shift   <- abs(min_eig) + 1e-10
+    Q_mat   <- Q_mat + shift * diag(2L)
+    det_Q   <- Q_mat[1L, 1L] * Q_mat[2L, 2L] - Q_mat[1L, 2L]^2
   }
-  log_det_Q <- sum(log(eig_q$values))
-  Q_inv     <- eig_q$vectors %*% diag(1 / eig_q$values) %*% t(eig_q$vectors)
+
+  # Closed-form 2×2 inverse and log-determinant: exact, no iteration.
+  log_det_Q <- log(det_Q)
+
+  Q_inv     <- matrix(c( Q_mat[2L, 2L], -Q_mat[1L, 2L],
+                         -Q_mat[1L, 2L],  Q_mat[1L, 1L]), 2L, 2L) / det_Q
+
   Q_chol    <- tryCatch(chol(Q_mat),
                         error = function(e) chol(Q_mat + 1e-9 * diag(2L)))
-  A_inv     <- tryCatch(solve(A_mat), error = function(e) NULL)
 
-  list(A = A_mat, F = F_mat, Q = Q_mat,
-       Q_inv = Q_inv, log_det_Q = log_det_Q,
+  D_mat <- a_p * a_s - a_ps * a_sp
+
+  A_inv <- matrix(c(-a_s, a_sp, a_ps, -a_p), 2L, 2L) / D_mat
+
+  list(A = A_mat, F = F_mat, Ft = t(F_mat), FmI = F_mat - diag(2L),
+       Q = Q_mat, Q_inv = Q_inv, log_det_Q = log_det_Q,
        Q_chol = Q_chol, A_inv = A_inv)
 }
 
@@ -187,8 +206,8 @@ ou_coupled_matrices <- function(a_p, a_s, a_ps, a_sp,
 
 ou_coupled_step <- function(x_now, mats, c_vec, u_now) {
   mean_next <- as.vector(mats$F %*% x_now)
-  if (u_now != 0 && !is.null(mats$A_inv)) {
-    d         <- as.vector((mats$F - diag(2L)) %*% mats$A_inv %*% (c_vec * u_now))
+  if (u_now != 0) {
+    d         <- as.vector(mats$FmI %*% mats$A_inv %*% (c_vec * u_now))
     mean_next <- mean_next + d
   }
   mean_next + as.vector(t(mats$Q_chol) %*% rnorm(2L))
@@ -201,14 +220,6 @@ ou_exact_step <- function(x_now, a, sigma, c_gain = 0, u_now = 0, dt) {
   mean_next <- x_now * e_adt + (c_gain * u_now / a) * (-expm1(-a * dt))
   var_next  <- (sigma^2 / (2 * a)) * (-expm1(-2 * a * dt))
   mean_next + sqrt(var_next) * rnorm(1)
-}
-
-ou_log_transition_density <- function(x_next, x_now, a, sigma,
-                                      c_gain = 0, u_now = 0, dt) {
-  e_adt     <- exp(-a * dt)
-  mean_next <- x_now * e_adt + (c_gain * u_now / a) * (-expm1(-a * dt))
-  var_next  <- (sigma^2 / (2 * a)) * (-expm1(-2 * a * dt))
-  dnorm(x_next, mean = mean_next, sd = sqrt(var_next), log = TRUE)
 }
 
 # ---- Log-space IG computations (Machler 2012) ----
@@ -234,36 +245,48 @@ log_ig_pdf <- function(tau, mu, kappa) {
 }
 
 log_ig_survival <- function(tau, mu, kappa) {
-  if (tau <= 0) return(0)
-  sq   <- sqrt(kappa / tau)
-  z1   <- sq * (tau / mu - 1)
-  z2   <- sq * (tau / mu + 1)
+  # Vectorized over tau and mu (kappa remains scalar).
+  n   <- max(length(tau), length(mu))
+  tau <- rep_len(tau, n)
+  mu  <- rep_len(mu,  n)
+  out <- rep.int(0.0, n)      # log S(tau) = 0 for tau <= 0  [S(0) = 1]
 
-  if (tau < mu) {
-    logF1 <- pnorm( z1, log.p = TRUE)           # log Φ(z1),  z1 < 0
-    logF2 <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)  # log[exp(2κ/μ)Φ(−z2)]
-    # log F(τ) = log[exp(logF1) + exp(logF2)] via log-sum-exp
-    log_F  <- if (logF1 >= logF2)
-                logF1 + log1p(exp(logF2 - logF1))
-              else
-                logF2 + log1p(exp(logF1 - logF2))
-    # log S(τ) = log(1 − F(τ))
+  pos <- tau > 0
+  if (!any(pos)) return(out)
 
-    if (log_F >= 0) {
+  tp  <- tau[pos];  mp <- mu[pos]
+  sq  <- sqrt(kappa / tp)
+  z1  <- sq * (tp / mp - 1)
+  z2  <- sq * (tp / mp + 1)
+
+  s   <- numeric(sum(pos))
+  bel <- tp < mp               # --- branch: tau < mu, compute F then S ---
+
+  if (any(bel)) {
+    lF1 <- pnorm( z1[bel], log.p = TRUE)
+    lF2 <- 2 * kappa / mp[bel] + pnorm(-z2[bel], log.p = TRUE)
+    lF  <- ifelse(lF1 >= lF2,
+                  lF1 + log1p(exp(lF2 - lF1)),
+                  lF2 + log1p(exp(lF1 - lF2)))
+    bad <- !is.finite(lF) | lF >= 0
+    if (any(bad)) {
       warning(sprintf(
-        "log_ig_survival: log_F = %.4g >= 0 (tau=%.4g, mu=%.4g, kappa=%.4g); clamping S to 0.",
-        log_F, tau, mu, kappa))
-      return(-Inf)
+        "log_ig_survival: %d value(s) with log_F >= 0 (first: tau=%.3g, mu=%.3g); clamping.",
+        sum(bad), tp[bel][bad][1L], mp[bel][bad][1L]))
+      lF[bad] <- -.Machine$double.eps
     }
-
-    return(log1mexp(log_F))    # log1mexp(x) = log(1−eˣ), x < 0 required
-  } else {
-    logA <- pnorm(-z1, log.p = TRUE)
-    logB <- 2 * kappa / mu + pnorm(-z2, log.p = TRUE)
-    d    <- logB - logA
-    if (is.nan(d) || d >= 0) return(-Inf)
-    return(logA + log1mexp(d))
+    s[bel] <- log1mexp(lF)
   }
+
+  abv <- !bel                  # --- branch: tau >= mu, compute S directly ---
+  if (any(abv)) {
+    lA     <- pnorm(-z1[abv], log.p = TRUE)
+    d      <- 2 * kappa / mp[abv] + pnorm(-z2[abv], log.p = TRUE) - lA
+    s[abv] <- ifelse(is.nan(d) | d >= 0, -Inf, lA + log1mexp(d))
+  }
+
+  out[pos] <- s
+  out
 }
 
 log_ig_hazard <- function(tau, mu, kappa) {
@@ -279,9 +302,6 @@ ig_hazard_peak <- function(mu, kappa) {
   list(tau_peak = opt$maximum, lambda_peak = exp(opt$objective))
 }
 
-ig_hazard_bound <- function(mu_min, kappa, safety_factor = 1.1)
-  ig_hazard_peak(mu_min, kappa)$lambda_peak * safety_factor
-
 # ---- Survival-ratio event generation ----
 
 p_fire_survival_ratio <- function(tau_start, tau_end, mu, kappa) {
@@ -292,25 +312,6 @@ p_fire_survival_ratio <- function(tau_start, tau_end, mu, kappa) {
   # S(tau_end) ≈ 0 but S(tau_start) > 0: certain fire in this step
   if (!is.finite(ls1)) return(1)
   min(max(-expm1(ls1 - ls0), 0), 1)
-}
-
-lewis_ogata_thinning <- function(time_grid, mu_grid, kappa, lambda_star) {
-  T_end   <- tail(time_grid, 1)
-  spikes  <- numeric(0)
-  t_cur   <- time_grid[1]
-  t_last  <- -Inf
-  mu_fn   <- approxfun(time_grid, mu_grid, rule = 2)
-  while (t_cur < T_end) {
-    t_prop  <- t_cur + rexp(1, lambda_star)
-    if (t_prop >= T_end) break
-    tau_p   <- t_prop - t_last
-    lam_p   <- ig_hazard(tau_p, mu_fn(t_prop), kappa)
-    if (runif(1) < lam_p / lambda_star) {
-      spikes <- c(spikes, t_prop); t_last <- t_prop
-    }
-    t_cur <- t_prop
-  }
-  spikes
 }
 
 # ---- Observation model interface ----
@@ -378,10 +379,14 @@ sim_sde_ig <- function(duration, dt, params,
   n_spikes   <- 0L
   last_t     <- 0
 
-  kap <- kappa_from_rho(fp$mu_0, fp$rho)
+  kap      <- kappa_from_rho(fp$mu_0, fp$rho)
+  # Pre-evaluate input on the full time grid; input_fn (make_double_logistic,
+  # make_multi_epoch_protocol) is vectorized via plogis. Avoids n-1 closure calls.
+  u_sim <- input_fn(tg[-length(tg)])
+  stopifnot(length(u_sim) == length(tg) - 1L)
 
   for (i in seq_len(n - 1)) {
-    u <- input_fn(tg[i])
+    u <- u_sim[i]
     # REPLACE WITH (fire using start-of-step state, then advance):
     tau_start <- tg[i] - last_t
     tau_end   <- tg[i+1] - last_t
@@ -426,33 +431,32 @@ compute_time_rescaling <- function(res) {
   n     <- length(sp)
   if (n < 2L) return(numeric(0L))
 
+  # Pre-compute all spike→grid boundary indices at once: O(n log m) total.
+  # findInterval(x, tg) returns the last index j such that tg[j] <= x[k].
+  # This matches the semantics of compute_effective_delta and sim_sde_ig:
+  # grid points inside (sp[k], sp[k+1]] are (i_bounds[k]+1):i_bounds[k+1].
+  i_bounds <- findInterval(sp, tg)   # length n
+
   vapply(seq_len(n - 1L), function(k) {
-    i0 <- which.min(abs(tg - sp[k]))
-    i1 <- which.min(abs(tg - sp[k + 1L]))
+    i0 <- i_bounds[k]; i1 <- i_bounds[k + 1L]
     if (i1 <= i0) {
-      # This can only happen if two spikes fall in the same dt bin.
-      # At dt = 0.005 s this requires IBI < 5 ms — physiologically impossible.
-      # Flag clearly so the caller knows to investigate.
       message(sprintf(
         "compute_time_rescaling: spikes %d and %d map to the same grid index (IBI < dt). Returning NA.",
         k, k + 1L))
       return(NA_real_)
     }
 
-    # Grid points strictly inside (sp[k], sp[k+1]], i.e. the END of each dt step
-    idx      <- (i0 + 1L):i1
-    tau_ends <- tg[idx] - sp[k]    # elapsed time at end of each step
+    # Grid points strictly inside (sp[k], sp[k+1]]: end-of-step indices.
+    idx        <- (i0 + 1L):i1
+    tau_ends   <- tg[idx]      - sp[k]   # elapsed time at end of each dt step
+    tau_starts <- tg[idx - 1L] - sp[k]   # elapsed time at start (= tau_ends - dt)
+    tau_starts[1L] <- 0                  # clamp: tg[i0] <= sp[k] so start <= 0
 
-    # ΔΛ_j = log S(τ_start; μ_j, κ) − log S(τ_end; μ_j, κ)  ≥ 0
-    # Mirrors exactly: P_j = 1 − S(τ_end)/S(τ_start) used in sim_sde_ig().
-    # At j=1: τ_start = 0, log_ig_survival(0, ...) = 0 (S(0) = 1) ✓
-    sum(vapply(seq_along(idx), function(j) {
-      tau_end   <- tau_ends[j]
-      tau_start <- max(tau_end - dt, 0)
-      mu_j      <- mu_v[idx[j] - 1L]
-      log_ig_survival(tau_start, mu_j, kappa) -
-        log_ig_survival(tau_end,   mu_j, kappa)
-    }, numeric(1L)))
+    # ΔΛ_j = log S(τ_start; μ_j, κ) − log S(τ_end; μ_j, κ) ≥ 0
+    # Mirrors exactly P_j = 1 − S(τ_end)/S(τ_start) used in sim_sde_ig().
+    mu_j <- mu_v[idx - 1L]
+    sum(log_ig_survival(tau_starts, mu_j, kappa) -
+          log_ig_survival(tau_ends,   mu_j, kappa))
   }, numeric(1L))
 }
 

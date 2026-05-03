@@ -2,7 +2,7 @@
 # R/filter.R
 #
 # Spike-to-spike Unscented Kalman Filter for the SDE-IG model.
-# Requires: model_functions.R sourced first.
+# Requires: model_functions.R and spectral_init.R sourced first.
 #
 # ALGORITHM
 # ---------
@@ -49,20 +49,13 @@
 
 # ---- Sigma-point generation (scaled, Cholesky-based) ----
 
+# L = 2 is structural (fixed by .ukf_weights); unroll the loop entirely.
 .sigma_points <- function(m, P) {
-  L <- .ukf_weights$L
   A <- tryCatch(
     t(chol(.ukf_weights$c * P)),
-    error = function(e)
-      t(chol(.ukf_weights$c * (P + 1e-8 * diag(L))))  # regularize if needed
+    error = function(e) t(chol(.ukf_weights$c * (P + 1e-8 * diag(2L))))
   )
-  pts <- matrix(0, L, .ukf_weights$n_pts)
-  pts[, 1L] <- m
-  for (i in seq_len(L)) {
-    pts[, i + 1L]      <- m + A[, i]
-    pts[, i + 1L + L]  <- m - A[, i]
-  }
-  pts
+  cbind(m, m + A[, 1L], m + A[, 2L], m - A[, 1L], m - A[, 2L])
 }
 
 # ---- Exact OU prediction ----
@@ -84,18 +77,20 @@
     Q_raw <- P_inf - F_mat %*% P_inf %*% t(F_mat)
     Q_mat <- 0.5 * (Q_raw + t(Q_raw))
 
-    # Regularize against floating-point PSD violation at tiny tau
-    eig_q <- eigen(Q_mat, symmetric = TRUE, only.values = TRUE)$values
-    if (any(eig_q < 0)) {
-      Q_mat <- Q_mat + (abs(min(eig_q)) + 1e-10) * diag(2L)
+    det_Q <- Q_mat[1L, 1L] * Q_mat[2L, 2L] - Q_mat[1L, 2L]^2
+    if (Q_mat[1L, 1L] <= 0 || det_Q <= 0) {
+      tr_h  <- (Q_mat[1L, 1L] + Q_mat[2L, 2L]) / 2
+      shift <- abs(tr_h - sqrt(max(tr_h^2 - det_Q, 0))) + 1e-10
+      Q_mat <- Q_mat + shift * diag(2L)
     }
 
     d_vec <- c(0, 0)
     if (u != 0) {
-      A_inv <- tryCatch(solve(A_mat), error = function(e) NULL)
-      if (!is.null(A_inv))
-        d_vec <- as.vector((F_mat - diag(2L)) %*% A_inv %*% c(fp$c_p * u, fp$c_s * u))
+      D_loc <- fp$a_p * fp$a_s - fp$a_ps * fp$a_sp
+      A_inv <- matrix(c(-a_s, fp$a_sp, fp$a_ps, -a_p), 2L, 2L) / D_loc
+      d_vec <- as.vector((F_mat - diag(2L)) %*% A_inv %*% c(fp$c_p * u, fp$c_s * u))
     }
+
     m1 <- as.vector(F_mat %*% m0) + d_vec
     P1 <- F_mat %*% P0 %*% t(F_mat) + Q_mat
     P1 <- 0.5 * (P1 + t(P1))
@@ -108,8 +103,8 @@
   d_s <- (fp$c_s * u / a_s) * (-expm1(-a_s * tau))
   m1  <- c(m0[1L] * F_p + d_p, m0[2L] * F_s + d_s)
 
-  Q_p <- (fp$sigma_p^2 / (2 * a_p)) * (-expm1(-2 * a_p * tau))
-  Q_s <- (fp$sigma_s^2 / (2 * a_s)) * (-expm1(-2 * a_s * tau))
+  Q_p <- (fp$sigma_p^2 / (2 * a_p)) * (1 - F_p^2)   # exact: 1-e^{-2at} = (1-F)(1+F)
+  Q_s <- (fp$sigma_s^2 / (2 * a_s)) * (1 - F_s^2)
   P1  <- matrix(0, 2L, 2L)
   P1[1L, 1L] <- F_p^2 * P0[1L, 1L] + Q_p
   P1[2L, 2L] <- F_s^2 * P0[2L, 2L] + Q_s
@@ -133,8 +128,10 @@
 
   mu_hat <- sum(.ukf_weights$Wm * h_pts)
   if (!is.finite(mu_hat) || mu_hat <= 0) {
-    # Sigma-point collapse: return prior without update
-    return(list(m = m1, P = P1, innov = 0, S = 1, mu_hat = fp$mu_0, ll = -Inf))
+    mu_det <- mu_0 * exp(m1[1L] - m1[2L])
+    return(list(m = m1, P = P1, innov = 0, S = 1,
+                mu_hat = if (is.finite(mu_det) && mu_det > 0) mu_det else mu_0,
+                ll = -Inf))
   }
   R <- max(mu_hat^3 / kappa, 1e-6)
 
@@ -143,7 +140,7 @@
 
   # Cross-covariance state–observation (2×1)
   dx   <- pts - m1                                 # 2 × n_pts
-  C    <- rowSums(sweep(dx, 2L, .ukf_weights$Wc * dh, `*`))
+  C    <- as.vector(dx %*% (.ukf_weights$Wc * dh))  # 2×n_pts · n_pts = 2×1
 
   K      <- C / S
   innov  <- tau_k - mu_hat
@@ -152,13 +149,12 @@
   P2_raw <- P1 - outer(K, K) * S
   P2     <- 0.5 * (P2_raw + t(P2_raw)) + 1e-9 * diag(.ukf_weights$L)
 
-  ll_pts  <- log_ig_pdf(tau_k, h_pts, kappa)
-  log_w   <- log(.ukf_weights$Wm)          # [-Inf, -1.386, -1.386, -1.386, -1.386]
-  lw_ll   <- log_w + ll_pts                # log(W_i * f_IG_i); -Inf for W_i = 0
-  finite  <- is.finite(lw_ll)
-  ll_k    <- if (any(finite)) {
-    lw_max <- max(lw_ll[finite])
-    lw_max + log(sum(exp(lw_ll[finite] - lw_max)))
+  # Wm[1] = 0 (central point excluded); Wm[2:5] = 0.25 (equal) → log-mean of 4 values.
+  ll_sigma <- log_ig_pdf(tau_k, h_pts[-1L], kappa)   # 4 off-centre sigma-point LLs
+  finite   <- is.finite(ll_sigma)
+  ll_k     <- if (any(finite)) {
+    lmax <- max(ll_sigma[finite])
+    lmax + log(sum(exp(ll_sigma[finite] - lmax)) / 4L)
   } else {
     -Inf
   }
@@ -428,7 +424,8 @@ filter_to_grid <- function(ukf_result, time_grid) {
     p        = interp(ukf_result$m_filt[, "p"]),
     s        = interp(ukf_result$m_filt[, "s"]),
     mu       = interp(ukf_result$mu_filt),
-    sd_delta = interp(sqrt(pmax(sapply(ukf_result$P_filt,
-                                       function(P) P[1,1] + P[2,2] - 2*P[1,2]), 0)))
+    sd_delta = interp(sqrt(pmax(vapply(ukf_result$P_filt,
+                                       function(P) P[1L,1L] + P[2L,2L] - 2*P[1L,2L],
+                                       numeric(1L)), 0)))
   )
 }

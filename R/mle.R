@@ -18,37 +18,28 @@
 
 # Helper to compute the effective integrate-and-fire drift
 compute_effective_delta <- function(spk, time_vec, delta_vec) {
-  vapply(seq_along(spk[-1L]), function(k) {
-    t_start <- spk[k]
-    t_end   <- spk[k + 1L]
-    idx <- which(time_vec > t_start & time_vec <= t_end)
-    if (length(idx) > 0L) {
-      neg_d  <- -delta_vec[idx]
-      d_max  <- max(neg_d)
-      # log-sum-exp numerically stable: log(sum(exp(-delta)))
-      lse    <- d_max + log(sum(exp(neg_d - d_max)))
-      # bar_delta_k = -log(mean_IBI(exp(-delta(t)))):
-      # ensures exp(-bar_delta_k) = mean_IBI(exp(-delta)) so that
-      # mu_k = mu_0 * mean_IBI(exp(-delta))  [interval-averaged effective mean].
-      # Note: lse - log(n) = +log(mean(exp(-delta))); negating gives the correct sign.
-      log(length(idx)) - lse
-    } else {
-      # No grid points inside (t_start, t_end] — IBI < dt.
-      # This should not occur at dt = 0.005 s with physiological IBIs.
-      # Using nearest-endpoint delta is equivalent to the old biased estimate;
-      # flag it so the caller can investigate.
-      stop(sprintf(
-        paste0(
-          "compute_effective_delta: no grid points in interval [%.4f, %.4f] ",
-          "(IBI = %.4f s < dt = %.4f s). ",
-          "This is physiologically impossible at dt = 0.005 s. ",
-          "Reduce dt or check spike detection."
-        ),
-        t_start, t_end,
-        t_end - t_start,
-        if (length(time_vec) > 1L) time_vec[2L] - time_vec[1L] else NA_real_
-      ))
+  # findInterval gives O(log n_time) per IBI vs O(n_time) from which().
+  # time_vec is strictly sorted and uniform; semantics match the original:
+  #   i_start = last index with time_vec[i] <= t_start
+  #   i_end   = last index with time_vec[i] <= t_end
+  #   qualifying indices: (i_start+1):i_end  ↔  time_vec > t_start & <= t_end
+  n_ibi    <- length(spk) - 1L
+  i_starts <- findInterval(spk[-length(spk)], time_vec)
+  i_ends   <- findInterval(spk[-1L],          time_vec)
+  dt_val   <- if (length(time_vec) > 1L) time_vec[2L] - time_vec[1L] else NA_real_
+
+  vapply(seq_len(n_ibi), function(k) {
+    i0 <- i_starts[k];  i1 <- i_ends[k]
+    if (i1 <= i0) {
+      warning(sprintf(
+        "compute_effective_delta: IBI [%.4f, %.4f] (%.4f s) < dt (%.4f s); returning NA.",
+        spk[k], spk[k + 1L], spk[k + 1L] - spk[k], dt_val))
+      return(NA_real_)
     }
+    idx   <- (i0 + 1L):i1
+    neg_d <- -delta_vec[idx]
+    d_max <- max(neg_d)
+    log(length(idx)) - (d_max + log(sum(exp(neg_d - d_max))))
   }, numeric(1L))
 }
 
@@ -68,13 +59,15 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
                 a_se = NA_real_, sigma_se = NA_real_, c_se = NA_real_,
                 log_lik = NA_real_, H_logscale = matrix(NA, 3, 3), n_obs = n))
 
-  idx <- seq_len(n)
+  idx    <- seq_len(n)
+  x_cur  <- x_vec[idx]          # x_1 … x_{n}   — stable across all profile_at_a calls
+  x_next <- x_vec[-1L]          # x_2 … x_{n+1}
+  u_cur  <- u_vec[idx]          # u_1 … u_{n}
 
-  # Closed-form (c, sigma) MLEs for a given a value
   profile_at_a <- function(a) {
     e_adt  <- exp(-a * dt)
-    z      <- u_vec[idx] / a * (-expm1(-a * dt))  # input basis
-    y      <- x_vec[-1L] - x_vec[idx] * e_adt
+    z      <- u_cur / a * (-expm1(-a * dt))
+    y      <- x_next - x_cur * e_adt
     C_a    <- (-expm1(-2 * a * dt)) / (2 * a)
     c_hat  <- if (!is.null(c_fixed)) {
       c_fixed
@@ -92,15 +85,15 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
   }
 
   # 1-D profile optimisation over log(a)
+  last_pf <- NULL
   opt <- tryCatch(
     optimize(function(la) {
       pf <- profile_at_a(exp(la))
-      if (is.finite(pf$ll)) pf$ll else -Inf
+      if (is.finite(pf$ll)) { last_pf <<- pf; pf$ll } else -Inf
     }, interval = log_a_bounds, maximum = TRUE, tol = 1e-7),
-    error = function(e) list(maximum = log(a_init), objective = -Inf)
-  )
+    error = function(e) list(maximum = log(a_init), objective = -Inf))
   a_hat <- exp(opt$maximum)
-  pf    <- profile_at_a(a_hat)
+  pf    <- if (!is.null(last_pf)) last_pf else profile_at_a(a_hat)
 
   # Numerical Hessian for standard errors.
   # When u(t) ≡ 0, nll_3d does not depend on th[3] (c_gain is non-identifiable),
@@ -109,14 +102,14 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
   th0    <- c(log(a_hat), log(pf$sigma), pf$c_gain)
 
   # c is not a free parameter when c_fixed is supplied OR when u ≡ 0.
-  u_is_zero <- !is.null(c_fixed) || all(abs(u_vec[idx]) < .Machine$double.eps * 100)
+  u_is_zero <- !is.null(c_fixed) || all(abs(u_cur) < .Machine$double.eps * 100)
 
   nll_3d <- function(th) {
     a_v   <- exp(th[1L]); sig_v <- exp(th[2L]); c_v <- th[3L]
     if (a_v < 1e-6 || sig_v <= 0) return(1e10)
     e_adt <- exp(-a_v * dt)
-    z_v   <- u_vec[idx] / a_v * (-expm1(-a_v * dt))
-    y_v   <- x_vec[-1L] - x_vec[idx] * e_adt - c_v * z_v
+    z_v   <- u_cur / a_v * (-expm1(-a_v * dt))        # use pre-indexed u_cur
+    y_v   <- x_next - x_cur * e_adt - c_v * z_v       # use pre-indexed x_cur, x_next
     C_v   <- (-expm1(-2 * a_v * dt)) / (2 * a_v)
     ll_v  <- tryCatch(sum(dnorm(y_v, 0, sig_v * sqrt(C_v), log = TRUE)),
                       error = function(e) -Inf)
@@ -127,15 +120,8 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
     # 2×2 Hessian in (log a, log σ); c is absorbed into the residual variance.
     th0_2 <- th0[1:2]
     nll_2 <- function(th) nll_3d(c(th, if (!is.null(c_fixed)) c_fixed else 0))
-    eps2 <- 1e-4; np2 <- 2L
-    H2   <- matrix(0, np2, np2)
-    for (i in seq_len(np2)) for (j in i:np2) {
-      ei <- ej <- numeric(np2); ei[i] <- eps2; ej[j] <- eps2
-      H2[i, j] <- (nll_2(th0_2+ei+ej) - nll_2(th0_2+ei-ej) -
-                     nll_2(th0_2-ei+ej) + nll_2(th0_2-ei-ej)) / (4 * eps2^2)
-      H2[j, i] <- H2[i, j]
-    }
-    V2      <- tryCatch(solve(H2), error = function(e) matrix(NA_real_, np2, np2))
+    H2      <- numerical_hessian(nll_2, th0_2)
+    V2      <- tryCatch(solve(H2), error = function(e) matrix(NA_real_, 2L, 2L))
     safe2   <- function(k) sqrt(max(V2[k, k], 0, na.rm = TRUE))
     return(list(
       a        = a_hat,
@@ -149,15 +135,9 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
     ))
   }
 
-  eps <- 1e-4; np <- 3L
-  H   <- matrix(0, np, np)
-  for (i in seq_len(np)) for (j in i:np) {
-    ei <- ej <- numeric(np); ei[i] <- eps; ej[j] <- eps
-    H[i, j] <- (nll_3d(th0+ei+ej) - nll_3d(th0+ei-ej) -
-                  nll_3d(th0-ei+ej) + nll_3d(th0-ei-ej)) / (4 * eps^2)
-    H[j, i] <- H[i, j]
-  }
-  V        <- tryCatch(solve(H), error = function(e) matrix(NA_real_, np, np))
+  H <- numerical_hessian(nll_3d, th0)
+
+  V        <- tryCatch(solve(H), error = function(e) matrix(NA_real_, 3L, 3L))
   safe_se  <- function(k) sqrt(max(V[k, k], 0, na.rm = TRUE))
 
   list(
@@ -191,15 +171,19 @@ ou_coupled_log_lik <- function(a_ps, a_sp, a_p, a_s, sigma_p, sigma_s, c_p, c_s,
   c_vec  <- c(c_p, c_s)
   ll_base <- -n * log(2 * pi) - (n / 2) * mats$log_det_Q
 
-  quad <- 0
-  for (i in seq_len(n)) {
-    mu_i <- as.vector(mats$F %*% x_mat[i, ])
-    u_i  <- u_vec[i]
-    if (u_i != 0 && !is.null(mats$A_inv))
-      mu_i <- mu_i + as.vector((mats$F - diag(2L)) %*% mats$A_inv %*% (c_vec * u_i))
-    r    <- x_mat[i + 1L, ] - mu_i
-    quad <- quad + as.numeric(t(r) %*% mats$Q_inv %*% r)
+  X_cur  <- x_mat[-nrow(x_mat), , drop = FALSE]   # n × 2
+  X_next <- x_mat[-1L,          , drop = FALSE]   # n × 2
+
+  means  <- X_cur %*% mats$Ft
+
+  if (any(u_vec[seq_len(n)] != 0)) {
+    d_base <- as.vector(mats$FmI %*% mats$A_inv %*% c_vec)
+    means  <- means + outer(u_vec[seq_len(n)], d_base)
   }
+
+  resids <- X_next - means                         # n × 2
+  # Hadamard trace trick: sum_i rᵢᵀ Q⁻¹ rᵢ = sum((R Q⁻¹) ⊙ R)
+  quad   <- sum((resids %*% mats$Q_inv) * resids)
   ll_base - 0.5 * quad
 }
 
@@ -238,17 +222,10 @@ ou_coupled_mle <- function(x_mat, a_p_init, a_s_init,
   res <- optim(th0, neg_ll, method = "L-BFGS-B",
                lower = c(-Inf, -Inf, 0, 0, -Inf, -Inf),
                control = list(maxit = 500L, factr = 1e8))
-  th <- res$par
+  th   <- res$par
 
-  eps <- 1e-4;  np <- 6L
-  H   <- matrix(0, np, np)
-  for (i in seq_len(np)) for (j in i:np) {
-    ei <- ej <- numeric(np);  ei[i] <- eps;  ej[j] <- eps
-    H[i, j] <- (neg_ll(th+ei+ej) - neg_ll(th+ei-ej) -
-                  neg_ll(th-ei+ej) + neg_ll(th-ei-ej)) / (4 * eps^2)
-    H[j, i] <- H[i, j]
-  }
-  V    <- tryCatch(solve(H), error = function(e) matrix(NA_real_, np, np))
+  H    <- numerical_hessian(neg_ll, th)
+  V    <- tryCatch(solve(H), error = function(e) matrix(NA_real_, 6L, 6L))
   s_se <- function(k) sqrt(max(V[k, k], 0, na.rm = TRUE))
 
   a_p_h <- exp(th[1L]);  a_s_h <- exp(th[2L])
@@ -265,7 +242,7 @@ ou_coupled_mle <- function(x_mat, a_p_init, a_s_init,
     sigma_p_se = sig_p  * s_se(5L),
     sigma_s_se = sig_s  * s_se(6L),
     c_p_se = NA_real_,  c_s_se = NA_real_,
-    log_lik     = -res$value,
+    log_lik     = if (res$value >= 1e9) NA_real_ else -res$value,
     convergence = res$convergence,
     n_obs       = nrow(x_mat) - 1L
   )
@@ -291,7 +268,7 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
     stop("ig_obs_mle: delta_vec contains non-finite values — check state trajectory")
 
   g       <- exp(-delta_vec)         # g_k = mu_k / mu_0  (=1 when delta=0)
-  w       <- exp(delta_vec)          # w_k = 1/g_k
+  w       <- exp( delta_vec)         # w_k = exp(delta_k); direct avoids 1/g overflow
 
   # Closed-form MLE for mu_0
   denom_w <- sum(w)
@@ -303,7 +280,7 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   mu0_hat <- sum(tau_vec * w^2) / denom_w
 
   # Closed-form MLE for kappa (given mu_0_hat)
-  mu_k    <- mu0_hat * g
+  mu_k    <- pmax(mu0_hat * g, .Machine$double.eps^0.5)
   psi     <- sum((tau_vec - mu_k)^2 / (mu_k^2 * tau_vec))
   n       <- length(tau_vec)
   kappa_hat <- n / max(psi, 1e-10)
@@ -392,9 +369,23 @@ full_conditional_mle <- function(sim_res, input_fn = NULL) {
                        c("a_p","a_s","sigma_p","sigma_s","mu0","rho","c_p","c_s","a_ps","a_sp"))
     return(c(as.list(na_out), list(n_beats = 0L)))
   }
-  tau_vec  <- diff(spk)
-  delta_v  <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
-  mle_obs  <- ig_obs_mle(tau_vec, delta_v)
+
+  tau_vec   <- diff(spk)
+  delta_v   <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
+  valid_idx <- is.finite(delta_v)
+
+  if (sum(valid_idx) < 2L) {
+    warning("full_conditional_mle: fewer than 2 valid IBIs after NA filtering.")
+
+    return(c(as.list(setNames(rep(NA_real_, 14L),
+                              c("a_p","a_s","a_ps","a_sp","sigma_p","sigma_s",
+                                "c_p","c_s","mu0","kappa","rho","ll_obs","ll_total","n_beats"))),
+
+             list(a_p_se = NA_real_, a_s_se = NA_real_, sigma_p_se = NA_real_,
+                  sigma_s_se = NA_real_, mu0_se = NA_real_, rho_se = NA_real_,
+                  a_ps_se = NA_real_, a_sp_se = NA_real_, c_p_se = NA_real_, c_s_se = NA_real_)))
+  }
+  mle_obs <- ig_obs_mle(tau_vec[valid_idx], delta_v[valid_idx])
 
   ll_ou <- if (!is.null(mle_ou)) mle_ou$log_lik
   else mle_p$log_lik + mle_s$log_lik
@@ -476,13 +467,11 @@ check_moment_consistency <- function(rr_vec, mle) {
   if (n_half > 2L)
     psd_rs[2L:(n_half - 1L)] <- 2 * psd_rs[2L:(n_half - 1L)]
 
-  band_power <- function(f_lo, f_hi) {
-    idx <- freq_rs >= f_lo & freq_rs <= f_hi
-    if (!any(idx)) return(NA_real_)
-    sum(psd_rs[idx]) * (freq_rs[2L] - freq_rs[1L])
-  }
-  lf_obs  <- band_power(0.04, 0.15)
-  hf_obs  <- band_power(0.15, 0.40)
+  df_rs   <- freq_rs[2L] - freq_rs[1L]
+  idx_lf  <- freq_rs >= 0.04 & freq_rs <= 0.15
+  idx_hf  <- freq_rs >= 0.15 & freq_rs <= 0.40
+  lf_obs  <- if (any(idx_lf)) sum(psd_rs[idx_lf]) * df_rs else NA_real_
+  hf_obs  <- if (any(idx_hf)) sum(psd_rs[idx_hf]) * df_rs else NA_real_
   lfhf_obs <- lf_obs / max(hf_obs, 1e-12)
 
   # ---- Residuals ----
@@ -520,7 +509,7 @@ check_moment_consistency <- function(rr_vec, mle) {
 # Returns the 2x2 FIM, its inverse (parameter covariance), SE, and
 # condition number.
 
-ig_obs_fim <- function(mu0, rho_val, tau_vec, delta_vec, eps = 1e-5) {
+ig_obs_fim <- function(mu0, rho_val, tau_vec, delta_vec) {
   # Analytical observed FIM in (log mu_0, log rho) parameterisation.
   # The (log mu_0, log kappa) observed FIM is block-diagonal at the MLE
   # (cross-term exactly zero; see ig_obs_mle comment for proof).
@@ -577,21 +566,14 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt, u_vec = NULL, c_fixed = 0) {
     if (is.finite(ll_v)) -ll_v else 1e10
   }
 
-  eps <- 1e-4; np <- 2L
-  H   <- matrix(0, np, np)
-  for (i in seq_len(np)) for (j in i:np) {
-    ei <- ej <- numeric(np); ei[i] <- eps; ej[j] <- eps
-    H[i, j] <- (nll_2d(th0+ei+ej) - nll_2d(th0+ei-ej) -
-                  nll_2d(th0-ei+ej) + nll_2d(th0-ei-ej)) / (4 * eps^2)
-    H[j, i] <- H[i, j]
-  }
-  fim_inv <- tryCatch(solve(H), error = function(e) matrix(NA_real_, np, np))
+  H       <- numerical_hessian(nll_2d, th0)
+  fim_inv <- tryCatch(solve(H), error = function(e) matrix(NA_real_, 2L, 2L))
   list(
     fim  = H,
     se   = sqrt(abs(diag(fim_inv))),   # SE(log a), SE(log sigma)
     cond = tryCatch(kappa(H), error = function(e) NA_real_),
     eig  = tryCatch(eigen(H, symmetric = TRUE, only.values = TRUE)$values,
-                    error = function(e) rep(NA_real_, np))
+                    error = function(e) rep(NA_real_, 2L))
   )
 }
 
@@ -639,15 +621,9 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt, u_vec = NULL, c_fixed = 0) {
     ll_ou + ll_obs
   }
 
-  eps <- 1e-4;  np <- 8L
-  H   <- matrix(0, np, np)
-  for (i in seq_len(np)) for (j in i:np) {
-    ei <- ej <- numeric(np);  ei[i] <- eps;  ej[j] <- eps
-    H[i, j] <- (obj(th0+ei+ej) - obj(th0+ei-ej) -
-                  obj(th0-ei+ej) + obj(th0-ei-ej)) / (4 * eps^2)
-    H[j, i] <- H[i, j]
-  }
-  FIM <- -H
+  # obj returns log-likelihood; Hessian of LL = -FIM, so negate.
+  FIM <- -numerical_hessian(obj, th0)
+
   pnames <- c("log(a_p)", "log(a_s)", "a_ps", "a_sp",
               "log(sigma_p)", "log(sigma_s)", "log(mu_0)", "log(rho)")
   dimnames(FIM) <- list(pnames, pnames)
@@ -733,15 +709,6 @@ full_conditional_fim <- function(sim_res, input_fn = NULL) {
 # close approximation because ou_mle() recovers the decay rates with <1%
 # relative bias, making fp$a_p ≈ mle$a_p.
 
-ou_log_lik_at <- function(x_vec, u_vec, a, sigma, c_gain, dt) {
-  n       <- length(x_vec) - 1L
-  idx     <- seq_len(n)
-  e_adt   <- exp(-a * dt)
-  means   <- x_vec[idx] * e_adt + (c_gain * u_vec[idx] / a) * (-expm1(-a * dt))
-  var_v   <- (sigma^2 / (2 * a)) * (-expm1(-2 * a * dt))
-  sum(dnorm(x_vec[idx + 1L], mean = means, sd = sqrt(var_v), log = TRUE))
-}
-
 profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
   dt    <- sim_res$time[2L] - sim_res$time[1L]
   # c_p and c_s are fixed known constants.  u(t) is supplied so their
@@ -755,13 +722,16 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
   a_s_mle <- mle$a_s
 
   # Branch pre-computations: residuals after removing known input contribution.
+  # RSS and C_a are constant w.r.t. sigma, enabling an O(1) analytical formula
+  # per sigma-profile grid point instead of an O(n_time) ou_log_lik_at call.
   n_p    <- length(sim_res$p) - 1L
   idx_p  <- seq_len(n_p)
   e_p    <- exp(-a_p_mle * dt)
   z_p    <- u_vec[idx_p] / a_p_mle * (-expm1(-a_p_mle * dt))
   y_p    <- sim_res$p[-1L] - sim_res$p[idx_p] * e_p - fp$c_p * z_p
   C_ap   <- (-expm1(-2 * a_p_mle * dt)) / (2 * a_p_mle)
-  sig_p_hat <- sqrt(max(mean(y_p^2) / C_ap, 1e-14))
+  rss_p  <- sum(y_p^2)
+  ll_const_p <- -n_p / 2 * (log(2 * pi) + log(C_ap))
 
   n_s    <- length(sim_res$s) - 1L
   idx_s  <- seq_len(n_s)
@@ -769,7 +739,8 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
   z_s    <- u_vec[idx_s] / a_s_mle * (-expm1(-a_s_mle * dt))
   y_s    <- sim_res$s[-1L] - sim_res$s[idx_s] * e_s - fp$c_s * z_s
   C_as   <- (-expm1(-2 * a_s_mle * dt)) / (2 * a_s_mle)
-  sig_s_hat <- sqrt(max(mean(y_s^2) / C_as, 1e-14))
+  rss_s  <- sum(y_s^2)
+  ll_const_s <- -n_s / 2 * (log(2 * pi) + log(C_as))
 
   tau_vec <- diff(sim_res$spikes)
   delta_v <- compute_effective_delta(sim_res$spikes, sim_res$time, sim_res$delta)
@@ -777,6 +748,16 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
   g       <- exp(-delta_v)
   w       <- exp(delta_v)
   mu0_hat <- sum(tau_vec * w^2) / sum(w)
+
+  # Pre-compute rho-profile constants (O(n_beats), used for every grid point).
+  rho_C1   <- sum(tau_vec * w^2)    # = sum(tau_k * exp(2*delta_k))
+  rho_C2   <- sum(1 / tau_vec)
+  rho_nobs <- length(tau_vec)
+
+  # Hoist coupled-model matrix: O(n_time) allocation, constant across all grid points.
+  x_mat_coupled <- if ((abs(sim_res$params$free$a_ps) +
+                        abs(sim_res$params$free$a_sp)) > 1e-12)
+    cbind(sim_res$p, sim_res$s) else NULL
 
   # profile_at_a_internal: profile over a with c_known fixed and σ eliminated.
   profile_at_a_internal <- function(x_vec_b, u_vec_b, c_known, a_v, dt_b) {
@@ -870,11 +851,75 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
            },
            sigma_p = {
              if (v <= 0) return(-Inf)
-             ou_log_lik_at(sim_res$p, u_vec, a_p_mle, v, fp$c_p, dt)
+             use_coupled_loc <- (abs(sim_res$params$free$a_ps) +
+                                   abs(sim_res$params$free$a_sp)) > 1e-12
+             if (!use_coupled_loc) {
+               # Exact analytical formula: constant in a; O(1) per grid point.
+               ll_const_p - n_p * log(v) - rss_p / (2 * v^2 * C_ap)
+             } else {
+               x_mat_loc <- x_mat_coupled
+               th0_loc <- c(log(mle$a_p), log(mle$a_s),
+                            max(mle$a_ps, 1e-6), max(mle$a_sp, 1e-6),
+                            log(max(mle$sigma_s, 1e-5)))
+               local({
+                 vv <- v
+                 nll_loc <- function(th) {
+                   a_p_v  <- exp(th[1L]); a_s_v  <- exp(th[2L])
+                   a_ps_v <- th[3L];      a_sp_v <- th[4L]
+                   sig_s_v <- exp(th[5L])
+                   if (a_ps_v < 0 || a_sp_v < 0 ||
+                       a_p_v * a_s_v - a_ps_v * a_sp_v <= 0) return(1e10)
+                   ll <- tryCatch(
+                     ou_coupled_log_lik(a_ps_v, a_sp_v, a_p_v, a_s_v,
+                                        vv, sig_s_v,
+                                        fp$c_p, fp$c_s, x_mat_loc, u_vec, dt),
+                     error = function(e) -Inf)
+                   if (is.finite(ll)) -ll else 1e10
+                 }
+                 res_loc <- tryCatch(
+                   optim(th0_loc, nll_loc, method = "L-BFGS-B",
+                         lower = c(-Inf, -Inf, 0, 0, -Inf),
+                         control = list(maxit = 200L, factr = 1e8)),
+                   error = function(e) list(value = 1e10))
+                 if (is.finite(-res_loc$value)) -res_loc$value else -Inf
+               })
+             }
            },
            sigma_s = {
              if (v <= 0) return(-Inf)
-             ou_log_lik_at(sim_res$s, u_vec, a_s_mle, v, fp$c_s, dt)
+             use_coupled_loc <- (abs(sim_res$params$free$a_ps) +
+                                   abs(sim_res$params$free$a_sp)) > 1e-12
+             if (!use_coupled_loc) {
+               # Exact analytical formula: constant in a; O(1) per grid point.
+               ll_const_s - n_s * log(v) - rss_s / (2 * v^2 * C_as)
+             } else {
+               x_mat_loc <- x_mat_coupled
+               th0_loc <- c(log(mle$a_p), log(mle$a_s),
+                            max(mle$a_ps, 1e-6), max(mle$a_sp, 1e-6),
+                            log(max(mle$sigma_p, 1e-5)))
+               local({
+                 vv <- v
+                 nll_loc <- function(th) {
+                   a_p_v  <- exp(th[1L]); a_s_v  <- exp(th[2L])
+                   a_ps_v <- th[3L];      a_sp_v <- th[4L]
+                   sig_p_v <- exp(th[5L])
+                   if (a_ps_v < 0 || a_sp_v < 0 ||
+                       a_p_v * a_s_v - a_ps_v * a_sp_v <= 0) return(1e10)
+                   ll <- tryCatch(
+                     ou_coupled_log_lik(a_ps_v, a_sp_v, a_p_v, a_s_v,
+                                        sig_p_v, vv,
+                                        fp$c_p, fp$c_s, x_mat_loc, u_vec, dt),
+                     error = function(e) -Inf)
+                   if (is.finite(ll)) -ll else 1e10
+                 }
+                 res_loc <- tryCatch(
+                   optim(th0_loc, nll_loc, method = "L-BFGS-B",
+                         lower = c(-Inf, -Inf, 0, 0, -Inf),
+                         control = list(maxit = 200L, factr = 1e8)),
+                   error = function(e) list(value = 1e10))
+                 if (is.finite(-res_loc$value)) -res_loc$value else -Inf
+               })
+             }
            },
            a_p = {
              if (v <= 0) return(-Inf)
@@ -885,7 +930,7 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
              } else {
                # In coupled model, profile a_p within the full joint OU LL,
                # maximising over (a_s, a_ps, a_sp, sigma_p, sigma_s).
-               x_mat_loc  <- cbind(sim_res$p, sim_res$s)
+               x_mat_loc  <- x_mat_coupled
                th0_loc <- c(log(mle$a_s),
                             max(mle$a_ps, 1e-6), max(mle$a_sp, 1e-6),
                             log(max(mle$sigma_p, 1e-5)),
@@ -918,7 +963,7 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
              if (!use_coupled_loc) {
                profile_at_a_internal(sim_res$s, u_vec, fp$c_s, v, dt)$ll
              } else {
-               x_mat_loc  <- cbind(sim_res$p, sim_res$s)
+               x_mat_loc  <- x_mat_coupled
                th0_loc <- c(log(mle$a_p),
                             max(mle$a_ps, 1e-6), max(mle$a_sp, 1e-6),
                             log(max(mle$sigma_p, 1e-5)),
@@ -946,16 +991,8 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
            },
            rho = {
              if (v <= 0) return(-Inf)
-             # Optimal mu_0 given rho = v is the positive root of:
-             #   C2 * mu_0^2 - N * v^2 * mu_0 - C1 = 0
-             # Score d ell/d mu_0 = N/(2*mu_0) + C1/(2*rho^2*mu_0^2) - C2/(2*rho^2) = 0
-             # => multiply by 2*rho^2*mu_0^2: N*rho^2*mu_0 + C1 - C2*mu_0^2 = 0
-             # Positive root: (N*rho^2 + sqrt(N^2*rho^4 + 4*C2*C1)) / (2*C2)
-             C1      <- sum(tau_vec * w^2)          # w = exp(delta_v), already in scope
-             C2      <- sum(1 / tau_vec)
-             n_obs   <- length(tau_vec)
-             disc    <- sqrt((n_obs * v^2)^2 + 4 * C2 * C1)
-             mu0_opt <- (n_obs * v^2 + disc) / (2 * C2)
+             disc    <- sqrt((rho_nobs * v^2)^2 + 4 * rho_C2 * rho_C1)
+             mu0_opt <- (rho_nobs * v^2 + disc) / (2 * rho_C2)
              if (!is.finite(mu0_opt) || mu0_opt <= 0) return(-Inf)
              kap_opt <- kappa_from_rho(mu0_opt, v)
              sum(log_ig_pdf(tau_vec, mu0_opt * g, kap_opt))

@@ -27,15 +27,9 @@ SENSITIVITY_SEED <- 9999L
 sensitivity_grid <- function(ref_ap = 2.0,
                              ref_as = 0.2,
                              multipliers = c(0.5, 0.75, 1.0, 1.25, 1.5)) {
-  expand.grid(
-    ap_mult = multipliers,
-    as_mult = multipliers
-  ) |>
-    transform(
-      a_p = ref_ap * ap_mult,
-      a_s = ref_as * as_mult
-    ) |>
-    subset(a_p > a_s)   # structural constraint: vagal must be faster
+  dt <- data.table::CJ(ap_mult = multipliers, as_mult = multipliers)[
+    , `:=`(a_p = ref_ap * ap_mult, a_s = ref_as * as_mult)][a_p > a_s]
+  as.data.frame(dt)
 }
 
 # ---- Single grid-point evaluation ----
@@ -156,7 +150,7 @@ run_sensitivity <- function(base_params,
     rows <- lapply(seq_len(nrow(grid)), run_row)
   }
 
-  do.call(rbind, Filter(Negate(is.null), rows))
+  as.data.frame(data.table::rbindlist(Filter(Negate(is.null), rows)))
 }
 
 # ---- Heatmap plot ----

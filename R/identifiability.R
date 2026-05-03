@@ -14,6 +14,10 @@
 # The master seed produces all per-replication seeds deterministically.
 RECOVERY_MASTER_SEED <- 2026L
 
+# data.table is used for fast row-binding in summary construction.
+if (!requireNamespace("data.table", quietly = TRUE))
+  stop("Package 'data.table' required. Install with install.packages('data.table').")
+
 # ---- Canonical recovery protocol ----
 # Used uniformly across ALL Monte Carlo studies (conditional, marginal,
 # duration, sensitivity) to ensure a single principled, physiologically
@@ -111,7 +115,7 @@ recovery_study <- function(N = 200L,
     labels <- c(labels, expression(a[ps]), expression(a[sp]))
   }
 
-  summary_df <- do.call(rbind, lapply(seq_along(params), function(j) {
+  summary_df <- data.table::rbindlist(lapply(seq_along(params), function(j) {
     p      <- params[j]
     true_v <- sapply(results, function(r) r$true[p])
     hat_v  <- sapply(results, function(r) r$hat[p])
@@ -157,6 +161,8 @@ recovery_study <- function(N = 200L,
       stringsAsFactors = FALSE
     )
   }))
+
+  summary_df <- as.data.frame(summary_df)
 
   list(
     results    = results,
@@ -463,7 +469,7 @@ marginal_recovery_study <- function(N = 100L, true_params,
   results <- Filter(Negate(is.null), results)
 
   param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
-  summary_df <- do.call(rbind, lapply(param_names, function(p) {
+  summary_df <- as.data.frame(data.table::rbindlist(lapply(param_names, function(p) {
     hat_v  <- sapply(results, function(r) r$hat[p])
     true_v <- sapply(results, function(r) r$true[p])
     ok     <- is.finite(hat_v) & is.finite(true_v)
@@ -481,7 +487,9 @@ marginal_recovery_study <- function(N = 100L, true_params,
                rmse_rel_pct = 100 * rmse / abs(t_bar),
                n_valid      = sum(ok),
                stringsAsFactors = FALSE)
-  }))
+  })))
+
+  summary_df <- as.data.frame(summary_df)
 
   rmse_delta_vec <- sapply(results, `[[`, "rmse_delta")
   list(results    = results,

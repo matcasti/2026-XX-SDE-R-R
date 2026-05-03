@@ -777,7 +777,7 @@ Table @tbl-fim confirms the analytical predictions. Both OU blocks are well cond
 
 ## Simulation Recovery Study {#sec-recovery}
 
-We generated $N = 250$ independent realizations from the reference parameter set under the canonical double-logistic protocol ($t_\text{on} = 300$ s, $t_\text{off} = 420$ s, $k = 0.1$ Hz), with input sensitivities $c_p = -1.0$ and $c_s = 0.1$ treated as fixed known constants in both simulation and inference (see @sec-identifiability). The conditional MLE receives the same $u(t)$ used in simulation and removes the deterministic input contribution from the OU residuals before profiling $(a, \sigma)$, so $\theta_\text{true} = \theta^*$ as required. We applied the conditional MLE to each of the 300-second recordings, and compared estimates to the ground truth. This study conditions on the true latent state trajectory; @sec-inference addresses the fully marginal problem of recovering $\Theta$ and $\hat\Delta(t)$ from the spike train alone. 
+We generated $N = 250$ independent realizations from the reference parameter set under the canonical double-logistic protocol ($t_\text{on} = 300$ s, $t_\text{off} = 420$ s, $k = 0.1$ Hz), with input sensitivities $c_p = -1.0$ and $c_s = 0.1$ treated as fixed known constants in both simulation and inference (see @sec-identifiability). The conditional MLE receives the same $u(t)$ used in simulation and removes the deterministic input contribution from the OU residuals before profiling $(a, \sigma)$, so $\theta_\text{true} = \theta^*$ as required. We applied the conditional MLE to each of the 720-second recordings, and compared estimates to the ground truth. This study conditions on the true latent state trajectory; @sec-inference addresses the fully marginal problem of recovering $\Theta$ and $\hat\Delta(t)$ from the spike train alone. 
 
 ```{r}
 #| label: recovery-run
@@ -876,8 +876,6 @@ The full model estimates ten free parameters: $\{a_p,\, a_s,\, a_{ps},\, a_{sp},
 #| cache: true
 #| include: false
 
-MLE_COUPLED   <- full_conditional_mle(RES_COUPLED, input_fn = CANONICAL_INPUT_FN)
-FIM_COUPLED   <- full_conditional_fim(RES_COUPLED, input_fn = CANONICAL_INPUT_FN)
 PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED, n_grid = 80, width = 4.0,
                                          input_fn = CANONICAL_INPUT_FN)
 ```
@@ -1373,7 +1371,7 @@ The RMSE inflation ratio for $\hat\Delta(t)$, the ratio of the marginal filter R
 
 ##  The Virtual Stress Protocol
 
-We examine model behaviour under a double-logistic input approximating a 120-second stress episode ($t_{\rm on} = 300$ s, $t_{\rm off} = 420$ s, $k = 0.1$ Hz) embedded in a 720-second rest–stress–recovery simulation. The recovery study in @sec-recovery uses an independent 60-second stress window in 300-second recordings; both protocols use the same double-logistic form.
+We examine model behaviour under a double-logistic input approximating a 120-second stress episode ($t_{\rm on} = 300$ s, $t_{\rm off} = 420$ s, $k = 0.1$ Hz) embedded in a 720-second rest–stress–recovery simulation. The recovery study in @sec-recovery uses an independent 120-second stress window in 720-second recordings; both protocols use the same double-logistic form.
 
 ```{r}
 #| label: code-sim-run
