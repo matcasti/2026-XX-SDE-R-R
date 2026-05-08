@@ -275,6 +275,13 @@ pp_mle <- function(spikes,
   # carried over from params_init unchanged, since spectral_init
   # does not estimate them.
   rr_for_init <- diff(spikes)
+
+  # Summary statistics fixed from data — captured by the pack/unpack closures.
+  # mu_bar: sample mean IBI (seconds).  cv_obs: observed coefficient of variation
+  # of IBIs (floor at 0.01 prevents division by zero on pathologically regular data).
+  mu_bar <- mean(rr_for_init)
+  cv_obs <- max(sd(rr_for_init) / mu_bar, 0.01)
+
   params_spectral <- tryCatch(
     spectral_init(rr_for_init, verbose = verbose),
     error = function(e) {
@@ -316,39 +323,76 @@ pp_mle <- function(spikes,
   params_spectral$free$c_s <- params_init$free$c_s
   fp0 <- params_spectral$free
 
+  # Optimizer coordinates: (log a_p, log a_s, logit ψ, logit α [, a_ps, a_sp])
+  #
+  # ψ  = A_p / (A_p + A_s)    A_n = σ_n² / (2 a_n)  (branch spectral variance)
+  # α  = ρ² / CV_obs²          (fraction of total IBI-CV² from IG intrinsic noise)
+  #
+  # Derived analytically in unpack():
+  #   σ_Δ² = (1 − α) · CV_obs²       OU variance; identified by SDNN/mean IBI split
+  #   μ₀   = μ̄_obs · exp(−σ_Δ²/2)    mean-anchor: exact under stationary inference model
+  #   ρ    = CV_obs · √α
+  #   A_p  = ψ · σ_Δ²,  A_s = (1−ψ) · σ_Δ²
+  #   σ_p  = √(2 a_p A_p),  σ_s = √(2 a_s A_s)
+  #
+  # Benefits over the previous (log σ_p, log σ_s, log μ₀, log ρ) encoding:
+  #   (1) Eliminates the σ–a likelihood ridge: log a_n and logit ψ / logit α are
+  #       identified by near-orthogonal channels (spectral pole position vs. spectral
+  #       peak heights and variance split), yielding a more diagonally dominant FIM.
+  #   (2) Reduces the optimizer from 6 → 4 free parameters (uncoupled) or 8 → 6
+  #       (coupled) by absorbing the mean-anchor and total-CV moment constraints
+  #       directly into the parameterisation.
+  #   (3) pack ∘ unpack is exact (analytically verified); the only approximation is
+  #       the mean-anchor itself, which carries O(σ_Δ²) error ≈ 1% for reference params.
+  # NOTE: for the coupled model A_p + A_s ≠ Var[Δ(t)] (off-diagonal P_inf term);
+  #   the approximation is used only inside unpack — the optimizer maximises the
+  #   exact marginal likelihood regardless of how the coordinates are defined.
+
   pack <- function(fp) {
-    v <- c(log(fp$a_p), log(fp$a_s),
-           log(fp$sigma_p), log(fp$sigma_s),
-           log(fp$mu_0), log(fp$rho))
+    A_p      <- fp$sigma_p^2 / (2 * fp$a_p)
+    A_s      <- fp$sigma_s^2 / (2 * fp$a_s)
+    sigma_d2 <- A_p + A_s
+    psi_v    <- if (sigma_d2 > 1e-12)
+      pmin(pmax(A_p / sigma_d2, 1e-6), 1 - 1e-6)
+    else 0.5
+    alpha_v  <- pmin(pmax(fp$rho^2 / (fp$rho^2 + sigma_d2), 1e-6), 1 - 1e-6)
+    v <- c(log(fp$a_p), log(fp$a_s), qlogis(psi_v), qlogis(alpha_v))
     if (use_coupled) v <- c(v, fp$a_ps, fp$a_sp)
     v
   }
+
   unpack <- function(v) {
+    a_p_v      <- exp(v[1L])
+    a_s_v      <- exp(v[2L])
+    psi_v      <- plogis(v[3L])
+    alpha_v    <- plogis(v[4L])
+    sigma_d2_v <- max((1 - alpha_v) * cv_obs^2, 1e-10)
+    mu_0_v     <- max(mu_bar * exp(-sigma_d2_v / 2), 0.10)
+    rho_v      <- max(cv_obs * sqrt(alpha_v),       1e-4)
+    A_p_v      <- psi_v       * sigma_d2_v
+    A_s_v      <- (1 - psi_v) * sigma_d2_v
     list(
-      a_p     = exp(v[1L]),
-      a_s     = exp(v[2L]),
-      a_ps    = if (use_coupled) max(v[7L], 0) else 0,
-      a_sp    = if (use_coupled) max(v[8L], 0) else 0,
-      sigma_p = exp(v[3L]),
-      sigma_s = exp(v[4L]),
-      mu_0    = exp(v[5L]),
-      rho     = exp(v[6L]),
-      c_p     = fp0$c_p,  # fixed known constant carried from params_init
-      c_s     = fp0$c_s   # not estimated; input contribution analytically removed
+      a_p     = a_p_v,
+      a_s     = a_s_v,
+      a_ps    = if (use_coupled) max(v[5L], 0) else 0,
+      a_sp    = if (use_coupled) max(v[6L], 0) else 0,
+      sigma_p = sqrt(max(2 * a_p_v * A_p_v, 1e-10)),
+      sigma_s = sqrt(max(2 * a_s_v * A_s_v, 1e-10)),
+      mu_0    = mu_0_v,
+      rho     = rho_v,
+      c_p     = fp0$c_p,
+      c_s     = fp0$c_s
     )
   }
 
-  # Bounds reflect the physiological range of each parameter.
-  # a_p in [0.30, 10.0] Hz  (vagal time constant 0.1 – 3 s)
-  # a_s in [0.01,  2.0] Hz  (sympathetic time constant 0.5 – 100 s)
-  # Tight bounds prevent the optimizer from sliding along the marginal
-  # identifiability ridge  sigma_p^2/(2*a_p) = const  to implausible
-  # values such as a_p ~ 50 Hz.
-  lower_v <- c(log(0.30), log(0.01), log(1e-4), log(1e-4), log(0.25), log(0.01))
-  upper_v <- c(log(10.0), log(2.0),  log(10.0), log(10.0), log(4.0),  log(2.0))
+  # Bounds in optimizer coordinates.
+  # a_p ∈ [0.30, 10.0] Hz,  a_s ∈ [0.01, 2.0] Hz  — physiological range.
+  # ψ, α on the probability scale; qlogis(0.01) ≈ −4.60, qlogis(0.99) ≈ 4.60.
+  lower_v <- c(log(0.30), log(0.01), qlogis(0.01), qlogis(0.01))
+  upper_v <- c(log(10.0), log(2.0),  qlogis(0.99), qlogis(0.99))
 
   if (use_coupled) {
-    lower_v <- c(lower_v, 0, 0)    # a_ps, a_sp >= 0
+    lower_v <- c(lower_v, 0,  0)   # a_ps, a_sp >= 0
     upper_v <- c(upper_v, 10, 10)  # coupling terms <= 10 (stability enforced separately)
   }
 
