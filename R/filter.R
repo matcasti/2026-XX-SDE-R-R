@@ -323,59 +323,55 @@ pp_mle <- function(spikes,
   params_spectral$free$c_s <- params_init$free$c_s
   fp0 <- params_spectral$free
 
-  # Optimizer coordinates: (log a_p, log a_s, logit ψ, logit α [, a_ps, a_sp])
+  # Optimizer coordinates: (log a_s, log(a_p − a_s), log σ_Δ², logit ψ, log ρ [, a_ps, a_sp])
   #
-  # ψ  = A_p / (A_p + A_s)    A_n = σ_n² / (2 a_n)  (branch spectral variance)
-  # α  = ρ² / CV_obs²          (fraction of total IBI-CV² from IG intrinsic noise)
+  # Coordinate | Expression         | Identified by
+  # -----------|--------------------|----------------------------------------
+  # log a_s    | log(a_s)           | LF ACF decay / spectral pole position
+  # log gap    | log(a_p − a_s)     | HF pole position relative to LF pole
+  # log σ_Δ²  | log(A_p + A_s)     | Total OU spectral variance (SDNN / mean)
+  # logit ψ   | logit(A_p/σ_Δ²)   | HF spectral fraction P_HF/(P_HF+P_LF)
+  # log ρ     | log(ρ)             | IG pacemaker noise (interval regularity)
   #
   # Derived analytically in unpack():
-  #   σ_Δ² = (1 − α) · CV_obs²       OU variance; identified by SDNN/mean IBI split
-  #   μ₀   = μ̄_obs · exp(−σ_Δ²/2)    mean-anchor: exact under stationary inference model
-  #   ρ    = CV_obs · √α
-  #   A_p  = ψ · σ_Δ²,  A_s = (1−ψ) · σ_Δ²
-  #   σ_p  = √(2 a_p A_p),  σ_s = √(2 a_s A_s)
+  #   a_p   = a_s + exp(log_gap)     — a_p > a_s by construction, no hard constraint
+  #   A_p   = ψ · σ_Δ²,  A_s = (1−ψ) · σ_Δ²
+  #   σ_p   = √(2 a_p A_p),  σ_s = √(2 a_s A_s)
+  #   μ₀    = μ̄_obs · exp(−σ_Δ²/2)   — mean-anchor; exact under stationary model
   #
-  # Benefits over the previous (log σ_p, log σ_s, log μ₀, log ρ) encoding:
-  #   (1) Eliminates the σ–a likelihood ridge: log a_n and logit ψ / logit α are
-  #       identified by near-orthogonal channels (spectral pole position vs. spectral
-  #       peak heights and variance split), yielding a more diagonally dominant FIM.
-  #   (2) Reduces the optimizer from 6 → 4 free parameters (uncoupled) or 8 → 6
-  #       (coupled) by absorbing the mean-anchor and total-CV moment constraints
-  #       directly into the parameterisation.
-  #   (3) pack ∘ unpack is exact (analytically verified); the only approximation is
-  #       the mean-anchor itself, which carries O(σ_Δ²) error ≈ 1% for reference params.
-  # NOTE: for the coupled model A_p + A_s ≠ Var[Δ(t)] (off-diagonal P_inf term);
-  #   the approximation is used only inside unpack — the optimizer maximises the
-  #   exact marginal likelihood regardless of how the coordinates are defined.
+  # pack ∘ unpack is exact — no approximation in the coordinate transform.
+  # ρ is free (no CV² identity assumed), eliminating the κ bias present
+  # when ρ is derived from cv_obs · √α.
 
   pack <- function(fp) {
     A_p      <- fp$sigma_p^2 / (2 * fp$a_p)
     A_s      <- fp$sigma_s^2 / (2 * fp$a_s)
-    sigma_d2 <- A_p + A_s
-    psi_v    <- if (sigma_d2 > 1e-12)
-      pmin(pmax(A_p / sigma_d2, 1e-6), 1 - 1e-6)
-    else 0.5
-    alpha_v  <- pmin(pmax(fp$rho^2 / (fp$rho^2 + sigma_d2), 1e-6), 1 - 1e-6)
-    v <- c(log(fp$a_p), log(fp$a_s), qlogis(psi_v), qlogis(alpha_v))
+    sigma_d2 <- max(A_p + A_s, 1e-12)
+    psi_v    <- pmin(pmax(A_p / sigma_d2, 1e-6), 1 - 1e-6)
+    gap      <- max(fp$a_p - fp$a_s, 1e-4)   # clamped: spectral_init ensures a_p > a_s
+    v <- c(log(fp$a_s),
+           log(gap),
+           log(sigma_d2),
+           qlogis(psi_v),
+           log(max(fp$rho, 1e-4)))
     if (use_coupled) v <- c(v, fp$a_ps, fp$a_sp)
     v
   }
 
   unpack <- function(v) {
-    a_p_v      <- exp(v[1L])
-    a_s_v      <- exp(v[2L])
-    psi_v      <- plogis(v[3L])
-    alpha_v    <- plogis(v[4L])
-    sigma_d2_v <- max((1 - alpha_v) * cv_obs^2, 1e-10)
+    a_s_v      <- exp(v[1L])
+    a_p_v      <- a_s_v + exp(v[2L])          # a_p > a_s guaranteed
+    sigma_d2_v <- max(exp(v[3L]), 1e-10)
+    psi_v      <- plogis(v[4L])
+    rho_v      <- max(exp(v[5L]), 1e-4)
     mu_0_v     <- max(mu_bar * exp(-sigma_d2_v / 2), 0.10)
-    rho_v      <- max(cv_obs * sqrt(alpha_v),       1e-4)
     A_p_v      <- psi_v       * sigma_d2_v
     A_s_v      <- (1 - psi_v) * sigma_d2_v
     list(
       a_p     = a_p_v,
       a_s     = a_s_v,
-      a_ps    = if (use_coupled) max(v[5L], 0) else 0,
-      a_sp    = if (use_coupled) max(v[6L], 0) else 0,
+      a_ps    = if (use_coupled) max(v[6L], 0) else 0,
+      a_sp    = if (use_coupled) max(v[7L], 0) else 0,
       sigma_p = sqrt(max(2 * a_p_v * A_p_v, 1e-10)),
       sigma_s = sqrt(max(2 * a_s_v * A_s_v, 1e-10)),
       mu_0    = mu_0_v,
@@ -386,23 +382,27 @@ pp_mle <- function(spikes,
   }
 
   # Bounds in optimizer coordinates.
-  # a_p ∈ [0.30, 10.0] Hz,  a_s ∈ [0.01, 2.0] Hz  — physiological range.
-  # ψ, α on the probability scale; qlogis(0.01) ≈ −4.60, qlogis(0.99) ≈ 4.60.
-  lower_v <- c(log(0.30), log(0.01), qlogis(0.01), qlogis(0.01))
-  upper_v <- c(log(10.0), log(2.0),  qlogis(0.99), qlogis(0.99))
+  # v[1] log(a_s):      a_s ∈ [0.01, 2.0] Hz
+  # v[2] log(a_p−a_s): gap ∈ [0.01, 9.99] → a_p ≤ a_s + 9.99 ≤ 11.99 Hz
+  # v[3] log(σ_Δ²):    σ_Δ² ∈ [1e-4, 0.50]  (OU spectral variance)
+  # v[4] logit(ψ):      ψ ∈ (0.01, 0.99)
+  # v[5] log(ρ):        ρ ∈ [0.01, 2.0]
+  lower_v <- c(log(0.01), log(0.01), log(1e-4), qlogis(0.01), log(0.01))
+  upper_v <- c(log(2.0),  log(9.99), log(0.50), qlogis(0.99), log(2.0))
 
   if (use_coupled) {
     lower_v <- c(lower_v, 0,  0)   # a_ps, a_sp >= 0
-    upper_v <- c(upper_v, 10, 10)  # coupling terms <= 10 (stability enforced separately)
+    upper_v <- c(upper_v, 10, 10)  # stability enforced analytically in neg_ll
   }
 
   neg_ll <- function(v) {
     fp_v <- unpack(v)
-    # Hard constraint: a_p > a_s ensures LF/HF pole separation and prevents
-    # the optimizer from swapping branch identities.
-    if (fp_v$a_p <= fp_v$a_s) return(1e10)
-    # Coupled-OU stability: det(A) > 0.
-    if (fp_v$a_p * fp_v$a_s - fp_v$a_ps * fp_v$a_sp <= 0) return(1e10)
+    # a_p > a_s is guaranteed by construction: a_p = a_s + exp(log_gap).
+    # For the coupled model, additionally enforce det(A) = a_p*a_s − a_ps*a_sp > 0.
+    if (use_coupled && fp_v$a_p * fp_v$a_s - fp_v$a_ps * fp_v$a_sp <= 0) {
+      return(1e10)
+    }
+
     params <- list(structural = params_init$structural, free = fp_v)
     flt    <- tryCatch(pp_ukf(spikes, params, input_fn),
                        error = function(e) list(innov = NULL))

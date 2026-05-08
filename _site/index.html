@@ -8,7 +8,7 @@
 
 <meta name="author" content="Matías Castillo-Aguilar">
 <meta name="author" content="Noah Beelders">
-<meta name="dcterms.date" content="2026-05-03">
+<meta name="dcterms.date" content="2026-05-08">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -403,7 +403,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">May 3, 2026</p>
+              <p class="date">May 8, 2026</p>
             </div>
           </div>
           
@@ -1586,7 +1586,8 @@ S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 </section>
 <section id="static-parameter-estimation" class="level2" data-number="5.3">
 <h2 data-number="5.3" class="anchored" data-anchor-id="static-parameter-estimation"><span class="header-section-number">5.3</span> Static Parameter Estimation</h2>
-<p>The total marginal log-likelihood <span class="math inline">\(\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)\)</span> is maximized over <span class="math inline">\(\Theta\)</span> by L-BFGS-B in log-space. Starting values are fitted by a biexponential model to the tachogram ACF to recover <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span>, distributes the observed SDNN between the two spectral variances according to the fitted ACF weights to recover <span class="math inline">\(\sigma_p\)</span> and <span class="math inline">\(\sigma_s\)</span>, applies the log-normal mean correction <span class="math inline">\(\hat\mu_0 = \bar\tau\exp(-\hat\sigma_\Delta^2/2)\)</span> to recover <span class="math inline">\(\mu_0\)</span>, and uses the stationary IG MLE for <span class="math inline">\(\kappa\)</span> to recover <span class="math inline">\(\rho\)</span>. These data-driven starting values are consistent with the observed second-order structure of the tachogram (<a href="#sec-moments" class="quarto-xref">Section&nbsp;4.6</a>) and substantially reduce the frequency of local-optimum convergence failures relative to literature defaults. Log-reparameterization <span class="math inline">\((\log a_p,\, \log a_s,\, \log\sigma_p,\, \log\sigma_s,\, \log\mu_0,\, \log\rho)\)</span> enforces positivity without hard constraints and yields better-conditioned gradients than the natural scale. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> enter on their natural scale with lower bound zero.</p>
+<p>The total marginal log-likelihood <span class="math inline">\(\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)\)</span> is maximized over <span class="math inline">\(\Theta\)</span> by L-BFGS-B in log-space. Starting values are fitted by a biexponential model to the tachogram ACF to recover <span class="math inline">\(a_p\)</span> and <span class="math inline">\(a_s\)</span>, distributes the observed SDNN between the two spectral variances according to the fitted ACF weights to recover <span class="math inline">\(\sigma_p\)</span> and <span class="math inline">\(\sigma_s\)</span>, applies the log-normal mean correction <span class="math inline">\(\hat\mu_0 = \bar\tau\exp(-\hat\sigma_\Delta^2/2)\)</span> to recover <span class="math inline">\(\mu_0\)</span>, and uses the stationary IG MLE for <span class="math inline">\(\kappa\)</span> to recover <span class="math inline">\(\rho\)</span>. These data-driven starting values are consistent with the observed second-order structure of the tachogram (<a href="#sec-moments" class="quarto-xref">Section&nbsp;4.6</a>) and substantially reduce the frequency of local-optimum convergence failures relative to literature defaults.</p>
+<p>The optimizer works in reparameterized coordinates <span class="math inline">\((\log a_s,\, \log(a_p - a_s),\, \log\sigma_\Delta^2,\, \operatorname{logit}\psi,\, \log\rho)\)</span>, where <span class="math inline">\(\sigma_\Delta^2 = \sigma_p^2/(2a_p) + \sigma_s^2/(2a_s)\)</span> is the total OU spectral variance and <span class="math inline">\(\psi = A_p/\sigma_\Delta^2\)</span> with <span class="math inline">\(A_n = \sigma_n^2/(2a_n)\)</span> is the HF spectral fraction. Two structural properties are enforced by construction: <span class="math inline">\(a_p &gt; a_s\)</span> (LF/HF pole ordering) holds because <span class="math inline">\(a_p = a_s + \exp(\log(a_p - a_s))\)</span>, requiring no penalty or projection; and <span class="math inline">\(\mu_0 = \bar\tau_\mathrm{obs}\exp(-\sigma_\Delta^2/2)\)</span> (mean-anchor, exact under the stationary inference model) eliminates <span class="math inline">\(\mu_0\)</span> from the optimizer. The remaining five coordinates are identified by near-orthogonal data channels: <span class="math inline">\(\log a_s\)</span> by LF spectral pole position; <span class="math inline">\(\log(a_p - a_s)\)</span> by HF pole position relative to LF; <span class="math inline">\(\log\sigma_\Delta^2\)</span> by total SDNN; <span class="math inline">\(\operatorname{logit}\psi\)</span> by the HF/LF power ratio; and <span class="math inline">\(\log\rho\)</span> by the shape of the inter-beat interval distribution conditional on the OU trajectory. The transform is exact (<span class="math inline">\(\mathrm{pack} \circ \mathrm{unpack} = \mathrm{identity}\)</span>) with no moment approximation, giving 5 free parameters for the uncoupled model and 7 for the coupled model. The coupling terms <span class="math inline">\(a_{ps}\)</span> and <span class="math inline">\(a_{sp}\)</span> enter on their natural scale with lower bound zero.</p>
 </section>
 <section id="filter-validation-on-simulated-data" class="level2" data-number="5.4">
 <h2 data-number="5.4" class="anchored" data-anchor-id="filter-validation-on-simulated-data"><span class="header-section-number">5.4</span> Filter Validation on Simulated Data</h2>
@@ -1781,55 +1782,55 @@ Table&nbsp;6: Marginal MLE recovery summary (<span class="math inline">\(N = 250
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(a_p\)</span></td>
 <td style="text-align: left;">2.000</td>
-<td style="text-align: left;">1.856</td>
-<td style="text-align: left;">-7.20%</td>
-<td style="text-align: left;">0.4354</td>
-<td style="text-align: left;">21.77%</td>
+<td style="text-align: left;">10.041</td>
+<td style="text-align: left;">402.03%</td>
+<td style="text-align: left;">8.0641</td>
+<td style="text-align: left;">403.21%</td>
 <td style="text-align: left;">1.69%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_s\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.255</td>
-<td style="text-align: left;">27.72%</td>
-<td style="text-align: left;">0.1196</td>
-<td style="text-align: left;">59.82%</td>
+<td style="text-align: left;">0.118</td>
+<td style="text-align: left;">-40.85%</td>
+<td style="text-align: left;">0.0822</td>
+<td style="text-align: left;">41.09%</td>
 <td style="text-align: left;">6.33%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\sigma_p\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.229</td>
-<td style="text-align: left;">14.69%</td>
-<td style="text-align: left;">0.0798</td>
-<td style="text-align: left;">39.89%</td>
+<td style="text-align: left;">0.265</td>
+<td style="text-align: left;">32.46%</td>
+<td style="text-align: left;">0.1557</td>
+<td style="text-align: left;">77.85%</td>
 <td style="text-align: left;">0.20%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\sigma_s\)</span></td>
 <td style="text-align: left;">0.070</td>
-<td style="text-align: left;">0.082</td>
-<td style="text-align: left;">16.55%</td>
-<td style="text-align: left;">0.0269</td>
-<td style="text-align: left;">38.37%</td>
+<td style="text-align: left;">0.104</td>
+<td style="text-align: left;">49.13%</td>
+<td style="text-align: left;">0.0351</td>
+<td style="text-align: left;">50.12%</td>
 <td style="text-align: left;">0.19%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\mu_0\)</span></td>
 <td style="text-align: left;">1.000</td>
-<td style="text-align: left;">1.000</td>
-<td style="text-align: left;">-0.03%</td>
-<td style="text-align: left;">0.0181</td>
-<td style="text-align: left;">1.81%</td>
+<td style="text-align: left;">0.766</td>
+<td style="text-align: left;">-23.39%</td>
+<td style="text-align: left;">0.2342</td>
+<td style="text-align: left;">23.42%</td>
 <td style="text-align: left;">0.55%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\rho\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.169</td>
-<td style="text-align: left;">-15.74%</td>
-<td style="text-align: left;">0.0393</td>
-<td style="text-align: left;">19.63%</td>
+<td style="text-align: left;">0.192</td>
+<td style="text-align: left;">-4.20%</td>
+<td style="text-align: left;">0.0192</td>
+<td style="text-align: left;">9.61%</td>
 <td style="text-align: left;">5.08%</td>
 </tr>
 </tbody>
@@ -1865,23 +1866,23 @@ Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <sp
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marginal filter: mean RMSE across replications</td>
-<td style="text-align: right;">0.1253</td>
+<td style="text-align: right;">0.2637</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marginal filter: median RMSE</td>
-<td style="text-align: right;">0.1241</td>
+<td style="text-align: right;">0.2628</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marginal filter: SD of RMSE</td>
-<td style="text-align: right;">0.0077</td>
+<td style="text-align: right;">0.0174</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marginal filter: 10th–90th percentile range</td>
-<td style="text-align: right;">0.1173 – 0.1343</td>
+<td style="text-align: right;">0.2404 – 0.2853</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">RMSE inflation ratio (marginal mean / oracle)</td>
-<td style="text-align: right;">1.13×</td>
+<td style="text-align: right;">2.37×</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Convergence rate (L-BFGS-B code 0)</td>
@@ -1895,7 +1896,7 @@ Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <sp
 </div>
 </div>
 <p>The pattern expected from the identifiability geometry is precisely what emerges. The OU branch parameters (<span class="math inline">\(a_p\)</span>, <span class="math inline">\(a_s\)</span>, <span class="math inline">\(\sigma_p\)</span>, <span class="math inline">\(\sigma_s\)</span>) show the largest relative RMSE inflation from conditional to marginal: these are identified through the spectral curvature of the innovation sequence, which is an indirect and lower-resolution signal compared with direct observation of the state trajectory. The IG parameters (<span class="math inline">\(\mu_0\)</span>, <span class="math inline">\(\rho\)</span>) are less affected, the inter-beat interval sequence directly constrains the mean and coefficient of variation of the effective distribution regardless of whether states are observed or integrated. The input sensitivities (<span class="math inline">\(c_p\)</span>, <span class="math inline">\(c_s\)</span>) are the noisiest in the marginal case, as expected: their identification relies on detecting the systematic shift in the innovation mean during the 60-second stress window, a weaker signal than the full OU log-likelihood available in the conditional setting.</p>
-<p>The RMSE inflation ratio for <span class="math inline">\(\hat\Delta(t)\)</span>, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of 1.13× places the pipeline in the well-identified regime: the dominant source of <span class="math inline">\(\hat\Delta(t)\)</span> error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.</p>
+<p>The RMSE inflation ratio for <span class="math inline">\(\hat\Delta(t)\)</span>, the ratio of the marginal filter RMSE to the oracle filter RMSE, quantifies the practical cost of parameter uncertainty. An inflation ratio near 1 would indicate that parameter uncertainty contributes negligibly to state estimation error; a ratio above 3 would signal that the marginal pipeline is filter-limited rather than model-limited. The empirical value of 2.37× places the pipeline in the well-identified regime: the dominant source of <span class="math inline">\(\hat\Delta(t)\)</span> error is the intrinsic state estimation uncertainty of the UKF, not parameter estimation imprecision.</p>
 </section>
 </section>
 <section id="simulation-results" class="level1" data-number="6">
