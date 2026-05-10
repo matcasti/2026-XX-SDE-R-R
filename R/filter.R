@@ -306,8 +306,9 @@ pp_mle <- function(spikes,
                                a_sp = params_init$free$a_sp)
     )
     # Clamp away from the L-BFGS-B lower boundary so gradients are finite at init.
-    params_spectral$free$a_ps <- max(cpl$a_ps, 1e-6)
-    params_spectral$free$a_sp <- max(cpl$a_sp, 1e-6)
+    sqrt_c <- sqrt(max(cpl$c, 1e-8))
+    params_spectral$free$a_ps <- sqrt_c
+    params_spectral$free$a_sp <- sqrt_c
     # Stability guard: fall back if det(A) <= 0 at the starting point.
     if (params_spectral$free$a_p * params_spectral$free$a_s -
         params_spectral$free$a_ps * params_spectral$free$a_sp <= 0) {
@@ -357,12 +358,16 @@ pp_mle <- function(spikes,
     A_p  <- max(fp$sigma_p^2 / (2 * fp$a_p), 1e-12)
     A_s  <- max(fp$sigma_s^2 / (2 * fp$a_s), 1e-12)
     gap  <- max(fp$a_p - fp$a_s, 1e-4)
+    kap_v <- kappa_from_rho(fp$mu_0, fp$rho)   # = mu_0 / rho^2
     v <- c(log(fp$a_s),
            log(gap),
-           log(A_p),                     # vagal spectral amplitude
-           log(A_s),                     # sympathetic spectral amplitude
-           log(max(fp$rho, 1e-4)))
-    if (use_coupled) v <- c(v, fp$a_ps, fp$a_sp)
+           log(A_p),
+           log(A_s),
+           log(max(kap_v, 0.5)))
+    if (use_coupled) {
+      c_val <- max(fp$a_ps * fp$a_sp, 1e-8)
+      v <- c(v, log(c_val))
+    }
     v
   }
 
@@ -371,13 +376,16 @@ pp_mle <- function(spikes,
     a_p_v  <- a_s_v + exp(v[2L])        # a_p > a_s guaranteed
     A_p_v  <- max(exp(v[3L]), 1e-10)    # OU stationary variance of p
     A_s_v  <- max(exp(v[4L]), 1e-10)    # OU stationary variance of s
-    rho_v  <- max(exp(v[5L]), 1e-4)
+    kap_v  <- max(exp(v[5L]), 0.5)
     mu_0_v <- max(mu_bar * exp(-(A_p_v + A_s_v) / 2), 0.10)
+    rho_v  <- sqrt(mu_0_v / kap_v)   # derived, not free
+    c_v   <- if (use_coupled) exp(v[6L]) else 0
+    sqrt_c <- sqrt(max(c_v, 0))
     list(
       a_p     = a_p_v,
       a_s     = a_s_v,
-      a_ps    = if (use_coupled) max(v[6L], 0) else 0,
-      a_sp    = if (use_coupled) max(v[7L], 0) else 0,
+      a_ps = sqrt_c,
+      a_sp = sqrt_c,
       sigma_p = sqrt(max(2 * a_p_v * A_p_v, 1e-10)),
       sigma_s = sqrt(max(2 * a_s_v * A_s_v, 1e-10)),
       mu_0    = mu_0_v,
@@ -392,15 +400,16 @@ pp_mle <- function(spikes,
   # v[2] log(gap):   gap ∈ [0.01, 9.99] → a_p ≤ 11.99 Hz
   # v[3] log(A_p):   A_p ∈ [1e-6, 0.45]  (vagal stationary variance)
   # v[4] log(A_s):   A_s ∈ [1e-6, 0.45]  (sympathetic stationary variance)
-  # v[5] log(ρ):     ρ ∈ [0.01, 2.0]
+  # v[5] log(kappa):     kappa ∈ [0.5, 1000]
   # Individual caps at 0.45 keep total σ_Δ² = A_p + A_s well below 1,
   # matching the physiological constraint that OU variance ≪ μ₀².
-  lower_v <- c(log(0.01), log(0.01), log(1e-6), log(1e-6), log(0.01))
-  upper_v <- c(log(2.0),  log(9.99), log(0.45), log(0.45), log(2.0))
+  lower_v <- c(log(0.01), log(0.01), log(1e-6), log(1e-6), log(0.5))
+  upper_v <- c(log(2.0),  log(9.99), log(0.45), log(0.45), log(1000))
 
   if (use_coupled) {
-    lower_v <- c(lower_v, 0,  0)   # v[6] a_ps, v[7] a_sp >= 0
-    upper_v <- c(upper_v, 10, 10)  # stability det(A)>0 enforced in neg_ll
+    # log(c) < log(0.99 * a_p * a_s); use a conservative fixed upper
+    lower_v <- c(lower_v, log(1e-8))
+    upper_v <- c(lower_v, log(0.99 * fp0$a_p * fp0$a_s))
   }
 
   neg_ll <- function(v) {

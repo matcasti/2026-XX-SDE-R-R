@@ -371,3 +371,31 @@ predicted_hrv_moments <- function(a_p, a_s, sigma_p, sigma_s, mu_0, rho) {
     lf_hf    = lf_power / max(hf_power, 1e-12)
   )
 }
+
+haar_level_var <- function(x, j) {
+  s      <- 2L^j
+  n_blk  <- floor(length(x) / (2L * s))
+  if (n_blk < 4L) return(NA_real_)
+  mat    <- matrix(x[seq_len(2L * s * n_blk)], nrow = 2L * s)
+  blocks <- colMeans(mat)
+  d      <- (blocks[c(TRUE, FALSE)] - blocks[c(FALSE, TRUE)]) / sqrt(2)
+  var(d)
+}
+
+# Model: w_j = A_p * F_j(a_p)  +  A_s * F_j(a_s)
+# where F_j(a) = (1/pi) * [atan(2*pi*f_hi_j/a) - atan(2*pi*f_lo_j/a)]
+# Whittle: ell = -sum_j [ log(model_j) + w_j / model_j ]
+lorentz_band <- function(a, f_lo, f_hi)
+  (atan(2*pi*f_hi/a) - atan(2*pi*f_lo/a)) / pi
+
+whittle_ll <- function(th, w_obs, f_bands) {
+  a_p_v <- exp(th[1L]);  a_s_v <- exp(th[2L])
+  A_p_v <- exp(th[3L]);  A_s_v <- exp(th[4L])
+  if (a_p_v <= a_s_v) return(1e10)
+  model <- vapply(seq_len(nrow(f_bands)), function(j) {
+    A_p_v * lorentz_band(a_p_v, f_bands[j,1], f_bands[j,2]) +
+      A_s_v * lorentz_band(a_s_v, f_bands[j,1], f_bands[j,2])
+  }, numeric(1L))
+  if (any(model <= 0)) return(1e10)
+  sum(log(model) + w_obs / model)   # Whittle negative log-likelihood
+}
