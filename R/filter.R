@@ -323,50 +323,56 @@ pp_mle <- function(spikes,
   params_spectral$free$c_s <- params_init$free$c_s
   fp0 <- params_spectral$free
 
-  # Optimizer coordinates: (log a_s, log(a_p − a_s), log σ_Δ², logit ψ, log ρ [, a_ps, a_sp])
+  # Optimizer coordinates: (log a_s, log(a_p − a_s), log A_p, log A_s, log ρ [, a_ps, a_sp])
   #
   # Coordinate | Expression         | Identified by
   # -----------|--------------------|----------------------------------------
   # log a_s    | log(a_s)           | LF ACF decay / spectral pole position
   # log gap    | log(a_p − a_s)     | HF pole position relative to LF pole
-  # log σ_Δ²  | log(A_p + A_s)     | Total OU spectral variance (SDNN / mean)
-  # logit ψ   | logit(A_p/σ_Δ²)   | HF spectral fraction P_HF/(P_HF+P_LF)
+  # log A_p   | log(σ_p²/2a_p)    | Vagal spectral amplitude (OU stationary var of p)
+  # log A_s   | log(σ_s²/2a_s)    | Sympathetic spectral amplitude (OU stationary var of s)
   # log ρ     | log(ρ)             | IG pacemaker noise (interval regularity)
   #
-  # Derived analytically in unpack():
-  #   a_p   = a_s + exp(log_gap)     — a_p > a_s by construction, no hard constraint
-  #   A_p   = ψ · σ_Δ²,  A_s = (1−ψ) · σ_Δ²
-  #   σ_p   = √(2 a_p A_p),  σ_s = √(2 a_s A_s)
-  #   μ₀    = μ̄_obs · exp(−σ_Δ²/2)   — mean-anchor; exact under stationary model
+  # (log A_p, log A_s) replaces the previous (log σ_Δ², logit ψ) encoding.
+  # Motivation (N. Beelders, pers. comm.): A_p = σ_p²/(2a_p) and A_s = σ_s²/(2a_s)
+  # are the OU stationary variances and coincide with the Karhunen-Loève eigenvalue
+  # envelopes of each branch.  When the poles are well-separated (a_p ≫ a_s,
+  # the physiological regime), the two Lorentzians have negligible spectral overlap
+  # and the Fisher information in (log A_p, log A_s) is approximately block-diagonal:
+  # A_p is identified by HF variability, A_s by LF variability.  Equivalently, the
+  # wavelet variance of the OU process at scale 1/a_ν is ≈ A_ν/2, so these
+  # coordinates are the two dominant wavelet-variance coefficients of Δ(t).
+  # The previous (log σ_Δ², logit ψ) encoding conflated the two amplitudes into
+  # total + fraction, producing non-zero off-diagonal FIM terms that curved the
+  # optimizer's descent path.
   #
-  # pack ∘ unpack is exact — no approximation in the coordinate transform.
-  # ρ is free (no CV² identity assumed), eliminating the κ bias present
-  # when ρ is derived from cv_obs · √α.
+  # Derived analytically in unpack():
+  #   a_p   = a_s + exp(log_gap)          — a_p > a_s by construction
+  #   σ_p   = √(2 a_p A_p),  σ_s = √(2 a_s A_s)   — exact, no approximation
+  #   μ₀    = μ̄_obs · exp(−(A_p+A_s)/2)   — mean-anchor; exact under stationary model
+  #
+  # pack ∘ unpack is exact.  ρ is free (no CV² identity assumed).
 
   pack <- function(fp) {
-    A_p      <- fp$sigma_p^2 / (2 * fp$a_p)
-    A_s      <- fp$sigma_s^2 / (2 * fp$a_s)
-    sigma_d2 <- max(A_p + A_s, 1e-12)
-    psi_v    <- pmin(pmax(A_p / sigma_d2, 1e-6), 1 - 1e-6)
-    gap      <- max(fp$a_p - fp$a_s, 1e-4)   # clamped: spectral_init ensures a_p > a_s
+    A_p  <- max(fp$sigma_p^2 / (2 * fp$a_p), 1e-12)
+    A_s  <- max(fp$sigma_s^2 / (2 * fp$a_s), 1e-12)
+    gap  <- max(fp$a_p - fp$a_s, 1e-4)
     v <- c(log(fp$a_s),
            log(gap),
-           log(sigma_d2),
-           qlogis(psi_v),
+           log(A_p),                     # vagal spectral amplitude
+           log(A_s),                     # sympathetic spectral amplitude
            log(max(fp$rho, 1e-4)))
     if (use_coupled) v <- c(v, fp$a_ps, fp$a_sp)
     v
   }
 
   unpack <- function(v) {
-    a_s_v      <- exp(v[1L])
-    a_p_v      <- a_s_v + exp(v[2L])          # a_p > a_s guaranteed
-    sigma_d2_v <- max(exp(v[3L]), 1e-10)
-    psi_v      <- plogis(v[4L])
-    rho_v      <- max(exp(v[5L]), 1e-4)
-    mu_0_v     <- max(mu_bar * exp(-sigma_d2_v / 2), 0.10)
-    A_p_v      <- psi_v       * sigma_d2_v
-    A_s_v      <- (1 - psi_v) * sigma_d2_v
+    a_s_v  <- exp(v[1L])
+    a_p_v  <- a_s_v + exp(v[2L])        # a_p > a_s guaranteed
+    A_p_v  <- max(exp(v[3L]), 1e-10)    # OU stationary variance of p
+    A_s_v  <- max(exp(v[4L]), 1e-10)    # OU stationary variance of s
+    rho_v  <- max(exp(v[5L]), 1e-4)
+    mu_0_v <- max(mu_bar * exp(-(A_p_v + A_s_v) / 2), 0.10)
     list(
       a_p     = a_p_v,
       a_s     = a_s_v,
@@ -382,17 +388,19 @@ pp_mle <- function(spikes,
   }
 
   # Bounds in optimizer coordinates.
-  # v[1] log(a_s):      a_s ∈ [0.01, 2.0] Hz
-  # v[2] log(a_p−a_s): gap ∈ [0.01, 9.99] → a_p ≤ a_s + 9.99 ≤ 11.99 Hz
-  # v[3] log(σ_Δ²):    σ_Δ² ∈ [1e-4, 0.50]  (OU spectral variance)
-  # v[4] logit(ψ):      ψ ∈ (0.01, 0.99)
-  # v[5] log(ρ):        ρ ∈ [0.01, 2.0]
-  lower_v <- c(log(0.01), log(0.01), log(1e-4), qlogis(0.01), log(0.01))
-  upper_v <- c(log(2.0),  log(9.99), log(0.50), qlogis(0.99), log(2.0))
+  # v[1] log(a_s):   a_s ∈ [0.01, 2.0] Hz
+  # v[2] log(gap):   gap ∈ [0.01, 9.99] → a_p ≤ 11.99 Hz
+  # v[3] log(A_p):   A_p ∈ [1e-6, 0.45]  (vagal stationary variance)
+  # v[4] log(A_s):   A_s ∈ [1e-6, 0.45]  (sympathetic stationary variance)
+  # v[5] log(ρ):     ρ ∈ [0.01, 2.0]
+  # Individual caps at 0.45 keep total σ_Δ² = A_p + A_s well below 1,
+  # matching the physiological constraint that OU variance ≪ μ₀².
+  lower_v <- c(log(0.01), log(0.01), log(1e-6), log(1e-6), log(0.01))
+  upper_v <- c(log(2.0),  log(9.99), log(0.45), log(0.45), log(2.0))
 
   if (use_coupled) {
-    lower_v <- c(lower_v, 0,  0)   # a_ps, a_sp >= 0
-    upper_v <- c(upper_v, 10, 10)  # stability enforced analytically in neg_ll
+    lower_v <- c(lower_v, 0,  0)   # v[6] a_ps, v[7] a_sp >= 0
+    upper_v <- c(upper_v, 10, 10)  # stability det(A)>0 enforced in neg_ll
   }
 
   neg_ll <- function(v) {

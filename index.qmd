@@ -7,6 +7,8 @@ author:
     orcid: "0000-0001-7291-247X"
   - name: "Noah Beelders"
     affiliation: "Department of Mathematics, University of Munich, Theresienstraße 39, 80333 Munich, Germany."
+  - name: "Cristian Núñez-Espinosa"
+    affiliation: "Escuela de Medicina, Universidad de Magallanes, Punta Arenas, Chile."
 bibliography: references.bib
 date: today
 title-block-style: manuscript
