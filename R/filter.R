@@ -303,7 +303,8 @@ pp_mle <- function(spikes,
                                   a_p = params_spectral$free$a_p,
                                   a_s = params_spectral$free$a_s),
       error = function(e) list(a_ps = params_init$free$a_ps,
-                               a_sp = params_init$free$a_sp)
+                               a_sp = params_init$free$a_sp,
+                               c    = params_init$free$a_ps * params_init$free$a_sp)
     )
     # Clamp away from the L-BFGS-B lower boundary so gradients are finite at init.
     sqrt_c <- sqrt(max(cpl$c, 1e-8))
@@ -324,7 +325,7 @@ pp_mle <- function(spikes,
   params_spectral$free$c_s <- params_init$free$c_s
   fp0 <- params_spectral$free
 
-  # Optimizer coordinates: (log a_s, log(a_p − a_s), log A_p, log A_s, log ρ [, a_ps, a_sp])
+  # Optimizer coordinates: (log a_s, log(a_p − a_s), log A_p, log A_s, log κ [, log c])
   #
   # Coordinate | Expression         | Identified by
   # -----------|--------------------|----------------------------------------
@@ -332,7 +333,7 @@ pp_mle <- function(spikes,
   # log gap    | log(a_p − a_s)     | HF pole position relative to LF pole
   # log A_p   | log(σ_p²/2a_p)    | Vagal spectral amplitude (OU stationary var of p)
   # log A_s   | log(σ_s²/2a_s)    | Sympathetic spectral amplitude (OU stationary var of s)
-  # log ρ     | log(ρ)             | IG pacemaker noise (interval regularity)
+  # log κ     | log(μ₀/ρ²)        | IG shape; FIM diagonal in (log μ₀, log κ) — exact
   #
   # (log A_p, log A_s) replaces the previous (log σ_Δ², logit ψ) encoding.
   # Motivation (N. Beelders, pers. comm.): A_p = σ_p²/(2a_p) and A_s = σ_s²/(2a_s)
@@ -409,7 +410,7 @@ pp_mle <- function(spikes,
   if (use_coupled) {
     # log(c) < log(0.99 * a_p * a_s); use a conservative fixed upper
     lower_v <- c(lower_v, log(1e-8))
-    upper_v <- c(lower_v, log(0.99 * fp0$a_p * fp0$a_s))
+    upper_v <- c(upper_v, log(0.99 * fp0$a_p * fp0$a_s))
   }
 
   neg_ll <- function(v) {
@@ -471,6 +472,174 @@ pp_mle <- function(spikes,
     convergence = res$convergence,
     filter      = pp_ukf(spikes, params_hat, input_fn)
   )
+}
+
+# ---- Concentrated MLE: poles fixed, amplitudes and shape free ----
+#
+# Reduces the 5D pp_mle optimisation to 3D by fixing (a_p, a_s) at the
+# supplied values (typically from wavelet_spectral_fit Stage 1).
+# Free coordinates: (log A_p, log A_s, log κ).
+# Mean anchor μ₀ = μ̄·exp(−(A_p+A_s)/2) is retained exactly as in pp_mle.
+# Returns the same structure as pp_mle() for drop-in compatibility.
+
+pp_mle_concentrated <- function(spikes,
+                                params_init,
+                                a_p_fixed,
+                                a_s_fixed,
+                                input_fn = function(t) 0,
+                                verbose  = FALSE) {
+  rr <- diff(spikes)
+  if (length(rr) < 10L) stop("pp_mle_concentrated: need at least 10 spikes.")
+  mu_bar_c <- mean(rr)
+
+  # Starting values: spectral_init re-evaluated at the fixed poles
+  sp_init <- tryCatch(spectral_init(rr, verbose = FALSE),
+                      error = function(e) params_init)
+  fp_sp   <- sp_init$free
+  A_p0    <- max(fp_sp$sigma_p^2 / (2 * a_p_fixed), 1e-8)
+  A_s0    <- max(fp_sp$sigma_s^2 / (2 * a_s_fixed), 1e-8)
+  kap0    <- kappa_from_rho(fp_sp$mu_0, fp_sp$rho)
+  v0      <- c(log(max(A_p0, 1e-8)), log(max(A_s0, 1e-8)), log(max(kap0, 0.5)))
+
+  neg_ll_c <- function(v) {
+    A_p_v  <- max(exp(v[1L]), 1e-10)
+    A_s_v  <- max(exp(v[2L]), 1e-10)
+    kap_v  <- max(exp(v[3L]), 0.5)
+    mu_0_v <- max(mu_bar_c * exp(-(A_p_v + A_s_v) / 2), 0.10)
+    fp_v <- list(
+      a_p     = a_p_fixed,
+      a_s     = a_s_fixed,
+      a_ps    = params_init$free$a_ps,
+      a_sp    = params_init$free$a_sp,
+      sigma_p = sqrt(max(2 * a_p_fixed * A_p_v, 1e-10)),
+      sigma_s = sqrt(max(2 * a_s_fixed * A_s_v, 1e-10)),
+      mu_0    = mu_0_v,
+      rho     = sqrt(mu_0_v / kap_v),
+      c_p     = params_init$free$c_p,
+      c_s     = params_init$free$c_s
+    )
+    params_v <- list(structural = params_init$structural, free = fp_v)
+    flt <- tryCatch(pp_ukf(spikes, params_v, input_fn),
+                    error = function(e) list(innov = NULL))
+    if (is.null(flt$innov)) return(1e10)
+    fin <- is.finite(flt$innov) & is.finite(flt$S_innov) & flt$S_innov > 0
+    if (!any(fin)) return(1e10)
+    ll_g <- sum(dnorm(flt$innov[fin], 0, sqrt(flt$S_innov[fin]), log = TRUE))
+    if (!is.finite(ll_g)) return(1e10)
+    -ll_g
+  }
+
+  res <- optim(v0, neg_ll_c,
+               method  = "L-BFGS-B",
+               lower   = c(log(1e-6), log(1e-6), log(0.5)),
+               upper   = c(log(0.45), log(0.45), log(1000)),
+               control = list(maxit = 500L, factr = 1e6,
+                              trace = if (verbose) 1L else 0L))
+
+  if (res$convergence != 0L && verbose)
+    message("pp_mle_concentrated: L-BFGS-B code ", res$convergence)
+
+  th     <- res$par
+  A_p_h  <- exp(th[1L]);  A_s_h <- exp(th[2L]);  kap_h <- exp(th[3L])
+  mu_0_h <- max(mu_bar_c * exp(-(A_p_h + A_s_h) / 2), 0.10)
+
+  fp_hat <- list(
+    a_p     = a_p_fixed,
+    a_s     = a_s_fixed,
+    a_ps    = params_init$free$a_ps,
+    a_sp    = params_init$free$a_sp,
+    sigma_p = sqrt(max(2 * a_p_fixed * A_p_h, 1e-10)),
+    sigma_s = sqrt(max(2 * a_s_fixed * A_s_h, 1e-10)),
+    mu_0    = mu_0_h,
+    rho     = sqrt(mu_0_h / kap_h),
+    c_p     = params_init$free$c_p,
+    c_s     = params_init$free$c_s
+  )
+  params_hat <- list(structural = params_init$structural, free = fp_hat)
+  ll_hat     <- if (res$value >= 1e9) NA_real_ else -res$value
+
+  list(params_hat  = params_hat,
+       free_hat    = fp_hat,
+       ll          = ll_hat,
+       convergence = res$convergence,
+       filter      = pp_ukf(spikes, params_hat, input_fn))
+}
+
+# ---- Two-stage concentrated MLE ----
+#
+# Stage 1 — wavelet_spectral_fit() [spectral_init.R]:
+#   Estimates (a_p, a_s) from tachogram Haar level variances via the Whittle
+#   likelihood. Globally convex; always finds the global optimum.
+#
+# Stage 2 — pp_mle_concentrated():
+#   Fixes Stage-1 poles; optimises 3D (log A_p, log A_s, log κ).
+#   Eliminates the σ–a ridge and μ₀–σ_Δ² cross-block coupling.
+#
+# Stage 3 (optional, refine = TRUE) — pp_mle():
+#   Full 5D refinement from the Stage-2 solution; keeps the better LL.
+#   Set refine = FALSE for speed-critical loops (sensitivity, large-N recovery).
+#
+# Falls back to pp_mle() at any stage failure.
+# Returns the same structure as pp_mle() for drop-in compatibility.
+
+pp_mle_twostage <- function(spikes,
+                            params_init,
+                            input_fn = function(t) 0,
+                            refine   = TRUE,
+                            verbose  = FALSE) {
+  rr <- diff(spikes)
+
+  # Stage 1
+  wave <- tryCatch(
+    wavelet_spectral_fit(rr),
+    error = function(e) {
+      if (verbose) message("pp_mle_twostage: Stage 1 failed (", conditionMessage(e),
+                           "); using pp_mle.")
+      NULL
+    }
+  )
+  if (is.null(wave) || !is.finite(wave$a_p) || !is.finite(wave$a_s)) {
+    if (verbose) message("pp_mle_twostage: Stage 1 invalid; using pp_mle.")
+    return(pp_mle(spikes, params_init, input_fn, verbose = verbose))
+  }
+  if (verbose) message(sprintf(
+    "pp_mle_twostage: Stage 1  a_p=%.3f  a_s=%.4f  A_p=%.4f  A_s=%.4f",
+    wave$a_p, wave$a_s, wave$A_p, wave$A_s))
+
+  # Stage 2
+  conc <- tryCatch(
+    pp_mle_concentrated(spikes, params_init,
+                        a_p_fixed = wave$a_p, a_s_fixed = wave$a_s,
+                        input_fn  = input_fn,  verbose   = verbose),
+    error = function(e) {
+      if (verbose) message("pp_mle_twostage: Stage 2 failed (", conditionMessage(e),
+                           "); using pp_mle.")
+      NULL
+    }
+  )
+  if (is.null(conc))
+    return(pp_mle(spikes, params_init, input_fn, verbose = verbose))
+
+  if (verbose && is.finite(conc$ll))
+    message(sprintf("pp_mle_twostage: Stage 2  ll=%.2f  (convergence=%d)",
+                    conc$ll, conc$convergence))
+
+  # Stage 3 (optional)
+  if (!refine) return(conc)
+
+  full <- tryCatch(
+    pp_mle(spikes, conc$params_hat, input_fn, verbose = verbose),
+    error = function(e) NULL
+  )
+
+  if (is.null(full) || is.na(full$ll) ||
+      (!is.na(conc$ll) && conc$ll >= full$ll)) {
+    if (verbose && !is.null(full) && is.finite(full$ll))
+      message(sprintf("pp_mle_twostage: concentrated retained (%.2f >= %.2f)",
+                      conc$ll, full$ll))
+    return(conc)
+  }
+  full
 }
 
 # ---- Interpolate filtered state to a regular time grid ----

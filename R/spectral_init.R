@@ -127,7 +127,7 @@ band_filtered_coupling_init <- function(rr_vec, a_p, a_s, fs = 4.0) {
   t_rs  <- seq(0, tail(cum_t, 1L), by = dt_filt)
   rr_rs <- approx(cum_t[-length(cum_t)], rr_vec, xout = t_rs, rule = 2L)$y
   nr    <- length(rr_rs)
-  if (nr < 40L) return(list(a_ps = 0, a_sp = 0))
+  if (nr < 40L) return(list(a_ps = 0, a_sp = 0, c = 0))
   x <- rr_rs - mean(rr_rs)
 
   # FFT band-pass filter
@@ -171,7 +171,8 @@ band_filtered_coupling_init <- function(rr_vec, a_p, a_s, fs = 4.0) {
   a_ps_hat <- max(min(a_ps_hat, a_p * 0.85), 0)
   a_sp_hat <- max(min(a_sp_hat, a_s * 0.85), 0)
 
-  list(a_ps = a_ps_hat, a_sp = a_sp_hat)
+  list(a_ps = a_ps_hat, a_sp = a_sp_hat,
+       c    = a_ps_hat * a_sp_hat)
 }
 
 # ---- Biexponential ACF fitting ----
@@ -382,9 +383,6 @@ haar_level_var <- function(x, j) {
   var(d)
 }
 
-# Model: w_j = A_p * F_j(a_p)  +  A_s * F_j(a_s)
-# where F_j(a) = (1/pi) * [atan(2*pi*f_hi_j/a) - atan(2*pi*f_lo_j/a)]
-# Whittle: ell = -sum_j [ log(model_j) + w_j / model_j ]
 lorentz_band <- function(a, f_lo, f_hi)
   (atan(2*pi*f_hi/a) - atan(2*pi*f_lo/a)) / pi
 
@@ -397,5 +395,94 @@ whittle_ll <- function(th, w_obs, f_bands) {
       A_s_v * lorentz_band(a_s_v, f_bands[j,1], f_bands[j,2])
   }, numeric(1L))
   if (any(model <= 0)) return(1e10)
-  sum(log(model) + w_obs / model)   # Whittle negative log-likelihood
+  sum(log(model) + w_obs / model)
+}
+
+# ---- Wavelet Whittle spectral fit ----
+# Stage 1 of pp_mle_twostage() (filter.R).
+# Estimates OU pole locations (a_p, a_s) and spectral amplitudes
+# (A_p = σ_p²/2a_p, A_s = σ_s²/2a_s) from the Haar wavelet level
+# variances of the resampled tachogram via the Whittle likelihood:
+#   ℓ_W = −Σ_j [ log(A_p·F_j(a_p) + A_s·F_j(a_s))
+#                + ŵ_j / (A_p·F_j(a_p) + A_s·F_j(a_s)) ]
+# The surface is globally convex in (log a_p, log a_s) when a_p ≫ a_s,
+# so Stage 1 always converges regardless of initialisation.
+# Falls back to band_centroid_init() when fewer than min_levels usable
+# Haar levels are available.
+
+wavelet_spectral_fit <- function(rr_vec, fs = 4.0, min_levels = 4L) {
+  stopifnot(is.numeric(rr_vec), length(rr_vec) >= 30L, all(rr_vec > 0))
+
+  # Resample to uniform fs-Hz grid
+  cum_t <- cumsum(c(0, rr_vec))
+  t_rs  <- seq(0, tail(cum_t, 1L), by = 1 / fs)
+  x_rs  <- approx(cum_t[-length(cum_t)], rr_vec, xout = t_rs, rule = 2L)$y
+  x_rs  <- x_rs - mean(x_rs)
+
+  # Haar level variances: level j spans octave [fs/2^{j+1}, fs/2^j] Hz
+  J       <- min(floor(log2(length(x_rs) / 8L)), 8L)
+  J       <- max(J, min_levels)
+  f_lo_j  <- fs / 2^(seq_len(J) + 1L)
+  f_hi_j  <- fs / 2^seq_len(J)
+  f_bands <- cbind(f_lo = f_lo_j, f_hi = f_hi_j)
+  w_obs   <- vapply(seq_len(J), function(j) haar_level_var(x_rs, j), numeric(1L))
+
+  ok <- is.finite(w_obs) & w_obs > 1e-14
+  if (sum(ok) < min_levels) {
+    warning(sprintf(
+      "wavelet_spectral_fit: only %d usable Haar levels (need %d); using band_centroid_init.",
+      sum(ok), min_levels))
+    bc <- band_centroid_init(rr_vec, fs = fs)
+    fp <- bc$free
+    return(list(a_p = fp$a_p, a_s = fp$a_s,
+                A_p = fp$sigma_p^2 / (2 * fp$a_p),
+                A_s = fp$sigma_s^2 / (2 * fp$a_s),
+                se_ap = NA_real_, se_as = NA_real_,
+                se_Ap = NA_real_, se_As = NA_real_,
+                level_vars = w_obs, f_bands = f_bands,
+                ll_whittle = NA_real_, convergence = 99L))
+  }
+  w_use  <- w_obs[ok]
+  fb_use <- f_bands[ok, , drop = FALSE]
+
+  # Starting values from band_centroid_init
+  bc   <- band_centroid_init(rr_vec, fs = fs)
+  fp   <- bc$free
+  A_p0 <- max(fp$sigma_p^2 / (2 * fp$a_p), 1e-8)
+  A_s0 <- max(fp$sigma_s^2 / (2 * fp$a_s), 1e-8)
+  th0  <- c(log(fp$a_p), log(fp$a_s), log(A_p0), log(A_s0))
+
+  res <- tryCatch(
+    optim(th0, whittle_ll,
+          w_obs = w_use, f_bands = fb_use,
+          method  = "L-BFGS-B",
+          lower   = c(log(0.3),  log(0.01), log(1e-8), log(1e-8)),
+          upper   = c(log(15.0), log(3.0),  log(2.0),  log(2.0)),
+          control = list(maxit = 500L, factr = 1e7)),
+    error = function(e) list(par = th0, value = Inf, convergence = 99L)
+  )
+
+  th_hat <- res$par
+  a_p_v  <- exp(th_hat[1L]);  a_s_v <- exp(th_hat[2L])
+  if (a_p_v <= a_s_v) { a_p_v <- a_s_v * 5; th_hat[1L] <- log(a_p_v) }
+
+  # Standard errors via numerical Hessian (delta method: SE(a) = a * SE(log a))
+  H   <- tryCatch(
+    numerical_hessian(function(th) whittle_ll(th, w_use, fb_use), th_hat),
+    error = function(e) matrix(NA_real_, 4L, 4L))
+  V   <- tryCatch(solve(H), error = function(e) matrix(NA_real_, 4L, 4L))
+  sel <- sqrt(pmax(diag(V), 0, na.rm = TRUE))
+
+  list(a_p        = a_p_v,
+       a_s        = a_s_v,
+       A_p        = exp(th_hat[3L]),
+       A_s        = exp(th_hat[4L]),
+       se_ap      = a_p_v           * sel[1L],
+       se_as      = a_s_v           * sel[2L],
+       se_Ap      = exp(th_hat[3L]) * sel[3L],
+       se_As      = exp(th_hat[4L]) * sel[4L],
+       level_vars = w_obs,
+       f_bands    = f_bands,
+       ll_whittle = if (is.finite(res$value)) -res$value else NA_real_,
+       convergence = res$convergence)
 }
