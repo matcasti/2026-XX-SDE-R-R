@@ -404,17 +404,18 @@ plot_profiles <- function(profiles,
 # This is the key validation of the fully marginal identifiability claim.
 
 marginal_recovery_one <- function(true_params, duration = CANONICAL_DURATION, dt = 0.005,
-                                  input_fn = CANONICAL_INPUT_FN,
+                                  input_fn  = CANONICAL_INPUT_FN,
+                                  estimator = pp_mle_twostage,
                                   seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
 
-  # c_p and c_s are fixed known constants: pass the same input_fn to pp_mle
+  # c_p and c_s are fixed known constants: pass the same input_fn to the estimator
   # so the UKF prediction step removes the known input contribution.
-  # The optimization covers {a_p, a_s, σ_p, σ_s, μ₀, ρ} only.
+  # estimator defaults to pp_mle; pass pp_mle_twostage for the two-stage pipeline.
   mle_result <- tryCatch(
-    pp_mle(sim_res$spikes, true_params,
-           input_fn = input_fn,
-           verbose  = FALSE),
+    estimator(sim_res$spikes, true_params,
+              input_fn = input_fn,
+              verbose  = FALSE),
     error = function(e) NULL
   )
 
@@ -449,12 +450,14 @@ marginal_recovery_one <- function(true_params, duration = CANONICAL_DURATION, dt
 marginal_recovery_study <- function(N = 100L, true_params,
                                     duration = CANONICAL_DURATION,
                                     dt = 0.005,
-                                    input_fn = CANONICAL_INPUT_FN,
+                                    input_fn  = CANONICAL_INPUT_FN,
+                                    estimator = pp_mle_twostage,
                                     use_parallel = TRUE) {
   set.seed(RECOVERY_MASTER_SEED + 1L)   # distinct from conditional study
   seeds <- sample.int(1e6L, N)
   run_one <- function(i)
     tryCatch(marginal_recovery_one(true_params, duration, dt, input_fn,
+                                   estimator = estimator,
                                    seed = seeds[i]),
              error = function(e) NULL)
 

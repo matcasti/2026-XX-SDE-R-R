@@ -353,7 +353,7 @@ pp_mle <- function(spikes,
   #   σ_p   = √(2 a_p A_p),  σ_s = √(2 a_s A_s)   — exact, no approximation
   #   μ₀    = μ̄_obs · exp(−(A_p+A_s)/2)   — mean-anchor; exact under stationary model
   #
-  # pack ∘ unpack is exact.  ρ is free (no CV² identity assumed).
+  # pack ∘ unpack is exact.  κ is the free coordinate; ρ is derived as sqrt(μ₀/κ).
 
   pack <- function(fp) {
     A_p  <- max(fp$sigma_p^2 / (2 * fp$a_p), 1e-12)
