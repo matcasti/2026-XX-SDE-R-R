@@ -9,7 +9,7 @@
 <meta name="author" content="Matías Castillo-Aguilar">
 <meta name="author" content="Noah Beelders">
 <meta name="author" content="Cristian Núñez-Espinosa">
-<meta name="dcterms.date" content="2026-05-09">
+<meta name="dcterms.date" content="2026-05-12">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -412,7 +412,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">May 9, 2026</p>
+              <p class="date">May 12, 2026</p>
             </div>
           </div>
           
@@ -1223,9 +1223,9 @@ Table&nbsp;2: Fisher information diagnostics per block of the conditional log-li
 </tr>
 <tr class="even">
 <td style="text-align: left;">Sympathetic OU <span class="math inline">\((\log a_s,\, \log\sigma_s)\)</span></td>
-<td style="text-align: left;">2.94e+02</td>
+<td style="text-align: left;">2.95e+02</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">9.79e+02</td>
+<td style="text-align: left;">9.77e+02</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">IG observations <span class="math inline">\((\log\mu_0,\, \log\rho)\)</span></td>
@@ -1235,9 +1235,9 @@ Table&nbsp;2: Fisher information diagnostics per block of the conditional log-li
 </tr>
 <tr class="even">
 <td style="text-align: left;">Full <span class="math inline">\(6 \times 6\)</span> matrix</td>
-<td style="text-align: left;">2.94e+02</td>
+<td style="text-align: left;">2.95e+02</td>
 <td style="text-align: left;">2.88e+05</td>
-<td style="text-align: left;">9.78e+02</td>
+<td style="text-align: left;">9.77e+02</td>
 </tr>
 </tbody>
 </table>
@@ -1585,7 +1585,8 @@ P_{k|k-1} = F(\tau_k)\,P_{k-1|k-1}\,F(\tau_k)^\top + Q(\tau_k)
 \qquad
 S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
 \]</span></p>
-<p>where <span class="math inline">\(R_k = \hat\mu_k^3/\kappa\)</span> is the IG variance outer-linearized at the predicted mean, and the Kalman gain and covariance update follow the standard UKF equations. The marginal log-likelihood contribution at beat <span class="math inline">\(k\)</span> is approximated by the sigma-point expectation of the IG log-pdf:</p>
+<p>where <span class="math inline">\(R_k = \hat\mu_k^3/\kappa\)</span> is the IG variance outer-linearized at the predicted mean, and the Kalman gain and covariance update follow the standard UKF equations.</p>
+<p>The marginal log-likelihood contribution at beat <span class="math inline">\(k\)</span> is approximated by the sigma-point expectation of the IG log-pdf:</p>
 <p><span class="math display">\[
 \log p(\tau_k \mid \Theta) \;\approx\;
 \log \sum_i W_i^m\, f_{\mathrm{IG}}\!\left(\tau_k;\; h(\boldsymbol{\sigma}_i),\; \kappa\right)
@@ -1791,37 +1792,37 @@ Table&nbsp;6: Marginal MLE recovery summary (<span class="math inline">\(N = 250
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(a_p\)</span></td>
 <td style="text-align: left;">2.000</td>
-<td style="text-align: left;">10.041</td>
-<td style="text-align: left;">402.04%</td>
-<td style="text-align: left;">8.0643</td>
-<td style="text-align: left;">403.21%</td>
+<td style="text-align: left;">10.068</td>
+<td style="text-align: left;">403.40%</td>
+<td style="text-align: left;">8.0860</td>
+<td style="text-align: left;">404.30%</td>
 <td style="text-align: left;">1.69%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(a_s\)</span></td>
 <td style="text-align: left;">0.200</td>
 <td style="text-align: left;">0.118</td>
-<td style="text-align: left;">-40.77%</td>
-<td style="text-align: left;">0.0820</td>
-<td style="text-align: left;">41.01%</td>
+<td style="text-align: left;">-40.81%</td>
+<td style="text-align: left;">0.0821</td>
+<td style="text-align: left;">41.05%</td>
 <td style="text-align: left;">6.33%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><span class="math inline">\(\sigma_p\)</span></td>
 <td style="text-align: left;">0.200</td>
-<td style="text-align: left;">0.239</td>
-<td style="text-align: left;">19.44%</td>
-<td style="text-align: left;">0.1765</td>
-<td style="text-align: left;">88.23%</td>
+<td style="text-align: left;">0.241</td>
+<td style="text-align: left;">20.55%</td>
+<td style="text-align: left;">0.1776</td>
+<td style="text-align: left;">88.82%</td>
 <td style="text-align: left;">0.20%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\sigma_s\)</span></td>
 <td style="text-align: left;">0.070</td>
 <td style="text-align: left;">0.104</td>
-<td style="text-align: left;">49.18%</td>
+<td style="text-align: left;">49.15%</td>
 <td style="text-align: left;">0.0351</td>
-<td style="text-align: left;">50.17%</td>
+<td style="text-align: left;">50.14%</td>
 <td style="text-align: left;">0.19%</td>
 </tr>
 <tr class="odd">
@@ -1829,17 +1830,17 @@ Table&nbsp;6: Marginal MLE recovery summary (<span class="math inline">\(N = 250
 <td style="text-align: left;">1.000</td>
 <td style="text-align: left;">0.766</td>
 <td style="text-align: left;">-23.38%</td>
-<td style="text-align: left;">0.2341</td>
-<td style="text-align: left;">23.41%</td>
+<td style="text-align: left;">0.2342</td>
+<td style="text-align: left;">23.42%</td>
 <td style="text-align: left;">0.55%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><span class="math inline">\(\rho\)</span></td>
 <td style="text-align: left;">0.200</td>
 <td style="text-align: left;">0.192</td>
-<td style="text-align: left;">-3.95%</td>
-<td style="text-align: left;">0.0193</td>
-<td style="text-align: left;">9.64%</td>
+<td style="text-align: left;">-3.98%</td>
+<td style="text-align: left;">0.0192</td>
+<td style="text-align: left;">9.58%</td>
 <td style="text-align: left;">5.08%</td>
 </tr>
 </tbody>
@@ -1883,11 +1884,11 @@ Table&nbsp;7: Filter state-recovery: distribution of per-replication RMSE of <sp
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marginal filter: SD of RMSE</td>
-<td style="text-align: right;">0.0175</td>
+<td style="text-align: right;">0.0174</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marginal filter: 10th–90th percentile range</td>
-<td style="text-align: right;">0.2397 – 0.2853</td>
+<td style="text-align: right;">0.2400 – 0.2853</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">RMSE inflation ratio (marginal mean / oracle)</td>

@@ -306,10 +306,9 @@ pp_mle <- function(spikes,
                                a_sp = params_init$free$a_sp,
                                c    = params_init$free$a_ps * params_init$free$a_sp)
     )
-    # Clamp away from the L-BFGS-B lower boundary so gradients are finite at init.
-    sqrt_c <- sqrt(max(cpl$c, 1e-8))
-    params_spectral$free$a_ps <- sqrt_c
-    params_spectral$free$a_sp <- sqrt_c
+
+    params_spectral$free$a_ps <- max(cpl$a_ps, 1e-6)
+    params_spectral$free$a_sp <- max(cpl$a_sp, 1e-6)
     # Stability guard: fall back if det(A) <= 0 at the starting point.
     if (params_spectral$free$a_p * params_spectral$free$a_s -
         params_spectral$free$a_ps * params_spectral$free$a_sp <= 0) {
@@ -367,7 +366,8 @@ pp_mle <- function(spikes,
            log(max(kap_v, 0.5)))
     if (use_coupled) {
       c_val <- max(fp$a_ps * fp$a_sp, 1e-8)
-      v <- c(v, log(c_val))
+      r_val <- max(fp$a_ps / max(fp$a_sp, 1e-8), 1e-3)
+      v <- c(v, log(c_val), log(r_val))
     }
     v
   }
@@ -381,12 +381,14 @@ pp_mle <- function(spikes,
     mu_0_v <- max(mu_bar * exp(-(A_p_v + A_s_v) / 2), 0.10)
     rho_v  <- sqrt(mu_0_v / kap_v)   # derived, not free
     c_v   <- if (use_coupled) exp(v[6L]) else 0
-    sqrt_c <- sqrt(max(c_v, 0))
+    r_v   <- if (use_coupled) exp(v[7L]) else 1
+    a_ps_v <- sqrt(max(c_v * r_v, 0))
+    a_sp_v <- sqrt(max(c_v / r_v, 0))
     list(
       a_p     = a_p_v,
       a_s     = a_s_v,
-      a_ps = sqrt_c,
-      a_sp = sqrt_c,
+      a_ps    = a_ps_v,
+      a_sp    = a_sp_v,
       sigma_p = sqrt(max(2 * a_p_v * A_p_v, 1e-10)),
       sigma_s = sqrt(max(2 * a_s_v * A_s_v, 1e-10)),
       mu_0    = mu_0_v,
@@ -408,9 +410,10 @@ pp_mle <- function(spikes,
   upper_v <- c(log(2.0),  log(9.99), log(0.45), log(0.45), log(1000))
 
   if (use_coupled) {
-    # log(c) < log(0.99 * a_p * a_s); use a conservative fixed upper
-    lower_v <- c(lower_v, log(1e-8))
-    upper_v <- c(upper_v, log(0.99 * fp0$a_p * fp0$a_s))
+    lower_v <- c(lower_v, log(1e-8),  log(1e-3))   # log(c), log(r)
+    upper_v <- c(upper_v,
+                 log(0.99 * fp0$a_p * fp0$a_s),
+                 log(1e3))                           # allow up to 1000:1 ratio
   }
 
   neg_ll <- function(v) {

@@ -290,8 +290,9 @@ log_ig_survival <- function(tau, mu, kappa) {
 }
 
 log_ig_hazard <- function(tau, mu, kappa) {
-  if (tau < 1e-9) return(-Inf)
-  log_ig_pdf(tau, mu, kappa) - log_ig_survival(tau, mu, kappa)
+  lh <- log_ig_pdf(tau, mu, kappa) - log_ig_survival(tau, mu, kappa)
+  lh[!is.finite(tau) | tau < 1e-9] <- -Inf
+  lh
 }
 
 ig_hazard <- function(tau, mu, kappa) exp(log_ig_hazard(tau, mu, kappa))

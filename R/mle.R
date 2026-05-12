@@ -51,7 +51,7 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
 # Closed-form solution from OLS (for c) + method-of-moments (for sigma).
 
 ou_mle <- function(x_vec, u_vec, a_init, dt,
-                   log_a_bounds = c(log(0.01), log(500)),
+                   log_a_bounds = c(log(0.01), log(100)),
                    c_fixed = NULL) {
   n <- length(x_vec) - 1L
   if (n < 2L)
@@ -458,16 +458,20 @@ check_moment_consistency <- function(rr_vec, mle) {
   t_rs    <- seq(beat_t[1L], tail(beat_t, 1L), by = dt_rs)
   rr_rs   <- approx(beat_t, rr_vec, xout = t_rs, rule = 2)$y
   n_rs    <- length(rr_rs)
-  freq_rs <- seq(0, 0.5 / dt_rs, length.out = floor(n_rs / 2) + 1L)
-  psd_rs  <- (Mod(fft(rr_rs - mean(rr_rs)))[seq_along(freq_rs)])^2 /
-    (n_rs * (1 / dt_rs))
+  n_half  <- floor(n_rs / 2L) + 1L
+  freq_rs <- (seq_len(n_half) - 1L) / (n_rs * dt_rs)   # exact, uniform spacing
+  df_rs   <- 1.0 / (n_rs * dt_rs)                       # exact frequency resolution
 
-  # Convert to one-sided PSD: double all positive non-Nyquist bins
-  n_half <- length(psd_rs)
-  if (n_half > 2L)
-    psd_rs[2L:(n_half - 1L)] <- 2 * psd_rs[2L:(n_half - 1L)]
+  psd_rs  <- (Mod(fft(rr_rs - mean(rr_rs)))[seq_len(n_half)])^2 /
+    (n_rs * (1.0 / dt_rs))
 
-  df_rs   <- freq_rs[2L] - freq_rs[1L]
+  # Convert to one-sided PSD.
+  # Even n_rs: last bin is Nyquist — double all bins 2:(n_half-1).
+  # Odd n_rs:  no Nyquist bin — double all bins 2:n_half.
+  if (n_half > 2L) {
+    last_to_double <- if (n_rs %% 2L == 0L) n_half - 1L else n_half
+    psd_rs[2L:last_to_double] <- 2.0 * psd_rs[2L:last_to_double]
+  }
   idx_lf  <- freq_rs >= 0.04 & freq_rs <= 0.15
   idx_hf  <- freq_rs >= 0.15 & freq_rs <= 0.40
   lf_obs  <- if (any(idx_lf)) sum(psd_rs[idx_lf]) * df_rs else NA_real_
@@ -566,8 +570,14 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt, u_vec = NULL, c_fixed = 0) {
     if (is.finite(ll_v)) -ll_v else 1e10
   }
 
-  H       <- numerical_hessian(nll_2d, th0)
-  fim_inv <- tryCatch(solve(H), error = function(e) matrix(NA_real_, 2L, 2L))
+  H     <- numerical_hessian(nll_2d, th0)
+  det_H <- H[1L,1L] * H[2L,2L] - H[1L,2L] * H[2L,1L]
+  fim_inv <- if (is.finite(det_H) && det_H > 0) {
+    matrix(c(H[2L,2L], -H[2L,1L], -H[1L,2L], H[1L,1L]), 2L, 2L) / det_H
+  } else {
+    matrix(NA_real_, 2L, 2L)
+  }
+
   list(
     fim  = H,
     se   = sqrt(abs(diag(fim_inv))),   # SE(log a), SE(log sigma)
@@ -667,10 +677,12 @@ full_conditional_fim <- function(sim_res, input_fn = NULL) {
   fim_s <- ou_fim(mle$a_s, mle$sigma_s, sim_res$s, dt,
                   u_vec = u_vec, c_fixed = fp_sim$c_s)
 
-  spk     <- sim_res$spikes
-  tau_vec <- diff(spk)
-  delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
-  fim_obs <- ig_obs_fim(mle$mu0, mle$rho, tau_vec, delta_v)
+  spk        <- sim_res$spikes
+  tau_vec    <- diff(spk)
+  delta_v    <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
+  valid_mask <- is.finite(delta_v)
+  fim_obs    <- ig_obs_fim(mle$mu0, mle$rho,
+                           tau_vec[valid_mask], delta_v[valid_mask])
 
   # 6×6 block-diagonal FIM in:
   # (log a_p, log sigma_p, log a_s, log sigma_s, log mu_0, log rho)
@@ -744,6 +756,15 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
 
   tau_vec <- diff(sim_res$spikes)
   delta_v <- compute_effective_delta(sim_res$spikes, sim_res$time, sim_res$delta)
+
+  # Mirror the NA-filtering of full_conditional_mle: discard IBIs whose
+  # interval-averaged drive could not be computed (IBI < dt).
+  valid_mask <- is.finite(delta_v)
+  tau_vec    <- tau_vec[valid_mask]
+  delta_v    <- delta_v[valid_mask]
+  if (length(tau_vec) < 2L) {
+    return(rep(-Inf, length(grid)))
+  }
 
   g       <- exp(-delta_v)
   w       <- exp(delta_v)
