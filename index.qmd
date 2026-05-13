@@ -86,8 +86,6 @@ PARAMS_UNCOUPLED <- make_model_params(
   mu_0    = 1.0,  rho     = 0.20,
   c_p     = -1.0, c_s     = 0.1
 )
-KAPPA_REF_IDENT <- kappa_from_rho(PARAMS_UNCOUPLED$free$mu_0,
-                                   PARAMS_UNCOUPLED$free$rho)
 
 set.seed(2026)
 RES_UNCOUPLED <- sim_sde_ig(CANONICAL_DURATION, 0.005,

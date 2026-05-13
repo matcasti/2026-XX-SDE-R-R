@@ -31,8 +31,6 @@ source("R/identifiability.R")
 source("R/sensitivity.R")
 
 # Reproduce all objects needed for SI figures
-CANONICAL_INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 0.1)
-CANONICAL_DURATION <- 720L
 PARAMS_UNCOUPLED <- make_model_params(
   a_p=2.0, a_s=0.2, sigma_p=0.20, sigma_s=0.07,
   mu_0=1.0, rho=0.20, c_p=-1.0, c_s=0.1)
@@ -48,6 +46,14 @@ RES_COUPLED   <- sim_sde_ig(CANONICAL_DURATION, 0.005,
                              PARAMS_COUPLED, CANONICAL_INPUT_FN)
 KAPPA_REF     <- kappa_from_rho(PARAMS_COUPLED$free$mu_0,
                                  PARAMS_COUPLED$free$rho)
+```
+
+```{r}
+#| label: oracle-filter
+#| include: false
+
+FLT      <- pp_ukf(RES_UNCOUPLED$spikes, PARAMS_UNCOUPLED, CANONICAL_INPUT_FN)
+flt_grid <- filter_to_grid(FLT, RES_UNCOUPLED$time)
 ```
 
 # Supplementary Notes
@@ -68,7 +74,7 @@ $$
 
 where the three components arise from the OU transition densities of $p(t)$ and $s(t)$ and from the IG beat-time densities respectively. 
 
-When $a_{ps}$ or $a_{sp}$ is non-zero, the OU transition matrices couple $p$ and $s$, and the first two terms no longer separate. In that case the OU log-likelihood must be maximized jointly over all eight OU parameters numerically (see @sec-coupling). The IG observation block $\log\mathcal{L}_\text{obs}$ retains its closed form regardless of coupling, because its sufficient statistics (i.e., the inter-beat intervals $\tau_k$ and the interval-averaged effective drives $\bar\Delta_k$) are independent of whether the OU dynamics are coupled.
+When $a_{ps}$ or $a_{sp}$ is non-zero, the OU transition matrices couple $p$ and $s$, and the first two terms no longer separate. In that case the OU log-likelihood must be maximized jointly over all eight OU parameters numerically (see Figure S2). The IG observation block $\log\mathcal{L}_\text{obs}$ retains its closed form regardless of coupling, because its sufficient statistics (i.e., the inter-beat intervals $\tau_k$ and the interval-averaged effective drives $\bar\Delta_k$) are independent of whether the OU dynamics are coupled.
 
 This separability has two important consequences.
 
@@ -96,7 +102,7 @@ computed from the stored latent trajectory over the $n_k$ grid points interior t
 
 These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)$ when $\Delta_k = 0$ (no autonomic variation), confirming consistency with the renewal process literature.
 
-**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, \log a_s,\, \log\sigma_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $2 \times 2$ OU blocks $(\log a_p,\, \log\sigma_p)$ and $(\log a_s,\, \log\sigma_s)$ and the $2 \times 2$ observation block. This block-diagonal structure holds for $a_{ps} = a_{sp} = 0$; when coupling is nonzero the blocks link and the FIM is computed as a single $8 \times 8$ numerical object over $(\log a_p, \log a_s, a_{ps}, a_{sp}, \log\sigma_p, \log\sigma_s, \log\mu_0, \log\rho)$ [@sec-coupling].
+**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, \log a_s,\, \log\sigma_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $2 \times 2$ OU blocks $(\log a_p,\, \log\sigma_p)$ and $(\log a_s,\, \log\sigma_s)$ and the $2 \times 2$ observation block. This block-diagonal structure holds for $a_{ps} = a_{sp} = 0$; when coupling is nonzero the blocks link and the FIM is computed as a single $8 \times 8$ numerical object over $(\log a_p, \log a_s, a_{ps}, a_{sp}, \log\sigma_p, \log\sigma_s, \log\mu_0, \log\rho)$ (Figure S2).
 
 ### Observed Fisher Information Matrix
 
@@ -104,7 +110,7 @@ The block-diagonal structure of the conditional log-likelihood implies a corresp
 
 Numerical verification of these quantities from the reference simulation is given in Table @tbl-fim. Empirical identifiability evidence, sub-percent bias and nominal 95% CI coverage for all parameters, is reported in Section @sec-recovery.
 
-Table @tbl-fim confirms the analytical predictions. Both OU blocks are well conditioned ($\kappa < 10^2$) owing to the large number of state-transition observations; the IG block has a larger but still well-conditioned number consistent with $2\kappa/\mu_0 \approx 50$. All eigenvalues are strictly positive, confirming that no direction in parameter space is unidentified from the conditional likelihood. The profile likelihoods (@sec-profiles) and the Monte Carlo recovery study (@sec-recovery) provide empirical corroboration with direct quantification of finite-sample bias and coverage.
+Table @tbl-fim confirms the analytical predictions. Both OU blocks are well conditioned ($\kappa < 10^2$) owing to the large number of state-transition observations; the IG block has a larger but still well-conditioned number consistent with $2\kappa/\mu_0 \approx 50$. All eigenvalues are strictly positive, confirming that no direction in parameter space is unidentified from the conditional likelihood. The profile likelihoods (Figure S3) and the Monte Carlo recovery study (Section A1 of main text) provide empirical corroboration with direct quantification of finite-sample bias and coverage.
 
 
 ## Note 2 — Log-link derivation and IG biophysical rationale
@@ -365,7 +371,7 @@ using the identity $1 - e^x = -\text{expm1}(x)$, which is numerically stable for
 
 ### Static Parameter Estimation
 
-The total marginal log-likelihood $\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)$ is maximized over $\Theta$ by L-BFGS-B in log-space. Starting values are fitted by a biexponential model to the tachogram ACF to recover $a_p$ and $a_s$, distributes the observed SDNN between the two spectral variances according to the fitted ACF weights to recover $\sigma_p$ and $\sigma_s$, applies the log-normal mean correction $\hat\mu_0 = \bar\tau\exp(-\hat\sigma_\Delta^2/2)$ to recover $\mu_0$, and uses the stationary IG MLE for $\kappa$ to recover $\rho$. These data-driven starting values are consistent with the observed second-order structure of the tachogram (@sec-moments) and substantially reduce the frequency of local-optimum convergence failures relative to literature defaults. 
+The total marginal log-likelihood $\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)$ is maximized over $\Theta$ by L-BFGS-B in log-space. Starting values are fitted by a biexponential model to the tachogram ACF to recover $a_p$ and $a_s$, distributes the observed SDNN between the two spectral variances according to the fitted ACF weights to recover $\sigma_p$ and $\sigma_s$, applies the log-normal mean correction $\hat\mu_0 = \bar\tau\exp(-\hat\sigma_\Delta^2/2)$ to recover $\mu_0$, and uses the stationary IG MLE for $\kappa$ to recover $\rho$. These data-driven starting values are consistent with the observed second-order structure of the tachogram (Table S5) and substantially reduce the frequency of local-optimum convergence failures relative to literature defaults. 
 
 The optimizer works in reparameterized coordinates $(\log a_s,\, \log(a_p - a_s),\, \log\sigma_\Delta^2,\, \operatorname{logit}\psi,\, \log\rho)$, where $\sigma_\Delta^2 = \sigma_p^2/(2a_p) + \sigma_s^2/(2a_s)$ is the total OU spectral variance and $\psi = A_p/\sigma_\Delta^2$ with $A_n = \sigma_n^2/(2a_n)$ is the HF spectral fraction. Two structural properties are enforced by construction: $a_p > a_s$ (LF/HF pole ordering) holds because $a_p = a_s + \exp(\log(a_p - a_s))$, requiring no penalty or projection; and $\mu_0 = \bar\tau_\mathrm{obs}\exp(-\sigma_\Delta^2/2)$ (mean-anchor, exact under the stationary inference model) eliminates $\mu_0$ from the optimizer. The remaining five coordinates are identified by near-orthogonal data channels: $\log a_s$ by LF spectral pole position; $\log(a_p - a_s)$ by HF pole position relative to LF; $\log\sigma_\Delta^2$ by total SDNN; $\operatorname{logit}\psi$ by the HF/LF power ratio; and $\log\rho$ by the shape of the inter-beat interval distribution conditional on the OU trajectory. The transform is exact ($\mathrm{pack} \circ \mathrm{unpack} = \mathrm{identity}$) with no moment approximation, giving 5 free parameters for the uncoupled model and 7 for the coupled model. The coupling terms $a_{ps}$ and $a_{sp}$ enter on their natural scale with lower bound zero.
 
@@ -404,7 +410,7 @@ $$
 
 This sigma-point quadrature approximation to the marginal density avoids both the linearization error of the Gaussian innovation approximation $\log\mathcal{N}(\tau_k;\,\hat\mu_k,\,S_k)$ and the Jensen gap introduced by commuting $\log$ and $\sum$, which would produce a lower bound rather than an approximation to $\log p(\tau_k \mid \Theta)$. The sum is evaluated in log-sum-exp form; with $W_0^m = 0$ under the symmetric curvature rule, only the four off-centre sigma-points contribute.
 
-The filter's posterior geometry reflects the single-stream observability: each IBI update contracts uncertainty primarily along the differential direction $\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta = s - p$ subspace). Variance along the common-mode direction $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$ is governed by the OU prior and remains larger than the differential variance, but is bounded, not unbounded, because the OU prior confines both $p(t)$ and $s(t)$ to neighborhoods of zero with variances $\sigma_p^2/(2a_p)$ and $\sigma_s^2/(2a_s)$ respectively. Consequently, the filter delivers per-branch posterior means $[\hat p_k, \hat s_k]$ with per-branch uncertainty (reported in @tbl-filter-summary and shown as branch-specific posterior SD bands in @fig-filter-recovery), rather than purely a scalar $\hat\Delta_k$ estimate.
+The filter's posterior geometry reflects the single-stream observability: each IBI update contracts uncertainty primarily along the differential direction $\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta = s - p$ subspace). Variance along the common-mode direction $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$ is governed by the OU prior and remains larger than the differential variance, but is bounded, not unbounded, because the OU prior confines both $p(t)$ and $s(t)$ to neighborhoods of zero with variances $\sigma_p^2/(2a_p)$ and $\sigma_s^2/(2a_s)$ respectively. Consequently, the filter delivers per-branch posterior means $[\hat p_k, \hat s_k]$ with per-branch uncertainty (reported in @tbl-filter-summary and shown as branch-specific posterior SD bands in @fig-recovery), rather than purely a scalar $\hat\Delta_k$ estimate.
 
 
 ## Note 7 — Input protocol and θ_true = θ* condition
@@ -420,7 +426,8 @@ $$
 
 with $t_{\rm on} = 300$ s, $t_{\rm off} = 420$ s, and steepness $k = 0.1$ Hz. At $k = 0.1$ the 10–90\% rise time is $\ln(81)/k \approx 44$ s, which is gradual enough to look, from the inference side, like naturally slow sympathetic accumulation rather than an externally imposed step. Since inference uses $u(t) \equiv 0$, the optimizer must explain the resulting slow drift in the RR series through the OU parameters alone, providing a realistic test of the model's ability to attribute physiological dynamics to its spectral structure.
 
-The input sensitivities $c_p$ and $c_s$ are *fixed known constants* in the inference model, they are not estimated, but they are also not zeroed out. The canonical double-logistic protocol [@castillo2025enhancing] with known $(c_p, c_s)$ is supplied to the estimator, which removes the deterministic input contribution from the OU residuals before profiling $(a, \sigma)$. This keeps $\theta_{\text{true}} = \theta^*$ (no mismatch between generative and inference model) while providing the non-stationarity needed to decouple $(\sigma_p, \sigma_s)$ from $(\mu_0, \rho)$: the transient stressor creates a temporal structure in the tachogram that the IG observation block cannot explain, sharpening the curvature of the log-likelihood surface along the OU noise-amplitude directions. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are simulation-only parameters that drive the generative stress protocol. Since $u(t)$ is never observed during inference, $c_p = c_s = 0$ in the inference model. This has a precise consequence for the identifiability study: the recovery study must use $c_p = c_s = 0$ in simulation as well, so that the simulation parameters $\theta_\text{true}$ and the pseudo-true parameters $\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]$ coincide. When $c_p \neq 0$ or $c_s \neq 0$, the MLE correctly converges to $\theta^* \neq \theta_\text{true}$, not because the estimator is biased, but because the inference model is correctly specified only for $u \equiv 0$, and $\theta^*$ is the identifiable projection of $\theta_\text{true}$ onto the inference model. Reporting $\hat\theta - \theta_\text{true}$ in that setting confounds estimator precision with model projection distance; reporting $\hat\theta - \theta^*$ is the correct measure of estimator quality. Using $c_p = c_s = 0$ makes $\theta_\text{true} = \theta^*$ and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.
+The input sensitivities $c_p$ and $c_s$ are *fixed known constants* in the inference model, they are not estimated, but they are also not zeroed out. The canonical double-logistic protocol [@castillo2025enhancing] with known $(c_p, c_s)$ is supplied to the estimator, which removes the deterministic input contribution from the OU residuals before profiling $(a, \sigma)$. This keeps $\theta_{\text{true}} = \theta^*$ (no mismatch between generative and inference model) while providing the non-stationarity needed to decouple $(\sigma_p, \sigma_s)$ from $(\mu_0, \rho)$: the transient stressor creates a temporal structure in the tachogram that the IG observation block cannot explain, sharpening the curvature of the log-likelihood surface along the OU noise-amplitude directions. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are treated as **fixed known constants**
+throughout the inference pipeline — they are not free parameters of the optimizer. Both the conditional MLE and the marginal MLE receive the same input used in simulation and remove the known input contribution $c\,u(t)\,z(t)$ from OU residuals before estimating $(a, \sigma)$. Because the inference model is correctly specified for the known input, the estimator is consistent for $\theta_\text{true}$ even when $c_p \neq 0$ or $c_s \neq 0$: $\theta^* = \theta_\text{true}$ by construction. The active estimated parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model; input sensitivities enter the likelihood only through the pre-computed residuals and produce no bias in the estimated dynamical parameters.
 
 # Supplementary Methods
 
@@ -651,8 +658,11 @@ text(pk_tau - 0.1, -1,
 #| fig-height: 4.5
 rr <- diff(RES_COUPLED$spikes)
 rr_wn  <- 10
-rmean  <- zoo::rollmean(rr, rr_wn)
-rvar   <- zoo::rollapply(rr, rr_wn, var)
+
+if (!requireNamespace("zoo", quietly = TRUE))
+  stop("Package 'zoo' required: install.packages('zoo')")
+rmean <- zoo::rollmean(rr, rr_wn)
+rvar  <- zoo::rollapply(rr, rr_wn, var)
 
 mu_seq  <- seq(min(rmean, na.rm=TRUE), max(rmean, na.rm=TRUE), length.out = 200)
 kap_ref <- kappa_from_rho(PARAMS_COUPLED$free$mu_0, PARAMS_COUPLED$free$rho)
@@ -775,12 +785,10 @@ knitr::kable(tr_tbl, escape = FALSE,
 #| label: sensitivity-run
 #| cache: true
 #| include: false
-source("R/filter.R")
-source("R/sensitivity.R")
 
-# Sensitivity study uses PARAMS_UNCOUPLED (c_p = c_s = 0) so that θ_true = θ*
-# for the recovery sub-study, and RES_UNCOUPLED as the reference trajectory so
-# filter RMSE measures state-estimation error, not input-model mismatch.
+# Sensitivity study uses PARAMS_UNCOUPLED (c_p = -1.0, c_s = 0.1, treated as
+# fixed known constants during inference). θ_true = θ* holds because input_fn
+# is passed through to the conditional MLE and UKF at every grid point..
 SENS <- run_sensitivity(
   base_params  = PARAMS_UNCOUPLED,
   sim_res_ref  = RES_UNCOUPLED,
@@ -809,7 +817,7 @@ SENS <- run_sensitivity(
 #|   to the specific decay-rate regime chosen for the main analysis.
 #| fig-height: 6
 
-plot_sensitivity(SENS, ref_ap = PARAMS_COUPLED$free$a_p, ref_as = PARAMS_COUPLED$free$a_s)
+plot_sensitivity(SENS, ref_ap = PARAMS_UNCOUPLED$free$a_p, ref_as = PARAMS_UNCOUPLED$free$a_s)
 ```
 
 ## Figure S8 — Marginal vs conditional recovery comparison
@@ -884,7 +892,11 @@ plot_marginal_vs_conditional(
 ```{r}
 #| label: tbl-coupled-recovery
 #| tbl-cap: > 
-#|   Some caption.
+#|   **Coupled-model conditional MLE recovery summary.** True values,
+#|   mean estimates, relative bias, RMSE, and 95\% Wald CI coverage for all eight
+#|   free parameters under the coupled model ($a_{ps} = 0.15$, $a_{sp} = 0.10$;
+#|   $N = 250$ replications, 720 s each). Coupling terms $a_{ps}$ and $a_{sp}$ are
+#|   estimated jointly with the OU amplitude parameters.
 
 knitr::kable(REC_COUPLED$summary)
 ```
