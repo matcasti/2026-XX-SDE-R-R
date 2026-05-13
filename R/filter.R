@@ -358,7 +358,8 @@ pp_mle <- function(spikes,
     A_p  <- max(fp$sigma_p^2 / (2 * fp$a_p), 1e-12)
     A_s  <- max(fp$sigma_s^2 / (2 * fp$a_s), 1e-12)
     gap  <- max(fp$a_p - fp$a_s, 1e-4)
-    kap_v <- kappa_from_rho(fp$mu_0, fp$rho)   # = mu_0 / rho^2
+    mu_0_anchor <- max(mu_bar * exp(-(A_p + A_s) / 2), 0.10)
+    kap_v <- kappa_from_rho(mu_0_anchor, fp$rho)   # = mu_0 / rho^2
     v <- c(log(fp$a_s),
            log(gap),
            log(A_p),

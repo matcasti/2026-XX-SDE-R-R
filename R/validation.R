@@ -91,7 +91,7 @@ sde_ig_model_stats <- function(fit_result, rr_vec,
                                grid_dt = 0.005,
                                n_params = 6L) {
   # fit_result: output of fit_sde_ig() (which wraps pp_mle)
-  ll      <- fit_result$ll
+  ll      <- fit_result$filter$ll
   n_beats <- length(rr_vec)
 
   aic <- -2 * ll + 2 * n_params

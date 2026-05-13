@@ -457,7 +457,7 @@ wavelet_spectral_fit <- function(rr_vec, fs = 4.0, min_levels = 4L) {
           w_obs = w_use, f_bands = fb_use,
           method  = "L-BFGS-B",
           lower   = c(log(0.3),  log(0.01), log(1e-8), log(1e-8)),
-          upper   = c(log(15.0), log(3.0),  log(2.0),  log(2.0)),
+          upper   = c(log(15.0), log(2.0),  log(2.0),  log(2.0)),
           control = list(maxit = 500L, factr = 1e7)),
     error = function(e) list(par = th0, value = Inf, convergence = 99L)
   )

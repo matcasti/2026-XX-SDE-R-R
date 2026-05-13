@@ -432,33 +432,44 @@ compute_time_rescaling <- function(res) {
   n     <- length(sp)
   if (n < 2L) return(numeric(0L))
 
-  # Pre-compute all spike→grid boundary indices at once: O(n log m) total.
-  # findInterval(x, tg) returns the last index j such that tg[j] <= x[k].
-  # This matches the semantics of compute_effective_delta and sim_sde_ig:
-  # grid points inside (sp[k], sp[k+1]] are (i_bounds[k]+1):i_bounds[k+1].
-  i_bounds <- findInterval(sp, tg)   # length n
+  i_bounds <- findInterval(sp, tg)   # length n, O(n log m) total
 
-  vapply(seq_len(n - 1L), function(k) {
-    i0 <- i_bounds[k]; i1 <- i_bounds[k + 1L]
-    if (i1 <= i0) {
-      message(sprintf(
-        "compute_time_rescaling: spikes %d and %d map to the same grid index (IBI < dt). Returning NA.",
-        k, k + 1L))
-      return(NA_real_)
-    }
+  # Lengths of each IBI's grid-point span
+  lens <- i_bounds[-1L] - i_bounds[-n]        # i1 - i0 for each IBI
+  bad  <- lens <= 0L
+  if (any(bad)) {
+    warning(sprintf(
+      "compute_time_rescaling: %d IBI(s) shorter than dt; returning NA for those.",
+      sum(bad)))
+  }
 
-    # Grid points strictly inside (sp[k], sp[k+1]]: end-of-step indices.
-    idx        <- (i0 + 1L):i1
-    tau_ends   <- tg[idx]      - sp[k]   # elapsed time at end of each dt step
-    tau_starts <- tg[idx - 1L] - sp[k]   # elapsed time at start (= tau_ends - dt)
-    tau_starts[1L] <- 0                  # clamp: tg[i0] <= sp[k] so start <= 0
+  # Build flat index vectors for all valid IBIs at once
+  valid     <- which(!bad)
+  all_i1    <- i_bounds[-1L][valid]
+  all_i0    <- i_bounds[-n][valid]
+  all_lens  <- lens[valid]
 
-    # ΔΛ_j = log S(τ_start; μ_j, κ) − log S(τ_end; μ_j, κ) ≥ 0
-    # Mirrors exactly P_j = 1 − S(τ_end)/S(τ_start) used in sim_sde_ig().
-    mu_j <- mu_v[idx - 1L]
-    sum(log_ig_survival(tau_starts, mu_j, kappa) -
-          log_ig_survival(tau_ends,   mu_j, kappa))
-  }, numeric(1L))
+  # sequence() builds (i0+1):i1 for every IBI without an R loop
+  flat_end  <- sequence(all_lens, from = all_i0 + 1L)
+  flat_start <- flat_end - 1L
+  ibi_id    <- rep(valid, times = all_lens)
+
+  # Vectorised spike-relative times
+  tau_ends   <- tg[flat_end]   - sp[ibi_id]
+  tau_starts <- tg[flat_start] - sp[ibi_id]
+  # Clamp the very first entry of each IBI (tg[i0] <= sp[k] so tau_start[1] <= 0)
+  first_of_ibi              <- !duplicated(ibi_id)
+  tau_starts[first_of_ibi]  <- 0
+
+  mu_j <- mu_v[flat_start]
+
+  delta_ll <- log_ig_survival(tau_starts, mu_j, kappa) -
+    log_ig_survival(tau_ends,   mu_j, kappa)
+
+  # Aggregate per-IBI
+  Lk        <- rep(NA_real_, n - 1L)
+  Lk[valid] <- as.numeric(rowsum(delta_ll, ibi_id)[, 1L])
+  Lk
 }
 
 # ---- Numerical comparison utilities ----

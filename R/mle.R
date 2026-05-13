@@ -57,7 +57,7 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
   if (n < 2L)
     return(list(a = a_init, sigma = NA_real_, c_gain = NA_real_,
                 a_se = NA_real_, sigma_se = NA_real_, c_se = NA_real_,
-                log_lik = NA_real_, H_logscale = matrix(NA, 3, 3), n_obs = n))
+                log_lik = NA_real_, n_obs = n))
 
   idx    <- seq_len(n)
   x_cur  <- x_vec[idx]          # x_1 … x_{n}   — stable across all profile_at_a calls
