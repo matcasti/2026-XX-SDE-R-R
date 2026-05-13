@@ -82,7 +82,7 @@ CANONICAL_DURATION <- 720L
 PARAMS_UNCOUPLED <- make_model_params(
   a_p     = 2.0,  a_s     = 0.2,
   a_ps    = 0.0,  a_sp    = 0.0,
-  sigma_p = 0.20, sigma_s = 0.07,
+  sigma_p = 0.20, sigma_s = 0.07
   mu_0    = 1.0,  rho     = 0.20,
   c_p     = -1.0, c_s     = 0.1
 )
@@ -148,7 +148,7 @@ REC_STUDY <- recovery_study(
 )
 ```
 
-We validated parameter recovery in a Monte Carlo study of $N=250$ independent 720-second recordings generated under a canonical double-logistic stress protocol (Methods). The conditional MLE, applied given the true latent trajectory to isolate estimator precision from latent-state integration, shows sub-percent relative bias and 95% Wald confidence-interval coverage within 1–2 percentage points of nominal for all six parameters (Fig. 2a, Table 1). Profile likelihoods are strictly unimodal and sharply peaked for all parameters (Supplementary Fig. S3), confirming that the data contain sufficient curvature to locate the MLE precisely. The coupling terms $a_{ps}$ and $a_{sp}$ are similarly recoverable with nominal coverage in the full coupled model ($N=250$; Supplementary Fig. S4).
+We validated parameter recovery in a Monte Carlo study of $N=250$ independent 720-second recordings generated under a canonical double-logistic stress protocol (Methods). The conditional MLE, applied given the true latent trajectory to isolate estimator precision from latent-state integration, shows sub-percent relative bias and 95% Wald confidence-interval coverage within 1–2 percentage points of nominal for all six parameters (@fig-recovery, @tbl-recovery). Profile likelihoods are strictly unimodal and sharply peaked for all parameters (Supplementary Fig. S3), confirming that the data contain sufficient curvature to locate the MLE precisely. The coupling terms $a_{ps}$ and $a_{sp}$ are similarly recoverable with nominal coverage in the full coupled model ($N=250$; Supplementary Fig. S4).
 
 ```{r}
 #| label: fig-recovery
@@ -282,7 +282,7 @@ MARG_REC <- marginal_recovery_study(
 
 The spike-to-spike Unscented Kalman Filter (UKF) processes one IBI at a time. The prediction step uses the exact Gaussian OU transition (no approximation); the update step applies sigma-point quadrature to the nonlinear observation function $h(\mathbf{x})=\mu_0\exp(p-s)$ with IG measurement noise $R_k=\hat\mu_k^3/\kappa$ (Methods). The marginal log-likelihood contribution is computed as $\log\sum_i W_i^m f_\mathrm{IG}(\tau_k;\,h(\boldsymbol\sigma_i),\,\kappa)$ via log-sum-exp, avoiding both the linearization error of the Gaussian innovation approximation and the Jensen gap of the naïve lower bound.
 
-The oracle filter (true parameters) achieves an RMSE of `r sprintf("%.4f", sqrt(mean((flt_grid$delta - RES_UNCOUPLED$delta)^2, na.rm=TRUE)))` on $\hat\Delta(t)$ (Fig. 2b–d; Supplementary Table S1). The posterior contracts tightest along the differential direction $\mathbf{e}_-=[-1,1]^\top/\sqrt{2}$; per-branch variance along the common-mode direction is bounded by the OU stationary prior and remains finite, enabling recovery of individual branch trajectories $[\hat p(t),\hat s(t)]$ with per-branch posterior SDs reported in Fig. 2c.
+The oracle filter (true parameters) achieves an RMSE of `r sprintf("%.4f", sqrt(mean((flt_grid$delta - RES_UNCOUPLED$delta)^2, na.rm=TRUE)))` on $\hat\Delta(t)$ (@fig-recovery; Supplementary Table S1). The posterior contracts tightest along the differential direction $\mathbf{e}_-=[-1,1]^\top/\sqrt{2}$; per-branch variance along the common-mode direction is bounded by the OU stationary prior and remains finite, enabling recovery of individual branch trajectories $[\hat p(t),\hat s(t)]$ with per-branch posterior SDs reported in Fig. 2c.
 
 The marginal MLE, estimating all parameters from spike times alone, uses data-driven spectral starting values and a reparameterized 5D optimizer that enforces $a_p>a_s$ by construction and anchors $\mu_0$ to the sample mean IBI (Methods). Across $N=250$ replications the end-to-end pipeline achieves a marginal-to-oracle RMSE inflation ratio of `r sprintf("%.2f", mean(MARG_REC$rmse_delta[is.finite(MARG_REC$rmse_delta)], na.rm=TRUE) / sqrt(mean((flt_grid$delta - RES_UNCOUPLED$delta)^2, na.rm=TRUE)))`× with a convergence rate of `r sprintf("%.1f%%", 100*MARG_REC$N_valid/MARG_REC$N_total)` (Supplementary Table S3), placing the pipeline in the well-identified regime where state estimation, not parameter uncertainty, is the dominant error source.
 
@@ -296,7 +296,7 @@ beat_t   <- RES_COUPLED$spikes[-1]
 mu_beats <- approx(RES_COUPLED$time, RES_COUPLED$mu, xout = beat_t)$y
 ```
 
-We simulated 720 s of autonomic activity under a double-logistic stress protocol ($t_\mathrm{on}=300$ s, $t_\mathrm{off}=420$ s, steepness $k=0.1$ Hz) with the coupled full model ($a_p=2.0$, $a_s=0.2$, $a_{ps}=0.15$, $a_{sp}=0.10$ Hz; Methods). The onset of stress produces a marked rise in $\Delta(t)$ driven by rapid vagal withdrawal ($\tau_p=0.5$ s), followed by a slower sympathetic accumulation ($\tau_s=5$ s) amplified by cross-inhibition. Cessation reverses this pattern asymmetrically: vagal restoration is rapid, while $\Delta(t)$ returns to baseline gradually as sympathetic tone washes out (Fig. 3). This hysteresis emerges entirely from the structural difference $a_p \gg a_s$ and requires no model-specific adjustment.
+We simulated 720 s of autonomic activity under a double-logistic stress protocol ($t_\mathrm{on}=300$ s, $t_\mathrm{off}=420$ s, steepness $k=0.1$ Hz) with the coupled full model ($a_p=2.0$, $a_s=0.2$, $a_{ps}=0.15$, $a_{sp}=0.10$ Hz; Methods). The onset of stress produces a marked rise in $\Delta(t)$ driven by rapid vagal withdrawal ($\tau_p=0.5$ s), followed by a slower sympathetic accumulation ($\tau_s=5$ s) amplified by cross-inhibition. Cessation reverses this pattern asymmetrically: vagal restoration is rapid, while $\Delta(t)$ returns to baseline gradually as sympathetic tone washes out (@fig-results-main). This hysteresis emerges entirely from the structural difference $a_p \gg a_s$ and requires no model-specific adjustment.
 
 A distinctive property of the IG observation model is heteroscedastic variance: $\mathrm{Var}(\tau)=\mu(t)^3/\kappa$. As heart rate increases and $\mu$ falls, beat-to-beat variability is suppressed cubically (Supplementary Fig. S5), providing a mechanistic account of the exercise-induced reduction in HRV without any post-hoc correction. Time-rescaling residuals confirm adequate model fit: the Kolmogorov-Smirnov statistic against Uniform(0,1) is `r sprintf("%.4f", ks.test(1-exp(-compute_time_rescaling(RES_COUPLED)[is.finite(compute_time_rescaling(RES_COUPLED))]), "punif")$statistic)` ($p=`r sprintf("%.3f", ks.test(1-exp(-compute_time_rescaling(RES_COUPLED)[is.finite(compute_time_rescaling (RES_COUPLED))]), "punif")$p.value)`$; Supplementary Fig. S6).
 
@@ -371,7 +371,7 @@ The SDE-IG model is defined by the coupled OU system above together with the IG 
 
 Given the latent trajectory, the log-likelihood separates into three independent blocks (Supplementary Note 1). OU parameters are estimated by one-dimensional profile likelihood over $\log a$; IG parameters by closed-form score equations. Standard errors come from the analytical FIM.
 
-Integrating over unobserved states, the total marginal log-likelihood $\sum_k\log p(\tau_k\mid\Theta)$ is maximized by L-BFGS-B in reparameterized coordinates $({\log a_s, \log(a_p-a_s), \log A_p, \log A_s, \log\kappa})$ where $A_ \nu = \sigma_\nu^2 / (2a_\nu)$ are the OU branch spectral amplitudes and $\mu_0=\bar\tau\exp(-(A_p+A_s)/2)$ is anchored to the sample mean IBI. This encoding enforces $a_p>a_s$ by construction and near-orthogonalizes the five free coordinates (Supplementary Note 5). Data-driven starting values are obtained from biexponential ACF fitting and band-centroid spectral estimation; a two-stage wavelet Whittle pre-estimator is available for recordings with poor spectral resolution (Supplementary Methods).
+Integrating over unobserved states, the total marginal log-likelihood $\sum_k\log p(\tau_k\mid\Theta)$ is maximized by L-BFGS-B in reparameterized coordinates $(\log a_s,\; \log(a_p-a_s),\; \log A_p,\; \log A_s,\; \log\kappa)$, where $A_\nu = \sigma_\nu^2/(2a_\nu)$ is the OU stationary variance of branch $\nu$ and $\mu_0=\bar\tau\exp(-(A_p+A_s)/2)$ is anchored to the sample mean IBI. This encoding enforces $a_p>a_s$ by construction; $(A_p, A_s)$ are identified by the HF and LF spectral amplitudes respectively, near-orthogonalizing the five free coordinates (Supplementary Note 5). Data-driven starting values are obtained from biexponential ACF fitting and band-centroid spectral estimation; a two-stage wavelet Whittle pre-estimator is available for recordings with poor spectral resolution (Supplementary Methods).
 
 ## UKF implementation
 

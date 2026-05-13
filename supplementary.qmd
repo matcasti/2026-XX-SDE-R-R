@@ -92,7 +92,7 @@ $$
 \hat\kappa = \frac{N}{\displaystyle\sum_k \frac{(\tau_k - \hat\mu_k)^2}{\hat\mu_k^2\,\tau_k}}
 $$
 
-where $\hat\mu_k = \hat\mu_0 e^{-\bar\Delta_k}$, and $\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}$ is recovered by the delta method.  Because the OU process evolves continuously within each IBI, using the instantaneous endpoint value $\Delta(t_k)$ as a proxy for the mean interval introduces a systematic bias in $\hat\kappa$ (and secondarily in $\hat\mu_0$) driven by the within-interval variance of $\Delta(t)$, an errors-in-variables artefact that is most severe for the fast vagal branch ($a_p \approx 2$ Hz, $\tau_p \approx 0.5$ s, comparable to a typical IBI). The estimator therefore uses the **interval-averaged effective drive**
+where $\hat\mu_k = \hat\mu_0 e^{-\bar\Delta_k}$, and $\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}$ is recovered by the delta method.  Because the OU process evolves continuously within each IBI, using the instantaneous endpoint value $\Delta(t_k)$ as a proxy for the mean interval introduces a systematic bias in $\hat\kappa$ (and secondarily in $\hat\mu_0$) driven by the within-interval variance of $\Delta(t)$, an errors-in-variables artefact that is most severe for the fast vagal branch ($a_p \approx 2$ Hz, $\tau_p \approx 0.5$ s, comparable to a typical IBI). The estimator therefore uses the interval-averaged effective drive.
 
 $$
 \bar\Delta_k \;=\; -\log\!\left(\frac{1}{n_k}\sum_{j \in \text{IBI}_k} e^{-\Delta(t_j)}\right)
@@ -373,7 +373,7 @@ using the identity $1 - e^x = -\text{expm1}(x)$, which is numerically stable for
 
 The total marginal log-likelihood $\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)$ is maximized over $\Theta$ by L-BFGS-B in log-space. Starting values are fitted by a biexponential model to the tachogram ACF to recover $a_p$ and $a_s$, distributes the observed SDNN between the two spectral variances according to the fitted ACF weights to recover $\sigma_p$ and $\sigma_s$, applies the log-normal mean correction $\hat\mu_0 = \bar\tau\exp(-\hat\sigma_\Delta^2/2)$ to recover $\mu_0$, and uses the stationary IG MLE for $\kappa$ to recover $\rho$. These data-driven starting values are consistent with the observed second-order structure of the tachogram (Table S5) and substantially reduce the frequency of local-optimum convergence failures relative to literature defaults. 
 
-The optimizer works in reparameterized coordinates $(\log a_s,\, \log(a_p - a_s),\, \log\sigma_\Delta^2,\, \operatorname{logit}\psi,\, \log\rho)$, where $\sigma_\Delta^2 = \sigma_p^2/(2a_p) + \sigma_s^2/(2a_s)$ is the total OU spectral variance and $\psi = A_p/\sigma_\Delta^2$ with $A_n = \sigma_n^2/(2a_n)$ is the HF spectral fraction. Two structural properties are enforced by construction: $a_p > a_s$ (LF/HF pole ordering) holds because $a_p = a_s + \exp(\log(a_p - a_s))$, requiring no penalty or projection; and $\mu_0 = \bar\tau_\mathrm{obs}\exp(-\sigma_\Delta^2/2)$ (mean-anchor, exact under the stationary inference model) eliminates $\mu_0$ from the optimizer. The remaining five coordinates are identified by near-orthogonal data channels: $\log a_s$ by LF spectral pole position; $\log(a_p - a_s)$ by HF pole position relative to LF; $\log\sigma_\Delta^2$ by total SDNN; $\operatorname{logit}\psi$ by the HF/LF power ratio; and $\log\rho$ by the shape of the inter-beat interval distribution conditional on the OU trajectory. The transform is exact ($\mathrm{pack} \circ \mathrm{unpack} = \mathrm{identity}$) with no moment approximation, giving 5 free parameters for the uncoupled model and 7 for the coupled model. The coupling terms $a_{ps}$ and $a_{sp}$ enter on their natural scale with lower bound zero.
+The optimizer works in reparameterized coordinates $(\log a_s,\; \log(a_p - a_s),\; \log A_p,\; \log A_s,\; \log\kappa)$, where $A_\nu = \sigma_\nu^2/(2a_\nu)$ is the OU stationary variance of branch $\nu$ — equivalently the power-spectral amplitude of the corresponding Lorentzian — and $\mu_0 = \bar\tau_{\rm obs}\exp(-(A_p+A_s)/2)$ is anchored to the sample mean IBI and eliminated from the optimizer. Three structural properties are enforced by construction: (i) $a_p > a_s$ holds because $a_p = a_s + \exp(\log(a_p-a_s))$; (ii) $\sigma_\nu = \sqrt{2a_\nu A_\nu}$ is recovered exactly from the optimized $(a_\nu, A_\nu)$; (iii) $\rho = \sqrt{\mu_0/\kappa}$ is derived, not free. The five free coordinates are identified by near-orthogonal data channels: $\log a_s$ by LF spectral pole position; $\log(a_p-a_s)$ by HF pole position relative to LF; $\log A_p$ by HF spectral amplitude (vagal stationary variance, identified by RMSSD); $\log A_s$ by LF spectral amplitude (sympathetic stationary variance, identified by LF power); and $\log\kappa$ by the shape of the inter-beat interval distribution. The transform is exact ($\mathrm{pack}\circ\mathrm{unpack} = \mathrm{identity}$) with no approximation, giving 5 free parameters for the uncoupled model and 7 for the coupled model. Coupling terms enter on their natural scale with lower bound zero.
 
 ## Note 6 — UKF marginal likelihood and sigma-point quadrature
 
@@ -898,7 +898,19 @@ plot_marginal_vs_conditional(
 #|   $N = 250$ replications, 720 s each). Coupling terms $a_{ps}$ and $a_{sp}$ are
 #|   estimated jointly with the OU amplitude parameters.
 
-knitr::kable(REC_COUPLED$summary)
+df_c <- REC_COUPLED$summary
+data.frame(
+  Parameter = c("$a_p$","$a_s$","$\\sigma_p$","$\\sigma_s$",
+                "$\\mu_0$","$\\rho$","$a_{ps}$","$a_{sp}$")[seq_len(nrow(df_c))],
+  True      = sprintf("%.3f", df_c$true_value),
+  Mean_hat  = sprintf("%.3f", df_c$mean_hat),
+  Rel_bias  = sprintf("%.2f\\%%", df_c$rel_bias_pct),
+  RMSE      = sprintf("%.4f", df_c$rmse),
+  Coverage  = sprintf("%.1f\\%%", df_c$coverage_95)
+) |>
+  knitr::kable(escape = FALSE,
+               col.names = c("Parameter","True","Mean $\\hat\\theta$",
+                             "Rel. bias","RMSE","95\\% CI coverage"))
 ```
 
 
