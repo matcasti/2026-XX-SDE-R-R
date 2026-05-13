@@ -1,0 +1,1097 @@
+---
+title: "A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability"
+subtitle: "Supplementary Material"
+author: 
+  - name: "Matías Castillo-Aguilar"
+    affiliation: "Escuela de Medicina, Universidad de Magallanes, Punta Arenas, Chile."
+    orcid: "0000-0001-7291-247X"
+  - name: "Noah Beelders"
+    affiliation: "Department of Mathematics, University of Munich, Theresienstraße 39, 80333 Munich, Germany."
+  - name: "Cristian Núñez-Espinosa"
+    affiliation: "Escuela de Medicina, Universidad de Magallanes, Punta Arenas, Chile."
+bibliography: references.bib
+date: today
+title-block-style: manuscript
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    fig-format: svg
+---
+
+
+```{r}
+#| include: false
+source("R/model_functions.R")
+source("R/spectral_init.R")
+source("R/mle.R")
+source("R/filter.R")
+source("R/identifiability.R")
+source("R/sensitivity.R")
+
+# Reproduce all objects needed for SI figures
+CANONICAL_INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 0.1)
+CANONICAL_DURATION <- 720L
+PARAMS_UNCOUPLED <- make_model_params(
+  a_p=2.0, a_s=0.2, sigma_p=0.20, sigma_s=0.07,
+  mu_0=1.0, rho=0.20, c_p=-1.0, c_s=0.1)
+PARAMS_COUPLED <- make_model_params(
+  a_p=2.0, a_s=0.2, a_ps=0.15, a_sp=0.10,
+  sigma_p=0.20, sigma_s=0.07, mu_0=1.0, rho=0.20,
+  c_p=-1.0, c_s=0.1)
+set.seed(2026)
+RES_UNCOUPLED <- sim_sde_ig(CANONICAL_DURATION, 0.005,
+                             PARAMS_UNCOUPLED, CANONICAL_INPUT_FN)
+set.seed(1234)
+RES_COUPLED   <- sim_sde_ig(CANONICAL_DURATION, 0.005,
+                             PARAMS_COUPLED, CANONICAL_INPUT_FN)
+KAPPA_REF     <- kappa_from_rho(PARAMS_COUPLED$free$mu_0,
+                                 PARAMS_COUPLED$free$rho)
+```
+
+# Supplementary Notes
+
+## Note 1 — Block-diagonal FIM and closed-form identifiability
+
+### Separability of the Conditional Log-Likelihood
+
+For the uncoupled sub-model ($a_{ps} = a_{sp} = 0$), the conditional log-likelihood separates into three independent blocks:
+
+
+$$
+\log \mathcal{L}(\Theta \mid \mathbf{x}_{0:T},\, \{t_k\})
+= \underbrace{\log \mathcal{L}_p(a_p,\, \sigma_p,\, c_p)}_{\text{OU parasympathetic}}
++ \underbrace{\log \mathcal{L}_s(a_s,\, \sigma_s,\, c_s)}_{\text{OU sympathetic}}
++ \underbrace{\log \mathcal{L}_\text{obs}(\mu_0,\, \rho)}_{\text{IG observations}}
+$$
+
+where the three components arise from the OU transition densities of $p(t)$ and $s(t)$ and from the IG beat-time densities respectively. 
+
+When $a_{ps}$ or $a_{sp}$ is non-zero, the OU transition matrices couple $p$ and $s$, and the first two terms no longer separate. In that case the OU log-likelihood must be maximized jointly over all eight OU parameters numerically (see @sec-coupling). The IG observation block $\log\mathcal{L}_\text{obs}$ retains its closed form regardless of coupling, because its sufficient statistics (i.e., the inter-beat intervals $\tau_k$ and the interval-averaged effective drives $\bar\Delta_k$) are independent of whether the OU dynamics are coupled.
+
+This separability has two important consequences.
+
+**Consequence 1: closed-form MLEs.** Each block admits an analytic maximum. For the OU blocks, the data generating structure is a Gaussian linear model with known design matrix:
+
+$$
+x_{i+1} = x_i e^{-a\Delta t} + \frac{c\, u_i}{a}(1 - e^{-a\Delta t}) + \varepsilon_i, \qquad
+\varepsilon_i \sim \mathcal{N}\!\left(0,\, \frac{\sigma^2}{2a}(1 - e^{-2a\Delta t})\right)
+$$
+
+The decay rate $a$ is first estimated by one-dimensional profile likelihood over $\log a$, with $(\hat{c}, \hat{\sigma})$ computed in closed form at each candidate value: $\hat{c} = \sum z_i y_i / \sum z_i^2$ (OLS) and $\hat\sigma^2 = \overline{r_i^2}/C_a$, where $r_i$ are OLS residuals and $C_a = (1 - e^{-2a\Delta t})/(2a)$. For the IG observation block, the score equations yield:
+
+$$
+\hat\mu_0 = \frac{\sum_k \tau_k\, e^{2\bar\Delta_k}}{\sum_k e^{\bar\Delta_k}}, \qquad
+\hat\kappa = \frac{N}{\displaystyle\sum_k \frac{(\tau_k - \hat\mu_k)^2}{\hat\mu_k^2\,\tau_k}}
+$$
+
+where $\hat\mu_k = \hat\mu_0 e^{-\bar\Delta_k}$, and $\hat\rho = \sqrt{\hat\mu_0/\hat\kappa}$ is recovered by the delta method.  Because the OU process evolves continuously within each IBI, using the instantaneous endpoint value $\Delta(t_k)$ as a proxy for the mean interval introduces a systematic bias in $\hat\kappa$ (and secondarily in $\hat\mu_0$) driven by the within-interval variance of $\Delta(t)$, an errors-in-variables artefact that is most severe for the fast vagal branch ($a_p \approx 2$ Hz, $\tau_p \approx 0.5$ s, comparable to a typical IBI). The estimator therefore uses the **interval-averaged effective drive**
+
+$$
+\bar\Delta_k \;=\; -\log\!\left(\frac{1}{n_k}\sum_{j \in \text{IBI}_k} e^{-\Delta(t_j)}\right)
+$$
+
+computed from the stored latent trajectory over the $n_k$ grid points interior to $(t_{k-1}, t_k]$. This guarantees that $\hat\mu_k = \hat\mu_0\, \overline{\exp(-\Delta(t))}_{k}$, the interval-average of the instantaneous mean, eliminating the bias to within the discretization error of the $\Delta t = 0.005$ s grid (confirmed in the recovery study below).
+
+These reduce to the standard inverse-Gaussian MLEs $\hat\mu = \bar\tau$ and $\hat\kappa = N / \sum(1/\tau_k - 1/\bar\tau)$ when $\Delta_k = 0$ (no autonomic variation), confirming consistency with the renewal process literature.
+
+**Consequence 2: block-diagonal FIM.** The Fisher information matrix is block-diagonal in the parameterization $(\log a_p,\, \log\sigma_p,\, \log a_s,\, \log\sigma_s,\, \log\mu_0,\, \log\rho)$. Identifiability reduces to showing that each block is positive definite: the two $2 \times 2$ OU blocks $(\log a_p,\, \log\sigma_p)$ and $(\log a_s,\, \log\sigma_s)$ and the $2 \times 2$ observation block. This block-diagonal structure holds for $a_{ps} = a_{sp} = 0$; when coupling is nonzero the blocks link and the FIM is computed as a single $8 \times 8$ numerical object over $(\log a_p, \log a_s, a_{ps}, a_{sp}, \log\sigma_p, \log\sigma_s, \log\mu_0, \log\rho)$ [@sec-coupling].
+
+### Observed Fisher Information Matrix
+
+The block-diagonal structure of the conditional log-likelihood implies a corresponding block-diagonal expected FIM. For each block the condition number is analytically characterised. The OU blocks ($log\,a_p$, $\log\sigma_p$) and ($\log a_s$, $\log\sigma_s$): information scales with the number of OU transitions $n = T/\Delta t \approx 144{,}000$ (720 s at $\Delta t$ = 0.005s). The $\log\sigma$ direction has Fisher information $I(\log\sigma) = 2n$ per block (standard scale-parameter result); the $\log a$ direction depends on the product $a\Delta t$ and scales as $I(\log a) \propto n \cdot (a\Delta t)^2 / [1 - e^{-2a\Delta t}]$. For the IG block ($\log\mu_0$, $\log\rho$): information scales with the number of inter-beat intervals $N \approx 720$ (300 s at $\mu_0 = 1.0$). The analytical expressions $I(\log\mu_0) = \kappa N/\mu_0$ and $I(\log\rho) = N/2$ give a theoretical condition number of $2\kappa/\mu_0$; for the reference parameters this equals $2 \times 25 / 1 = 50$, well-conditioned.
+
+Numerical verification of these quantities from the reference simulation is given in Table @tbl-fim. Empirical identifiability evidence, sub-percent bias and nominal 95% CI coverage for all parameters, is reported in Section @sec-recovery.
+
+Table @tbl-fim confirms the analytical predictions. Both OU blocks are well conditioned ($\kappa < 10^2$) owing to the large number of state-transition observations; the IG block has a larger but still well-conditioned number consistent with $2\kappa/\mu_0 \approx 50$. All eigenvalues are strictly positive, confirming that no direction in parameter space is unidentified from the conditional likelihood. The profile likelihoods (@sec-profiles) and the Monte Carlo recovery study (@sec-recovery) provide empirical corroboration with direct quantification of finite-sample bias and coverage.
+
+
+## Note 2 — Log-link derivation and IG biophysical rationale
+
+###  Biophysical Rationale: The Integrate-and-Fire Mechanism
+
+The mapping from continuous latent autonomic states to discrete heartbeat times is grounded in the biophysics of the sinoatrial node. During diastole, the pacemaker membrane potential rises from a hyperpolarized resting level under the influence of a net inward depolarizing current. If this potential trajectory is idealized as a Wiener process with positive drift, the time to reach the firing threshold follows an Inverse Gaussian (IG) distribution, the canonical first-passage time distribution for Brownian motion with drift [@chhikara1976optimum]. This provides a direct structural link between statistical modeling of inter-beat intervals and cardiac cellular electrophysiology, distinguishing the present framework from Poisson or Gaussian observation models that lack this mechanistic grounding.
+
+### The Log-Link Mean Interval
+
+The time-varying mean interval $\mu(t)$ connects the latent autonomic states to the location parameter of the IG distribution. We define this link as
+
+$$
+\mu(t) \;=\; \mu_0 \cdot \exp\!\bigl(p(t) - s(t)\bigr) \;=\; \mu_0 \cdot \exp\!\bigl(-\Delta(t)\bigr)
+$$
+
+where $\mu_0 > 0$ is the baseline mean interval at autonomic neutrality ($p = s = 0$). This log link replaces the linear formulation used in earlier implementations and offers three essential properties.
+
+First, $\mu(t) > 0$ for all state values without exception, by construction. No clipping, flooring, or soft constraint is required. The linear link $\mu(t) = 1/(\rho_0 + k_\text{sym}s - k_\text{par}p)$ can produce negative or undefined values when autonomic state fluctuations push the rate below zero, requiring ad hoc correction that biases the likelihood.
+
+Second, the log link is the canonical link for positive continuous outcomes and encodes the physiologically appropriate multiplicative structure of autonomic modulation. Autonomic tone acts multiplicatively on the depolarization drift of the SA node [@ghali2020mechanisms]; a unit increase in sympathetic tone does not add a fixed increment to heart rate but scales it by a constant factor. The log link captures this precisely: $\mu(t) = \mu_0 e^{-\Delta(t)}$, so each unit of $\Delta(t)$ scales the mean interval by $e^{-1} \approx 0.37$.
+
+Third, the log link renders $\log\mu(t) = \log\mu_0 - \Delta(t)$ a linear function of the latent state. This is the observation equation for a Gaussian state-space model, which simplifies the linearization step in the extended Kalman filter (Phase 4) and makes the connection to existing state-space HRV methods transparent.
+
+```{r}
+#| label: fig-log-link
+#| fig-cap: "Comparison of the log link and the linear link for a simulated net drive $\\Delta(t) = s(t) - p(t)$. **Left:** The linear link $\\mu(t) = 1/(\\rho_0 + \\Delta(t))$ becomes undefined and negative when $\\Delta(t)$ crosses below $-\\rho_0$, requiring clipping. **Right:** The log link $\\mu(t) = \\mu_0 \\exp(-\\Delta(t))$ is always positive and smooth. The shaded region on the left marks the invalid domain."
+
+set.seed(123)
+tt <- seq(0, 20, by = 0.02)
+# Simulate a net drive with large excursions to stress-test positivity
+del <- cumsum(rnorm(length(tt), 0, 0.06))
+del <- del - mean(del)
+
+rho0  <- 1 / 1.0   # baseline rate ~60 BPM
+mu_ln <- 1.0 * exp(-del)
+mu_li <- ifelse((rho0 + del) > 0.1, 1 / (rho0 + del), NA)
+
+par(mfrow = c(1, 2), mar = c(4.5, 4.5, 2.5, 1))
+
+# Left: linear link, show where it fails
+ylm <- c(-0.5, max(mu_li, na.rm = TRUE) * 1.1)
+plot(tt, mu_li, type = "l", col = "#D55E00", lwd = 2,
+     xlab = "Time (s)", ylab = expression(mu(t) ~ "[s]"),
+     main = "Linear Link", frame.plot = FALSE, ylim = ylm)
+rect(xleft = 0, xright = max(tt), ybottom = -0.6, ytop = 0,
+     col = rgb(0.8, 0, 0, 0.12), border = NA)
+abline(h = 0, lty = 2, col = "gray50")
+text(10, -0.25, "Invalid domain\n(clipping required)",
+     col = "firebrick", cex = 0.8, adj = 0.5)
+
+# Right: log link, always positive
+plot(tt, mu_ln, type = "l", col = "#0072B2", lwd = 2,
+     xlab = "Time (s)", ylab = expression(mu(t) ~ "[s]"),
+     main = "Log Link (this model)", frame.plot = FALSE)
+abline(h = 1.0, lty = 2, col = "gray50")
+text(1, 0.8, expression(mu[0] == 1.0 ~ s), adj = 0, col = "gray40", cex = 0.8)
+```
+
+###  The Probability Density Function
+
+Given that the previous beat occurred at time $u_k$, the density of the next beat time $t > u_k$ is
+
+$$
+f(t \mid u_k,\, \mathbf{x}(t)) \;=\;
+\left[\frac{\kappa}{2\pi(t - u_k)^3}\right]^{1/2}
+\exp\!\left\{
+  -\frac{\kappa\bigl[(t-u_k) - \mu(t)\bigr]^2}{2\,\mu(t)^2\,(t-u_k)}
+\right\},
+$$
+
+where $\tau = t - u_k$ is the elapsed time since the last beat and $\kappa = \mu_0/\rho^2 > 0$ is the derived shape parameter and $\rho = \sqrt{\mu_0/\kappa}$ is the baseline coefficient of variation estimated directly from the data. In the first-passage interpretation, $\rho$ is proportional to the threshold-to-noise ratio of the SA node membrane: small $\rho$ corresponds to a near-deterministic rhythm; large $\rho$ to a highly variable, noise-dominated one. Typical resting values are $\rho \approx 0.15$-$0.30$.
+
+The shape parameter $\kappa > 0$ controls interval regularity but is not directly interpretable in variance units. We therefore work with the baseline coefficient of variation
+
+$$
+\rho \;=\; \sqrt{\mu_0/\kappa}
+$$
+
+so that $\kappa = \mu_0/\rho^2$ and $\operatorname{Var}(\tau_0) = \rho^2 \mu_0^2$ at autonomic neutrality ($\Delta = 0$). For a general state, $\operatorname{Var}(\tau) = \rho^2 \mu(t)^3/\mu_0$, preserving the heteroscedastic property while making the baseline variability directly readable: $\rho \approx 0.22$ corresponds to a coefficient of variation of 22\%, typical of resting HRV. The free parameter estimated from data is $\rho$; all likelihood computations use $\kappa = \mu_0/\rho^2$ internally.
+
+A distinctive property of the IG distribution is its **heteroscedastic variance**: $\text{Var}(\tau) = \mu(t)^3/\kappa$. The cubic dependence on the mean implies that as heart rate increases (and $\mu$ decreases), beat-to-beat variability decreases automatically, even when $\kappa$ is held constant. This provides a mechanistic account of the empirically well-documented reduction in HRV during exercise and stress, without requiring any model-specific adjustments.
+
+###  Log-Space Hazard Computation
+
+For the conditional intensity function, the instantaneous probability of a beat at time $t$ given survival to time $t$, we require the hazard rate $\lambda(t \mid \mathcal{H}_t) = f(\tau)/S(\tau)$, where $S(\tau) = 1 - F(\tau)$ is the survival function. The IG CDF is
+
+$$
+F(\tau;\mu,\kappa) \;=\;
+\Phi\!\left(\sqrt{\tfrac{\kappa}{\tau}}\Bigl(\tfrac{\tau}{\mu}-1\Bigr)\right)
++
+\exp\!\left(\tfrac{2\kappa}{\mu}\right)
+\Phi\!\left(-\sqrt{\tfrac{\kappa}{\tau}}\Bigl(\tfrac{\tau}{\mu}+1\Bigr)\right)
+$$
+
+The term $\exp(2\kappa/\mu)$ grows rapidly: at $\kappa = 15$, $\mu = 0.5$ s, its value is $e^{60} \approx 10^{26}$. Although this is within IEEE 754 double-precision range, the numerical product $\exp(2\kappa/\mu) \cdot \Phi(-z_2)$ involves multiplying a huge number by a tiny one, causing catastrophic cancellation that propagates into both the survival function and the hazard. More critically, any gradient-based optimization of the likelihood will encounter numerical instability at precisely the parameter values of greatest interest, those where heart rate is elevated.
+
+The resolution is to compute the log-survival entirely in log space. Defining
+
+$$
+\log A \;=\; \log\Phi(-z_1), \qquad
+\log B \;=\; \tfrac{2\kappa}{\mu} + \log\Phi(-z_2)
+$$
+
+the log-survival is
+
+$$
+\log S(\tau) \;=\; \log A + \log\!\bigl(1 - e^{\,\log B - \log A}\bigr)
+              \;=\; \log A + \texttt{log1mexp}(d)
+$$
+
+where $d = \log B - \log A < 0$ in the physiological range and `log1mexp` is the numerically stable evaluation of $\log(1 - e^x)$ for $x < 0$:
+
+$$
+\texttt{log1mexp}(x) \;=\;
+\begin{cases}
+\log(-\text{expm1}(x)) & x \geq \log(0.5) \\
+\text{log1p}(-\exp(x)) & x < \log(0.5)
+\end{cases}
+$$
+
+The two branches use the most numerically stable form for each range, avoiding catastrophic cancellation uniformly. The log-hazard is then simply $\log\lambda(\tau) = \log f(\tau) - \log S(\tau)$, computed entirely in log space with no intermediate overflow.
+
+```{r}
+#| label: fig-ig-shapes
+#| fig-cap: >
+#|   The Inverse Gaussian probability density. **Left:** Effect of the 
+#|   mean interval $\mu$ (shape fixed at $\kappa = 15$). As $\mu$ decreases 
+#|   (sympathetic dominance), the distribution shifts to earlier times. 
+#|   **Right:** Effect of the shape parameter $\kappa$ (mean fixed at 
+#|   $\mu = 1.00$ s). Higher $\kappa$ corresponds to lower variance, 
+#|   a more regular rhythm. The heteroscedastic property 
+#|   $=text{Var}(\tau) = \mu^3/\kappa$ links both panels: 
+#|   reducing $\mu$ reduces the variance even at fixed $\kappa$.
+#|   These are illustrative parameter values chosen to show the shape of the distribution
+#|   across a physiological range.
+#| fig-height: 4
+
+t_sq  <- seq(0.01, 2.2, length.out = 400)
+dig_v <- function(t, mu, k) exp(log_ig_pdf(t, mu, k))
+
+mu_v  <- c(0.5, 0.85, 1.2)
+k_v   <- c(5, 15, 50)
+cols  <- c("#D55E00", "black", "#0072B2")
+
+par(mfrow = c(1, 2), mar = c(4.5, 4.5, 2.5, 1))
+
+# Left: varying mu
+plot(NA, xlim = c(0, 2.2), ylim = c(0, 6),
+     xlab = "Interval (s)", ylab = "Density",
+     main = "Effect of mean interval \u03bc", frame.plot = FALSE)
+for (i in 1:3) lines(t_sq, dig_v(t_sq, mu_v[i], 15), col = cols[i], lwd = 2)
+legend("topright",
+       legend = paste("\u03bc =", mu_v, "s"),
+       col = cols, lwd = 2, bty = "n", cex = 0.85)
+
+# Right: varying kappa
+plot(NA, xlim = c(0, 2.2), ylim = c(0, 6),
+     xlab = "Interval (s)", ylab = "Density",
+     main = "Effect of shape \u03ba", frame.plot = FALSE)
+for (i in 1:3) lines(t_sq, dig_v(t_sq, 0.85, k_v[i]), col = cols[i], lwd = 2)
+legend("topright",
+       legend = paste("\u03ba =", k_v),
+       col = cols, lwd = 2, bty = "n", cex = 0.85)
+```
+
+###  The Hazard Function and Its Physiological Significance
+
+The resulting hazard function $\lambda(\tau)$ is non-monotonic. At $\tau = 0$, the hazard is zero, correctly modeling the absolute refractory period of cardiac tissue. It rises steeply as $\tau$ approaches $\mu(t)$, the membrane potential nears threshold, then peaks and gradually decreases in the tail. Under the log link, a shift in $\Delta(t)$ compresses or stretches this profile continuously, modulating the probability of an earlier or later beat without discontinuity.
+
+```{r}
+#| label: fig-hazard-function
+#| fig-cap: "The Inverse Gaussian hazard function $\\lambda(\\tau \\mid \\mathcal{H}_t)$, computed using the fully log-space algorithm. **Left:** Effect of sympathetic activation: reducing $\\mu(t)$ shifts the hazard peak to the left, increasing the probability of an earlier beat. **Right:** The hazard surface as a function of both elapsed time and the current mean interval. Brighter colors indicate higher instantaneous firing probability."
+
+tau_v  <- seq(0.01, 2.5, length.out = 500)
+
+kap_fig <- kappa_from_rho(PARAMS_COUPLED$free$mu_0, PARAMS_COUPLED$free$rho)
+mu_base <- PARAMS_COUPLED$free$mu_0
+
+h_base  <- vapply(tau_v, ig_hazard, numeric(1), mu = mu_base,        kappa = kap_fig)
+h_sym   <- vapply(tau_v, ig_hazard, numeric(1), mu = mu_base * 0.60, kappa = kap_fig)
+h_para  <- vapply(tau_v, ig_hazard, numeric(1), mu = mu_base * 1.40, kappa = kap_fig)
+
+mu_ax  <- seq(mu_base * 0.4, mu_base * 1.5, length.out = 60)
+tau_ax <- seq(0.02, 1.8, length.out = 60)
+hgrid  <- outer(tau_ax, mu_ax, Vectorize(function(ta, mu) ig_hazard(ta, mu, kap_fig)))
+
+par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
+
+plot(tau_v, h_base, type = "l", lwd = 2.5, col = "black",
+     ylim = c(0, max(c(h_base, h_sym, h_para)) * 1.08),
+     xlab = "Time since last beat (s)",
+     ylab = expression(lambda(tau ~ "|" ~ H[t])),
+     main = "Hazard Function", frame.plot = FALSE)
+lines(tau_v, h_sym,  lwd = 2.5, col = "#D55E00", lty = 2)
+lines(tau_v, h_para, lwd = 2.5, col = "#0072B2", lty = 3)
+legend("topleft",
+       legend = c(bquote(mu == .(mu_base) ~ s ~ "(baseline)"),
+                  bquote(mu == .(round(mu_base * 0.60, 2)) ~ s ~ "(sympathetic \u2191)"),
+                  bquote(mu == .(round(mu_base * 1.40, 2)) ~ s ~ "(vagal \u2191)")),
+       col = c("black", "#D55E00", "#0072B2"),
+       lwd = 2.5, lty = c(1, 2, 3), bty = "n", cex = 0.85)
+
+image(tau_ax, mu_ax, hgrid,
+      col  = hcl.colors(100, "YlOrRd", rev = TRUE),
+      xlab = "Time since last beat (s)",
+      ylab = expression("Mean interval" ~ mu(t) ~ "[s]"),
+      main = "Hazard Surface", axes = FALSE)
+axis(1); axis(2)
+contour(tau_ax, mu_ax, hgrid, add = TRUE,
+        col = "black", nlevels = 5, lwd = 0.8)
+```
+
+## Note 3 — Exact OU transition kernel and discretization bias
+
+###  Exact Ornstein-Uhlenbeck Transition Kernel
+
+The OU process $dx = (-ax + cu)\,dt + \sigma\,dW$ has an exact Gaussian transition density. Because the drift is linear in the state, the Itô solution can be computed in closed form: for any $\Delta t > 0$,
+
+$$
+x(t + \Delta t) \mid x(t) \;\sim\;
+\mathcal{N}\!\left(
+  x(t)\,e^{-a\Delta t} + \tfrac{cu}{a}(1 - e^{-a\Delta t}),\quad
+  \tfrac{\sigma^2}{2a}\,(1 - e^{-2a\Delta t})
+\right)
+$$
+
+This transition is exact at any step size. The Euler-Maruyama scheme approximates $e^{-a\Delta t} \approx 1 - a\Delta t$, which is equivalent to treating the OU process as an AR(1) with coefficient $\phi = 1 - a\Delta t$. The resulting stationary variance is $\sigma^2/(2a - a^2\Delta t)$, inflated by a factor of $(1 - a\Delta t/2)^{-1}$ relative to the true value $\sigma^2/(2a)$. For the vagal branch ($a_p = 2.0$, $\Delta t = 0.005$ s) this is a $0.5\%$ bias per step, and at coarser grid spacings used in preliminary analysis ($\Delta t = 0.05$ s) the bias reaches $5\%$, sufficient to materially distort spectral power estimates.
+
+Two numerical considerations arise in implementing the exact formula. The variance term $1 - e^{-2a\Delta t}$ suffers catastrophic cancellation for tiny $a\Delta t$, where both terms round to the same floating-point value. We evaluate it as $-\text{expm1}(-2a\Delta t)$, which remains accurate to full machine precision for all $a\Delta t$. Similarly, the mean shift $1 - e^{-a\Delta t}$ is evaluated as $-\text{expm1}(-a\Delta t)$.
+
+## Note 4 — Log-space hazard and survival-ratio event generation
+
+###  Log-Space Intensity Evaluation
+
+At each simulation step, the current OU state is mapped to the mean interval via $\mu(t) = \mu_0 \exp(p(t) - s(t))$, and the conditional intensity is evaluated as $\log\lambda(\tau) = \log f(\tau;\mu,\kappa) - \log S(\tau;\mu,\kappa)$, following the log-space derivation in Section 4.4. Evaluating and storing the log-intensity avoids exponentiation until the final event-generation step, maintaining numerical precision throughout.
+
+###  Survival-Ratio Event Generation
+
+The Bernoulli approximation $P(\text{event in } [t_i, t_{i+1}]) \approx \lambda(t_i)\Delta t$ produces a signed error whose direction depends on the slope of the hazard at the step entry point. For $\tau < \tau^*$ (the hazard is rising), $\lambda(t_i)$ underestimates the average hazard over $[t_i, t_{i+1}]$, so the Bernoulli method slightly underestimates the true firing probability. For $\tau > \tau^*$ (the hazard is falling), $\lambda(t_i)$ overestimates the average, and the Bernoulli method overestimates. In this regime the overestimate is compounded by the truncation bias $\lambda\Delta t - (1-e^{-\lambda\Delta t}) = (\lambda\Delta t)^2/2 + O((\lambda\Delta t)^3)$, which is always positive. For the reference parameters ($\mu_0 = 1.0$ s, $\rho = 0.2$), the IG hazard peaks at $\tau^* \approx 2\mu_0 \approx 2.0$ s, while beats are concentrated near the mode $\tau \approx \mu_0 = 1.0$ s. Because most beats therefore arrive in the *rising-hazard regime* ($\tau < \tau^*$), $\lambda(\tau_i)$ systematically *underestimates* the step-average hazard and the Bernoulli approximation fires too rarely, producing a net negative bias in simulated event counts and slightly elongated inter-beat intervals.
+
+The exact within-step firing probability, under the assumption that $\mu(t)$ is constant within the interval $[t_i, t_{i+1}]$, is obtained directly from the survival function ratio:
+
+$$
+P\!\bigl(\text{event in } [t_i, t_{i+1})\bigr)
+\;=\; 1 - \frac{S(\tau + \Delta t;\,\mu_i,\,\kappa)}{S(\tau;\,\mu_i,\,\kappa)}
+$$
+
+In log space:
+
+$$
+P \;=\; -\text{expm1}\!\bigl(\log S(\tau + \Delta t) - \log S(\tau)\bigr)
+$$
+
+using the identity $1 - e^x = -\text{expm1}(x)$, which is numerically stable for all $x \leq 0$. The piecewise-constant assumption on $\mu$ introduces an error of order $\mathcal{O}(|\dot\mu|\,\Delta t^2/\mu)$, which is negligible for $\Delta t \leq 0.005$ s given the smooth OU dynamics.
+
+## Note 5 — Reparameterized marginal MLE coordinates
+
+### Static Parameter Estimation
+
+The total marginal log-likelihood $\log\mathcal{L}(\Theta) = \sum_k \log\mathcal{N}(\tau_k;\,\hat\mu_k,\, S_k)$ is maximized over $\Theta$ by L-BFGS-B in log-space. Starting values are fitted by a biexponential model to the tachogram ACF to recover $a_p$ and $a_s$, distributes the observed SDNN between the two spectral variances according to the fitted ACF weights to recover $\sigma_p$ and $\sigma_s$, applies the log-normal mean correction $\hat\mu_0 = \bar\tau\exp(-\hat\sigma_\Delta^2/2)$ to recover $\mu_0$, and uses the stationary IG MLE for $\kappa$ to recover $\rho$. These data-driven starting values are consistent with the observed second-order structure of the tachogram (@sec-moments) and substantially reduce the frequency of local-optimum convergence failures relative to literature defaults. 
+
+The optimizer works in reparameterized coordinates $(\log a_s,\, \log(a_p - a_s),\, \log\sigma_\Delta^2,\, \operatorname{logit}\psi,\, \log\rho)$, where $\sigma_\Delta^2 = \sigma_p^2/(2a_p) + \sigma_s^2/(2a_s)$ is the total OU spectral variance and $\psi = A_p/\sigma_\Delta^2$ with $A_n = \sigma_n^2/(2a_n)$ is the HF spectral fraction. Two structural properties are enforced by construction: $a_p > a_s$ (LF/HF pole ordering) holds because $a_p = a_s + \exp(\log(a_p - a_s))$, requiring no penalty or projection; and $\mu_0 = \bar\tau_\mathrm{obs}\exp(-\sigma_\Delta^2/2)$ (mean-anchor, exact under the stationary inference model) eliminates $\mu_0$ from the optimizer. The remaining five coordinates are identified by near-orthogonal data channels: $\log a_s$ by LF spectral pole position; $\log(a_p - a_s)$ by HF pole position relative to LF; $\log\sigma_\Delta^2$ by total SDNN; $\operatorname{logit}\psi$ by the HF/LF power ratio; and $\log\rho$ by the shape of the inter-beat interval distribution conditional on the OU trajectory. The transform is exact ($\mathrm{pack} \circ \mathrm{unpack} = \mathrm{identity}$) with no moment approximation, giving 5 free parameters for the uncoupled model and 7 for the coupled model. The coupling terms $a_{ps}$ and $a_{sp}$ enter on their natural scale with lower bound zero.
+
+## Note 6 — UKF marginal likelihood and sigma-point quadrature
+
+## Point-Process Unscented Kalman Filter
+
+The filter processes one inter-beat interval $\tau_k = t_k - t_{k-1}$ at a time.
+
+**Prediction.** The exact OU transition propagates the Gaussian belief from $t_{k-1}$ to $t_k$:
+
+$$
+m_{k|k-1} = F(\tau_k)\,m_{k-1|k-1} + d(\tau_k),
+\qquad
+P_{k|k-1} = F(\tau_k)\,P_{k-1|k-1}\,F(\tau_k)^\top + Q(\tau_k)
+$$
+
+where $F(\tau) = \mathrm{diag} \left(e^{-a_p \tau}, e^{-a_s \tau}\right)$, $Q(\tau) = \mathrm{diag} \left(\tfrac{\sigma_p^2}{2a_p}(1 - e^{-2a_p \tau}), \tfrac{\sigma_s^2}{2a_s}(1 - e^{-2a_s \tau})\right)$, and $d(\tau)$ is the input-driven mean shift $\bigl[\tfrac{c_p u}{a_p}(1 - e^{-a_p \tau}), \tfrac{c_s u}{a_s}(1 - e^{-a_s \tau})\bigr]^\top$. Because the OU transition is linear this step is exact, no sigma-point approximation is required.  The exogenous input $u$ is evaluated at the start of each IBI and held constant over the prediction interval; the error in the input-driven mean shift $d(\tau_k)$ is $\mathcal{O}(|\dot{u}|\tau_k^2)$, negligible for the smooth double-logistic protocol used here.
+
+**Update.** At spike time $t_k$ the observation is $\tau_k \sim \mathrm{IG}\!\left(\mu_0 e^{-\Delta_k},\, \kappa\right)$.  The observation function $h(\mathbf{x}) = \mu_0 e^{p - s}$ is nonlinear in $\mathbf{x} = [p, s]^\top$, so the update uses UKF sigma-point quadrature with $2L + 1 = 5$ points ($L=2$):
+
+$$
+\hat\mu_k = \sum_i W_i^m\, h(\boldsymbol{\sigma}_i)
+\qquad
+S_k = \sum_i W_i^c\bigl(h(\boldsymbol{\sigma}_i) - \hat\mu_k\bigr)^2 + R_k
+$$
+
+where $R_k = \hat\mu_k^3/\kappa$ is the IG variance outer-linearized at the predicted mean, and the Kalman gain and covariance update follow the standard UKF equations. 
+
+The marginal log-likelihood contribution at beat $k$ is approximated by the sigma-point expectation of the IG log-pdf:
+
+$$
+\log p(\tau_k \mid \Theta) \;\approx\;
+\log \sum_i W_i^m\, f_{\mathrm{IG}}\!\left(\tau_k;\; h(\boldsymbol{\sigma}_i),\; \kappa\right)
+$$
+
+This sigma-point quadrature approximation to the marginal density avoids both the linearization error of the Gaussian innovation approximation $\log\mathcal{N}(\tau_k;\,\hat\mu_k,\,S_k)$ and the Jensen gap introduced by commuting $\log$ and $\sum$, which would produce a lower bound rather than an approximation to $\log p(\tau_k \mid \Theta)$. The sum is evaluated in log-sum-exp form; with $W_0^m = 0$ under the symmetric curvature rule, only the four off-centre sigma-points contribute.
+
+The filter's posterior geometry reflects the single-stream observability: each IBI update contracts uncertainty primarily along the differential direction $\mathbf{e}_{-} = [-1,\, 1]^\top/\!\sqrt{2}$ (the $\Delta = s - p$ subspace). Variance along the common-mode direction $\mathbf{e}_{+} = [1,\, 1]^\top/\!\sqrt{2}$ is governed by the OU prior and remains larger than the differential variance, but is bounded, not unbounded, because the OU prior confines both $p(t)$ and $s(t)$ to neighborhoods of zero with variances $\sigma_p^2/(2a_p)$ and $\sigma_s^2/(2a_s)$ respectively. Consequently, the filter delivers per-branch posterior means $[\hat p_k, \hat s_k]$ with per-branch uncertainty (reported in @tbl-filter-summary and shown as branch-specific posterior SD bands in @fig-filter-recovery), rather than purely a scalar $\hat\Delta_k$ estimate.
+
+
+## Note 7 — Input protocol and θ_true = θ* condition
+
+###  Exogenous Input Protocol
+
+The simulation study uses a **double-logistic** input function to represent a rest–exercise–recovery protocol:
+
+$$
+u(t) \;=\; \sigma\!\bigl(k(t - t_{\rm on})\bigr)\cdot\sigma\!\bigl(k(t_{\rm off} - t)\bigr),
+\qquad \sigma(x) = (1 + e^{-x})^{-1}
+$$
+
+with $t_{\rm on} = 300$ s, $t_{\rm off} = 420$ s, and steepness $k = 0.1$ Hz. At $k = 0.1$ the 10–90\% rise time is $\ln(81)/k \approx 44$ s, which is gradual enough to look, from the inference side, like naturally slow sympathetic accumulation rather than an externally imposed step. Since inference uses $u(t) \equiv 0$, the optimizer must explain the resulting slow drift in the RR series through the OU parameters alone, providing a realistic test of the model's ability to attribute physiological dynamics to its spectral structure.
+
+The input sensitivities $c_p$ and $c_s$ are *fixed known constants* in the inference model, they are not estimated, but they are also not zeroed out. The canonical double-logistic protocol [@castillo2025enhancing] with known $(c_p, c_s)$ is supplied to the estimator, which removes the deterministic input contribution from the OU residuals before profiling $(a, \sigma)$. This keeps $\theta_{\text{true}} = \theta^*$ (no mismatch between generative and inference model) while providing the non-stationarity needed to decouple $(\sigma_p, \sigma_s)$ from $(\mu_0, \rho)$: the transient stressor creates a temporal structure in the tachogram that the IG observation block cannot explain, sharpening the curvature of the log-likelihood surface along the OU noise-amplitude directions. The coupling terms $a_{ps}$ and $a_{sp}$ are always free parameters; their conditional identifiability from a single RR stream is established in @sec-coupling. The active inference parameter set is $\{a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the uncoupled sub-model and $\{a_p, a_s, a_{ps}, a_{sp}, \sigma_p, \sigma_s, \mu_0, \rho\}$ for the coupled model. The input sensitivities $c_p$ and $c_s$ are simulation-only parameters that drive the generative stress protocol. Since $u(t)$ is never observed during inference, $c_p = c_s = 0$ in the inference model. This has a precise consequence for the identifiability study: the recovery study must use $c_p = c_s = 0$ in simulation as well, so that the simulation parameters $\theta_\text{true}$ and the pseudo-true parameters $\theta^* = \arg\max_\theta \mathrm{E}_\text{true}[\ell(\theta)]$ coincide. When $c_p \neq 0$ or $c_s \neq 0$, the MLE correctly converges to $\theta^* \neq \theta_\text{true}$, not because the estimator is biased, but because the inference model is correctly specified only for $u \equiv 0$, and $\theta^*$ is the identifiable projection of $\theta_\text{true}$ onto the inference model. Reporting $\hat\theta - \theta_\text{true}$ in that setting confounds estimator precision with model projection distance; reporting $\hat\theta - \theta^*$ is the correct measure of estimator quality. Using $c_p = c_s = 0$ makes $\theta_\text{true} = \theta^*$ and collapses both measures to the same quantity. The FIM eigenspectrum, profile likelihoods, and Monte Carlo recovery study below are all computed under this condition.
+
+# Supplementary Methods
+
+## Wavelet Whittle two-stage estimator
+
+<!-- Move: wavelet_spectral_fit description from §"Static Parameter
+     Estimation" -->
+
+## Spectral initialization
+
+Several physiological interpretations follow directly. The tachogram ACF is a mixture of two exponentials: fitting this mixture recovers $a_p$ and $a_s$ from the data without likelihood evaluation, yielding data-driven starting values for the marginal MLE (see @sec-inference). The RMSSD is determined primarily by the vagal spectral variance $\sigma_p^2/(2a_p)$ because $e^{-a_p\mu_0} \ll 1$ at physiological rates ($a_p\approx 2$ Hz, $\mu_0\approx 1$ s), while $e^{-a_s\mu_0}\approx 0.8$ makes the sympathetic contribution nearly cancel. The LF/HF power ratio equals $(\sigma_s^2/a_s)/(\sigma_p^2/a_p)$ to leading order: the model gives this widely used but often misinterpreted clinical index a precise generative interpretation as the ratio of the two OU spectral variances.
+
+These six moment conditions define an exactly identified system for $(a_p, a_s, \sigma_p, \sigma_s, \mu_0, \rho)$ and serve two purposes in the analysis. First, they provide data-driven starting values for the marginal MLE that are tailored to each recording rather than to literature defaults, reducing the frequency of local-optimum convergence failures on real data (@sec-inference). Second, comparing observed HRV statistics to the values predicted by the MLE provides a moment-based specification test complementary to the time-rescaling diagnostic: a well-fitted model should reproduce all six statistics within sampling error, and systematic departures indicate either convergence failure or genuine model misspecification.
+
+# Supplementary Figures
+
+## Figure S1 — OU impulse responses and spectral structure
+
+```{r}
+#| label: fig-impulse-response
+#| fig-cap: "Theoretical impulse response of the vagal (blue) and sympathetic (red) branches. A unit impulse at $t = 1$ s illustrates the order-of-magnitude difference in recovery time. The vagal response dissipates within seconds; the sympathetic response persists for tens of seconds."
+#| fig-height: 3.8
+
+t_imp <- seq(0, 40, by = 0.05)
+imp_p <- ifelse(t_imp >= 1, exp(-PARAMS_COUPLED$free$a_p * (t_imp - 1)), 0)
+imp_s <- ifelse(t_imp >= 1, exp(-PARAMS_COUPLED$free$a_s * (t_imp - 1)), 0)
+
+par(mar = c(4, 4.5, 1.5, 1))
+plot(t_imp, imp_p, type = "l", col = "#0072B2", lwd = 2.5,
+     xlab = "Time (s)", ylab = "Response magnitude",
+     frame.plot = FALSE, ylim = c(0, 1.05))
+lines(t_imp, imp_s, col = "#D55E00", lwd = 2.5)
+abline(v = 1, lty = 2, col = "gray60")
+tau_p_val <- round(1 / PARAMS_COUPLED$free$a_p, 2)
+tau_s_val <- round(1 / PARAMS_COUPLED$free$a_s, 1)
+legend("topright",
+       legend = c(
+         bquote("Parasympathetic" ~~ (a[p] == .(PARAMS_COUPLED$free$a_p) ~ Hz ~
+                                      "," ~ tau[p] == .(tau_p_val) ~ s)),
+         bquote("Sympathetic"     ~~ (a[s] == .(PARAMS_COUPLED$free$a_s) ~ Hz ~
+                                      "," ~ tau[s] == .(tau_s_val) ~ s))
+       ), col = c("#0072B2", "#D55E00"), lwd = 2.5, bty = "n", cex = 0.85)
+```
+
+## Figure S2 — Coupled-model FIM and profile likelihoods
+
+```{r}
+#| label: coupling-mle
+#| cache: true
+#| include: false
+
+PROF_COUPLED  <- all_profile_likelihoods(RES_COUPLED, n_grid = 80, width = 4.0,
+                                         input_fn = CANONICAL_INPUT_FN)
+```
+
+```{r}
+#| label: fig-coupling-profiles
+#| fig-cap: "Profile log-likelihoods for all eight free parameters under the coupled model ($a_{ps} = 0.15$, $a_{sp} = 0.10$). Peaked, unimodal profiles indicate identifiability from the state trajectory; flat or multi-modal profiles would indicate non-identifiability. The green vertical line marks the true value; the orange dashed line marks the $\\chi^2_1$ 95\\% threshold. Profiles for $a_{ps}$ and $a_{sp}$ are obtained by re-optimising over all remaining OU parameters at each grid point."
+#| fig-height: 6.5
+
+fp_c <- PARAMS_COUPLED$free
+true_coupled <- c(a_p = fp_c$a_p, a_s = fp_c$a_s,
+                  sigma_p = fp_c$sigma_p, sigma_s = fp_c$sigma_s,
+                  mu0 = fp_c$mu_0, rho = fp_c$rho,
+                  a_ps = fp_c$a_ps, a_sp = fp_c$a_sp)
+
+plot_profiles(PROF_COUPLED, true_vals = true_coupled,
+              main = "Profile Likelihoods, Coupled Model")
+```
+
+```{r}
+#| label: coupling-recovery
+#| cache: true
+#| include: false
+
+REC_COUPLED <- recovery_study(
+  N           = 250L,
+  true_params = PARAMS_COUPLED,
+  duration    = CANONICAL_DURATION,
+  dt          = 0.005,
+  input_fn    = CANONICAL_INPUT_FN,
+  use_parallel = FALSE
+)
+```
+
+```{r}
+#| label: fig-coupling-recovery
+#| fig-cap: "Monte Carlo recovery study ($N = 250$ replications) for the coupled model.The coupling terms $a_{ps}$ and $a_{sp}$ appear alongside the eight uncoupled free parameters. Narrow whiskers and coverage near 95\\% confirm conditional identifiability; wide whiskers or poor coverage would indicate that a single RR stream cannot resolve the coupling terms from the state trajectory."
+#| fig-height: 5.5
+
+plot_recovery(REC_COUPLED$summary,
+              main = "Coupled-Model Recovery Study (N = 250, 720 s each)")
+```
+
+## Figure S3 — Profile likelihoods, uncoupled model
+
+```{r}
+#| label: profiles-run
+#| cache: true
+#| include: false
+
+PROFILES <- all_profile_likelihoods(
+  RES_UNCOUPLED, 
+  n_grid = 80, 
+  width = 4.0,
+  input_fn = CANONICAL_INPUT_FN
+)
+```
+
+```{r}
+#| label: fig-profiles
+#| fig-cap: "Profile log-likelihoods for all six free parameters of the uncoupled inference model ($a_p$, $a_s$, $\\sigma_p$, $\\sigma_s$, $\\mu_0$, $\\rho$), normalized to zero at the MLE. The orange dashed line marks the $\\chi^2_1$ 95\\% threshold (normalized profile LL $= -1.92$); tick marks on the horizontal axis indicate the implied 95\\% profile confidence interval. The green vertical line shows the true parameter value used in the simulation; the profile peak marks the MLE from this single realisation. Their near-coincidence reflects the consistency of the conditional MLE, not exact finite-sample equality. All six profiles are strictly unimodal and sharply peaked, confirming that each parameter is precisely identified from the latent state trajectory."
+#| fig-height: 5.5
+
+fp <- PARAMS_UNCOUPLED$free
+true_vals <- c(a_p = fp$a_p, a_s = fp$a_s,
+               sigma_p = fp$sigma_p, sigma_s = fp$sigma_s,
+               mu0 = fp$mu_0, rho = fp$rho)
+
+plot_profiles(PROFILES, true_vals = true_vals,
+              main = "Profile Likelihoods, Reference Parameter Set")
+```
+
+## Figure S4 — OU discretization and firing bias diagnostics
+
+```{r}
+#| label: fig-ou-exact
+#| cache: true
+#| fig-cap: "Stationary variance bias of Euler-Maruyama (EM) versus the exact OU kernel, shown for the vagal branch ($a_p = 2.0$ Hz, $\\sigma_p = 0.20$). **Left:** Empirical stationary variance from 300 replicate trajectories ($N = 5000$ steps each). The exact kernel converges to the true value $\\sigma^2/(2a) = 0.01$ at every step size; the slight negative deviation at small $\\Delta t$ is a finite-sample artefact, the sample variance of a strongly positively autocorrelated time series is negatively biased when the effective sample size $n_{\\mathrm{eff}} = n \\cdot (1-r)/(1+r) \\ll n$ due to the OU autocorrelation $r \\approx e^{-a\\Delta t}$. This does *not* reflect a bias in the transition kernel. **Right:** Relative bias (\\%) as a function of step size; the Euler-Maruyama bias follows the theoretical prediction $\\approx a\\Delta t/2$."
+#| fig-height: 4
+
+set.seed(321)
+a_p  <- PARAMS_COUPLED$free$a_p;  sig_p <- PARAMS_COUPLED$free$sigma_p
+true_var <- sig_p^2 / (2 * a_p)
+dt_vals  <- c(0.005, 0.01, 0.025, 0.05, 0.1)
+nrep     <- 300;  nstep <- 5000;  burn <- 1000
+
+em_var <- exact_var <- numeric(length(dt_vals))
+
+for (j in seq_along(dt_vals)) {
+  dt <- dt_vals[j]
+  em_v <- exact_v <- numeric(nrep)
+  for (r in seq_len(nrep)) {
+    xe2  <- 0; xex2 <- 0
+    xe_traj  <- numeric(nstep)
+    xex_traj <- numeric(nstep)
+    for (i in seq_len(nstep)) {
+      xe2  <- xe2  + (-a_p * xe2  * dt + sig_p * sqrt(dt) * rnorm(1))
+      xex2 <- ou_exact_step(xex2, a_p, sig_p, dt = dt)
+      xe_traj[i] <- xe2; xex_traj[i] <- xex2
+    }
+    em_v[r]    <- var(xe_traj[(burn+1):nstep])
+    exact_v[r] <- var(xex_traj[(burn+1):nstep])
+  }
+  em_var[j]    <- mean(em_v)
+  exact_var[j] <- mean(exact_v)
+}
+
+par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
+
+# Left: absolute variance
+plot(dt_vals * 1000, em_var,    type = "b", pch = 19, lwd = 2,
+     col = "#D55E00", ylim = c(true_var * 0.95, max(em_var) * 1.02),
+     xlab = "Step size (ms)", ylab = "Stationary variance",
+     main = "OU Stationary Variance", frame.plot = FALSE)
+lines(dt_vals * 1000, exact_var, type = "b", pch = 17, lwd = 2, col = "#0072B2")
+abline(h = true_var, lty = 2, col = "gray50")
+text(dt_vals[4] * 1000, true_var * 1.003,
+     bquote(sigma^2 / (2*a) == .(round(true_var, 4))),
+     adj = 0, cex = 0.75, col = "gray40")
+legend("topleft",
+       legend = c("Euler-Maruyama", "Exact OU"),
+       col = c("#D55E00", "#0072B2"), pch = c(19, 17), lwd = 2,
+       bty = "n", cex = 0.85)
+
+# Right: relative bias
+em_bias    <- 100 * (em_var    / true_var - 1)
+exact_bias <- 100 * (exact_var / true_var - 1)
+plot(dt_vals * 1000, em_bias, type = "b", pch = 19, lwd = 2, col = "#D55E00",
+     xlab = "Step size (ms)", ylab = "Relative bias (%)",
+     main = "Discretization Bias", frame.plot = FALSE,
+     ylim = range(c(em_bias, exact_bias)))
+lines(dt_vals * 1000, exact_bias, type = "b", pch = 17, lwd = 2, col = "#0072B2")
+abline(h = 0, lty = 2, col = "gray50")
+```
+
+```{r}
+#| label: fig-bernoulli-vs-survival
+#| cache: true
+#| fig-cap: "Systematic bias of the Bernoulli approximation relative to the exact survival-ratio method. **Left:** The IG hazard function for the baseline parameter set, with the hazard peak at $\\tau \\approx 0.72$ s. **Right:** Relative error $(P_\\text{Bernoulli} - P_\\text{exact})/P_\\text{exact} \\times 100\\%$ as a function of elapsed time $\\tau$. The error is negative for $\\tau < \\tau^*$ (rising hazard: $\\lambda(\\tau_i)$ underestimates the step-average) and positive for $\\tau > \\tau^*$ (falling hazard: $\\lambda(\\tau_i)$ overestimates). The annotated orange point marks the location of maximum relative error within the displayed range. For the reference parameters ($\\mu_0 = 1.0$ s, $\\kappa = 25$), the hazard peak lies at $\\tau^* \\approx 2.0$ s; beats are concentrated near $\\tau \\approx \\mu_0 = 1.0$ s in the rising-hazard (negative-error) regime. The Bernoulli approximation therefore produces a *net underestimate* of event counts across a full simulation; the survival-ratio method eliminates this bias by evaluating the exact step probability $P = -\\mathrm{expm1}(\\log S(\\tau+\\Delta t) - \\log S(\\tau))$."
+
+fs <- study_firing_bias(mu = PARAMS_COUPLED$free$mu_0, 
+                        kappa = KAPPA_REF,
+                        dt = 0.005, 
+                        tau_range = c(0.3, 3 * PARAMS_COUPLED$free$mu_0))
+
+par(mfrow = c(1, 2), mar = c(4.5, 5, 2.5, 1))
+
+plot(fs$tau, fs$lambda, type = "l", lwd = 2.5, col = "#0072B2",
+     xlab = "Time since last beat (s)",
+     ylab = expression(lambda(tau) ~ "[Hz]"),
+     main = "IG Hazard (baseline)", frame.plot = FALSE)
+pk  <- fs$tau[which.max(fs$lambda)]
+lmx <- max(fs$lambda)
+abline(v = pk, lty = 2, col = "gray50")
+text(pk - 0.04, lmx * 0.9, sprintf("\u03c4* = %.2f s", pk),
+     adj = 1, cex = 0.8, col = "gray40")
+
+plot(fs$tau, fs$rel_error_pct, type = "l", lwd = 2.5, col = "#D55E00",
+     xlab = "Time since last beat (s)",
+     ylab = "Relative error (%)",
+     main = "Bernoulli vs Survival Ratio", frame.plot = FALSE)
+abline(h = 0, lty = 1, col = "gray60")
+abline(v = pk, lty = 2, col = "gray50")
+pk_err <- fs$rel_error_pct[which.max((fs$rel_error_pct))]
+pk_tau <- fs$tau[which.max((fs$rel_error_pct))]
+points(pk_tau, pk_err, pch = 19, col = "#D55E00", cex = 1.5)
+text(pk_tau - 0.1, -1,
+     sprintf("Peak overestimate: +%.2f%%", pk_err), adj = 1, cex = 0.8, col = "#D55E00")
+```
+
+## Figure S5 — Heteroscedasticity: empirical vs theoretical
+
+```{r}
+#| label: fig-heteroscedasticity
+#| fig-cap: >
+#|  Mean-variance scaling of the simulated R-R intervals, validating the intrinsic heteroscedastic property of the IG distribution. Grey points: empirical local mean and variance computed over rolling windows of 10 intervals. Red line: the theoretical prediction $\text{Var}(\tau) = \rho^2\mu^3/\mu_0$ evaluated at the true $\rho = 0.20$, $\mu_0 = 1.0$ (equivalently $\mu^3/\kappa$ with $\kappa = 25). The alignment confirms that the model correctly reproduces the rate-dependent suppression of HRV without any explicit post-hoc adjustment.
+#| fig-height: 4.5
+rr <- diff(RES_COUPLED$spikes)
+rr_wn  <- 10
+rmean  <- zoo::rollmean(rr, rr_wn)
+rvar   <- zoo::rollapply(rr, rr_wn, var)
+
+mu_seq  <- seq(min(rmean, na.rm=TRUE), max(rmean, na.rm=TRUE), length.out = 200)
+kap_ref <- kappa_from_rho(PARAMS_COUPLED$free$mu_0, PARAMS_COUPLED$free$rho)
+var_th  <- mu_seq^3 / kap_ref
+
+par(mar = c(4.5, 5, 2.5, 1))
+plot(rmean, rvar, pch = 20, cex = 0.5, col = rgb(0, 0, 0, 0.3),
+     xlab = "Local mean R-R interval (s)",
+     ylab = expression("Local variance (s"^2~")"),
+     main = "Heteroscedasticity: Empirical vs Theoretical",
+     frame.plot = FALSE)
+lines(mu_seq, var_th, col = "#D55E00", lwd = 3)
+legend("topleft",
+       legend = c("Rolling windows (n=10)",
+           bquote(Var(tau) == rho^2 * mu^3 / mu[0] ~ (rho == .(round(PARAMS_COUPLED$free$rho, 3))))),
+       col = c("black", "#D55E00"), pch = c(20, NA),
+       lty = c(NA, 1), lwd = c(NA, 3), bty = "n", cex = 0.85)
+```
+
+## Figure S6 — Time-rescaling goodness-of-fit
+
+```{r}
+#| label: fig-time-rescaling
+#| fig-cap: "Time-rescaling goodness-of-fit diagnostics implementing the Brown et al. (2002) diagnostic suite. **Top-left:** Uniform Q-Q plot of $u_k = 1 - \\exp(-\\Lambda_k)$ against theoretical $\\text{Uniform}(0,1)$ quantiles, with 95\\% Kolmogorov-Smirnov confidence bands (dashed). **Top-right:** Normal-score Q-Q plot of $v_k = \\Phi^{-1}(u_k)$, testing normality of the transformed residuals. **Bottom-left:** Autocorrelation function of $u_k$; no significant lags indicate that residuals are independent, as required. **Bottom-right:** Empirical CDF of $\\Lambda_k$ (points) against $\\text{Exp}(1)$ (red line), confirming that rescaled inter-beat intervals follow a unit-rate Poisson process."
+#| fig-height: 6.5
+
+Lk <- compute_time_rescaling(RES_COUPLED)
+Lk <- Lk[is.finite(Lk)]   # drop any skipped intervals (should be empty at dt=0.005)
+uk <- 1 - exp(-Lk)
+vk <- qnorm(uk)
+n  <- length(Lk)
+
+vk_f <- vk[is.finite(vk)]
+ks   <- ks.test(uk, "punif")
+band <- 1.36 / sqrt(n)
+
+layout(matrix(c(1,2,3,4), 2, 2, byrow = TRUE))
+par(mar = c(4.5, 4.5, 2.8, 1.2))
+
+# --- Uniform QQ ---
+u_s <- sort(uk)
+theo <- ppoints(n)
+plot(theo, u_s, pch = 20, cex = 0.4, col = rgb(0,0,0,0.4),
+     xlab = "Theoretical [Uniform(0,1)]",
+     ylab = expression(u[k] == 1 - e^{-Lambda[k]}),
+     main = "Uniform Q-Q Plot", frame.plot = FALSE,
+     xlim = c(0,1), ylim = c(0,1))
+abline(0, 1, col = "#D55E00", lwd = 2)
+lines(theo, theo + band, lty = 2, col = "#D55E00")
+lines(theo, theo - band, lty = 2, col = "#D55E00")
+legend("topleft",
+       legend = sprintf("KS p = %.3f", ks$p.value),
+       bty = "n", cex = 0.85)
+
+# --- Normal-score QQ ---
+qqnorm(vk_f, pch = 20, cex = 0.4, col = rgb(0,0,0,0.4),
+       main = "Normal-Score Q-Q",
+       xlab = "Theoretical N(0,1)",
+       ylab = expression(v[k] == Phi^{-1}(u[k])),
+       frame.plot = FALSE)
+qqline(vk_f, col = "#D55E00", lwd = 2)
+
+# --- ACF of uk ---
+acf(uk, lag.max = 25, col = "#0072B2", lwd = 2,
+    ci.col = "#D55E00",
+    main = "Residual Autocorrelation",
+    xlab = "Lag", frame.plot = FALSE)
+
+# --- Lambda_k vs Exp(1) ECDF ---
+lk_s  <- sort(Lk)
+ecdf_v <- seq_along(lk_s) / (n + 1)
+exp1_c <- 1 - exp(-lk_s)
+plot(lk_s, ecdf_v, pch = 20, cex = 0.4, col = rgb(0,0,0,0.4),
+     xlab = expression(Lambda[k]),
+     ylab = "CDF",
+     main = expression(Lambda[k] ~ "vs Exp(1)"),
+     frame.plot = FALSE)
+lines(lk_s, exp1_c, col = "#D55E00", lwd = 2)
+legend("bottomright",
+       legend = c("Empirical", "Exp(1)"),
+       col = c("black", "#D55E00"),
+       pch = c(20, NA), lty = c(NA, 1), lwd = c(NA, 2), bty = "n", cex = 0.85)
+```
+
+```{r}
+#| label: tbl-tr-summary
+#| tbl-cap: "Summary statistics for the time-rescaling residuals. A correctly specified model produces $\\text{E}[\\Lambda_k] = 1$, $\\text{Var}(\\Lambda_k) = 1$, and $\\text{E}[u_k] = 0.5$. The KS statistic and p-value assess the uniformity of $u_k$."
+#| echo: false
+
+ks_res <- ks.test(uk, "punif")
+acf_obj <- acf(uk, lag.max = 20, plot = FALSE)
+sig_lags <- sum(abs(acf_obj$acf[-1]) > 1.96 / sqrt(n))
+
+tr_tbl <- data.frame(
+  Statistic = c(
+    "$\\text{E}[\\Lambda_k]$", "$\\text{Var}(\\Lambda_k)$",
+    "$\\text{E}[u_k]$",
+    "KS statistic", "KS $p$-value",
+    "Significant ACF lags (of 20)"
+  ),
+  Theoretical = c("1.000", "1.000", "0.500", "—", "—", "0"),
+  Empirical = c(
+    sprintf("%.4f", mean(Lk)),
+    sprintf("%.4f", var(Lk)),
+    sprintf("%.4f", mean(uk)),
+    sprintf("%.4f", ks_res$statistic),
+    sprintf("%.4f", ks_res$p.value),
+    as.character(sig_lags)
+  )
+)
+
+knitr::kable(tr_tbl, escape = FALSE,
+             col.names = c("Statistic", "Theoretical", "Empirical"),
+             align = c("l", "c", "c"))
+```
+
+## Figure S7 — Decay-rate sensitivity heatmaps
+
+```{r}
+#| label: sensitivity-run
+#| cache: true
+#| include: false
+source("R/filter.R")
+source("R/sensitivity.R")
+
+# Sensitivity study uses PARAMS_UNCOUPLED (c_p = c_s = 0) so that θ_true = θ*
+# for the recovery sub-study, and RES_UNCOUPLED as the reference trajectory so
+# filter RMSE measures state-estimation error, not input-model mismatch.
+SENS <- run_sensitivity(
+  base_params  = PARAMS_UNCOUPLED,
+  sim_res_ref  = RES_UNCOUPLED,
+  multipliers  = c(0.5, 0.75, 1.0, 1.25, 1.5),
+  N_rep        = 50L,
+  use_parallel = FALSE
+)
+```
+
+```{r}
+#| label: fig-sensitivity
+#| fig-cap: >
+#|   Sensitivity of estimation and filter performance to the true values of the
+#|   free decay-rate parameters $a_p$ (x-axis) and $a_s$ (y-axis), varied over a
+#|   $\pm 50\%$ grid while all remaining parameters are held at reference values.
+#|   Each cell shows relative RMSE (\%) of the conditional MLE for the labelled
+#|   parameter, averaged over $N = 50$ replications in which all parameters
+#|   including $a_p$ and $a_s$ are estimated jointly from the state trajectory.
+#|   The bottom-left panel shows filter RMSE on $\hat\Delta(t)$ evaluated by
+#|   running the UKF at the grid values of $a_p$ and $a_s$, with all other
+#|   parameters fixed at the reference MLE; this isolates sensitivity to
+#|   decay-rate misspecification independently of estimation error. 
+#|   The reference configuration ($a_p = 2.0$ Hz, $a_s = 0.2$ Hz) is
+#|   outlined in black. Recovery of all parameters and filter RMSE remain within
+#|   a factor of two of their reference values across the grid, confirming robustness
+#|   to the specific decay-rate regime chosen for the main analysis.
+#| fig-height: 6
+
+plot_sensitivity(SENS, ref_ap = PARAMS_COUPLED$free$a_p, ref_as = PARAMS_COUPLED$free$a_s)
+```
+
+## Figure S8 — Marginal vs conditional recovery comparison
+
+```{r}
+#| label: marginal-recovery-run
+#| cache: true
+#| include: false
+
+MARG_REC <- marginal_recovery_study(
+  N            = 250L,
+  true_params  = PARAMS_UNCOUPLED,
+  duration     = CANONICAL_DURATION,
+  dt           = 0.005,
+  input_fn     = CANONICAL_INPUT_FN,
+  use_parallel = FALSE
+)
+```
+
+```{r}
+#| label: recovery-run
+#| cache: true
+#| include: false
+
+REC_STUDY <- recovery_study(
+  N            = 250,
+  true_params  = PARAMS_UNCOUPLED,
+  duration     = CANONICAL_DURATION,
+  dt           = 0.005,
+  input_fn     = CANONICAL_INPUT_FN,
+  use_parallel = FALSE
+)
+```
+
+```{r}
+#| label: fig-marginal-recovery
+#| fig-cap: >
+#|   Conditional versus marginal MLE recovery ($N = 250$ replications, 720 s each,
+#|   120-second double-logistic stress input). Each row is one free parameter.
+#|   **Left panel:** Conditional MLE (true latent state trajectory known), reproduced
+#|   from @fig-recovery for direct comparison. **Right panel:** Marginal MLE (spike
+#|   train only, parameters and states jointly unknown), UKF log-likelihood maximized
+#|   by L-BFGS-B over all eight free parameters. Centre of each bar: relative bias
+#|   $(\hat\theta - \theta_\text{true})/|\theta_\text{true}| \times 100\%$; whisker
+#|   half-length: relative RMSE. The right margin reports the number of replications
+#|   that converged successfully. The x-axis is common to both panels: any widening
+#|   of the bars from left to right reflects the additional uncertainty introduced
+#|   by latent state integration. OU branch parameters ($a_p, a_s, \sigma_p, \sigma_s$)
+#|   are most affected because the UKF marginal likelihood integrates over the
+#|   unobserved trajectory; IG parameters ($\mu_0, \rho$) are less affected because
+#|   the IBI sequence directly constrains them through the innovation covariance.
+#| fig-height: 5.5
+
+plot_marginal_vs_conditional(
+  cond_summary = REC_STUDY$summary,
+  marg_summary = MARG_REC$summary,
+  main = sprintf(
+    "Conditional vs Marginal MLE Recovery (N = %d replications, 720 s each)",
+    MARG_REC$N_valid)
+)
+```
+
+# Supplementary Tables
+
+## Table S1 — Reference parameter set
+
+<!-- New: single clean table of PARAMS_UNCOUPLED and PARAMS_COUPLED
+     with physiological interpretation column -->
+
+## Table S2 — Coupled-model recovery summary
+
+```{r}
+#| label: tbl-coupled-recovery
+#| tbl-cap: > 
+#|   Some caption.
+
+knitr::kable(REC_COUPLED$summary)
+```
+
+
+## Table S3 — Marginal MLE recovery and filter RMSE
+
+
+```{r}
+#| label: tbl-marginal-recovery
+#| tbl-cap: >
+#|   Marginal MLE recovery summary ($N = 250$ replications). **Top block:** parameter-level
+#|   bias and RMSE for all eight free parameters estimated from the spike train alone.
+#|   The conditional MLE relative RMSE is shown alongside for direct comparison
+#|   (from @tbl-recovery). **Bottom block:** filter state-recovery statistics.
+#|   The per-replication RMSE of $\hat\Delta(t)$ relative to the true latent drive
+#|   summarizes the practical accuracy of the end-to-end pipeline; the oracle filter
+#|   RMSE (true parameters, @tbl-filter-summary) is the lower bound.
+#| echo: false
+
+# ---- Parameter recovery block ----
+marg_df <- MARG_REC$summary
+cond_df <- REC_STUDY$summary
+
+# Align conditional RMSE for comparison column
+cond_rmse_pct <- setNames(cond_df$rmse_rel_pct, cond_df$parameter)
+
+par_labels_chr <- c(
+  a_p = "$a_p$", a_s = "$a_s$",
+  sigma_p = "$\\sigma_p$", sigma_s = "$\\sigma_s$",
+  mu_0 = "$\\mu_0$", mu0 = "$\\mu_0$",
+  rho = "$\\rho$", c_p = "$c_p$", c_s = "$c_s$"
+)
+
+rec_tbl <- data.frame(
+  Parameter        = unname(par_labels_chr[marg_df$parameter]),
+  True             = sprintf("%.3f", marg_df$true_value),
+  Mean_hat         = sprintf("%.3f", marg_df$mean_hat),
+  Rel_bias         = sprintf("%.2f\\%%", marg_df$rel_bias_pct),
+  RMSE_marg        = sprintf("%.4f", marg_df$rmse),
+  Rel_RMSE_marg    = sprintf("%.2f\\%%", marg_df$rmse_rel_pct),
+  Rel_RMSE_cond    = sprintf("%.2f\\%%",
+                              cond_rmse_pct[marg_df$parameter]),
+  stringsAsFactors = FALSE
+)
+
+knitr::kable(
+  rec_tbl,
+  escape      = FALSE,
+  col.names   = c("Parameter", "True", "Mean $\\hat\\theta$",
+                  "Rel. bias",
+                  "RMSE (marginal)", "Rel. RMSE (marginal)",
+                  "Rel. RMSE (conditional)"),
+  caption     = NULL
+)
+```
+
+```{r}
+#| label: tbl-marginal-delta
+#| tbl-cap: >
+#|   Filter state-recovery: distribution of per-replication RMSE of $\hat\Delta(t)$
+#|   across the $N = 250$ marginal MLE replications. The oracle filter RMSE
+#|   (true parameters used) from @tbl-filter-summary is the theoretical lower bound.
+#|   The ratio oracle/marginal quantifies the cost of parameter uncertainty on
+#|   state tracking.
+#| echo: false
+
+rmse_v <- MARG_REC$rmse_delta
+rmse_v <- rmse_v[is.finite(rmse_v)]
+
+# Oracle RMSE, reuse from the filter validation section
+delta_err_oracle <- flt_grid$delta - RES_UNCOUPLED$delta
+oracle_rmse <- sqrt(mean(delta_err_oracle^2, na.rm = TRUE))
+
+delta_tbl <- data.frame(
+  Statistic = c(
+    "Oracle filter RMSE of $\\hat\\Delta(t)$ (true $\\Theta$, single run)",
+    "Marginal filter: mean RMSE across replications",
+    "Marginal filter: median RMSE",
+    "Marginal filter: SD of RMSE",
+    "Marginal filter: 10th–90th percentile range",
+    "RMSE inflation ratio (marginal mean / oracle)",
+    "Convergence rate (L-BFGS-B code 0)"
+  ),
+  Value = c(
+    sprintf("%.4f", oracle_rmse),
+    sprintf("%.4f", mean(rmse_v)),
+    sprintf("%.4f", median(rmse_v)),
+    sprintf("%.4f", sd(rmse_v)),
+    sprintf("%.4f – %.4f",
+            quantile(rmse_v, 0.10),
+            quantile(rmse_v, 0.90)),
+    sprintf("%.2f×", mean(rmse_v) / oracle_rmse),
+    sprintf("%.1f\\%% (%d / %d)",
+            100 * MARG_REC$N_valid / MARG_REC$N_total,
+            MARG_REC$N_valid,
+            MARG_REC$N_total)
+  ),
+  stringsAsFactors = FALSE
+)
+
+knitr::kable(delta_tbl, escape = FALSE,
+             col.names = c("Statistic", "Value"),
+             align = c("l", "r"))
+```
+
+## Table S4 — Filter performance (oracle)
+
+```{r}
+#| label: tbl-filter-summary
+#| tbl-cap: >
+#|   Filter performance summary. RMSE and mean absolute error of
+#|   $\hat\Delta(t)$ relative to the true latent drive, computed on the
+#|   simulation grid. Innovation statistics assess the Gaussian approximation quality: 
+#|   mean near zero and SD near 1 (after standardisation by $\sqrt{S_k}$, 
+#|   yielding approximate $\mathcal{N}(0,1)$ residuals) indicate a well-calibrated filter.
+#| echo: false
+
+delta_err <- flt_grid$delta - RES_UNCOUPLED$delta
+p_err <- flt_grid$p - RES_UNCOUPLED$p
+s_err <- flt_grid$s - RES_UNCOUPLED$s
+
+std_innov <- FLT$innov / sqrt(FLT$S_innov)
+
+flt_tbl <- data.frame(
+  Statistic = c(
+    "RMSE of $\\hat\\Delta(t)$",
+    "MAE of $\\hat\\Delta(t)$",
+    "RMSE of $\\hat p(t)$",     # NEW
+    "RMSE of $\\hat s(t)$",     # NEW
+    "Mean standardized innovation",
+    "SD standardized innovation",
+    "Filter log-likelihood"
+  ),
+  Value = c(
+    sprintf("%.4f", sqrt(mean(delta_err^2, na.rm = TRUE))),
+    sprintf("%.4f", mean(abs(delta_err), na.rm = TRUE)),
+    sprintf("%.4f", sqrt(mean(p_err^2, na.rm = TRUE))),   # NEW
+    sprintf("%.4f", sqrt(mean(s_err^2, na.rm = TRUE))),   # NEW
+    sprintf("%.4f", mean(std_innov)),
+    sprintf("%.4f", sd(std_innov)),
+    sprintf("%.1f", FLT$ll)
+  )
+)
+
+knitr::kable(flt_tbl, escape = FALSE,
+             col.names = c("Statistic", "Value"), align = c("l","r"))
+```
+
+## Table S5 — Moment consistency check
+
+
+```{r}
+#| label: tbl-moment-consistency
+#| tbl-cap: >
+#|   Moment consistency check. Observed HRV statistics compared to the
+#|   values predicted by the conditional MLE at the reference parameter set.
+#|   Relative residuals below 5\\% indicate that the MLE is consistent with
+#|   the observed second-order structure of the tachogram. LF and HF band
+#|   powers are computed from the FFT of the 4~Hz resampled tachogram.
+#| echo: false
+
+MLE_IDENT  <- full_conditional_mle(RES_UNCOUPLED, input_fn = CANONICAL_INPUT_FN)
+RR_IDENT   <- diff(RES_UNCOUPLED$spikes)
+MOMENT_CHK <- check_moment_consistency(RR_IDENT, MLE_IDENT)
+
+knitr::kable(MOMENT_CHK, escape = FALSE,
+             col.names = c("Statistic", "Observed", "Predicted (MLE)",
+                           "Relative residual"),
+             align = c("l", "r", "r", "r"))
+```
+
+## Table S6 — FIM diagnostics
+
+```{r}
+#| label: tbl-fim
+#| tbl-cap: "Fisher information diagnostics per block of the conditional log-likelihood, computed numerically at the MLE of the reference simulation. All quantities use the log-parameterisation. The theoretical floor for each block's condition number is given by the analytical expressions in the text. A condition number below 10^3 is considered well-conditioned for the sample sizes involved"
+#| echo: false
+
+fim_result <- full_conditional_fim(RES_UNCOUPLED, input_fn = CANONICAL_INPUT_FN)
+
+fim_tbl <- data.frame(
+  Block = c("Parasympathetic OU $(\\log a_p,\\, \\log\\sigma_p)$",
+            "Sympathetic OU $(\\log a_s,\\, \\log\\sigma_s)$",
+            "IG observations $(\\log\\mu_0,\\, \\log\\rho)$",
+            "Full $6 \\times 6$ matrix"),
+  Lambda_min = c(
+    sprintf("%.2e", min(fim_result$blocks$p$eig)),
+    sprintf("%.2e", min(fim_result$blocks$s$eig)),
+    sprintf("%.2e", min(fim_result$blocks$obs$eig)),
+    sprintf("%.2e", min(fim_result$eigenvalues[fim_result$eigenvalues > 0]))
+  ),
+  Lambda_max = c(
+    sprintf("%.2e", max(fim_result$blocks$p$eig)),
+    sprintf("%.2e", max(fim_result$blocks$s$eig)),
+    sprintf("%.2e", max(fim_result$blocks$obs$eig)),
+    sprintf("%.2e", max(fim_result$eigenvalues))
+  ),
+  Cond_number = c(
+    sprintf("%.2e", fim_result$blocks$p$cond),
+    sprintf("%.2e", fim_result$blocks$s$cond),
+    sprintf("%.2e", fim_result$blocks$obs$cond),
+    sprintf("%.2e", fim_result$cond_number)
+  )
+)
+
+knitr::kable(fim_tbl, escape = FALSE,
+             col.names = c("Block", "$\\lambda_{\\min}$", "$\\lambda_{\\max}$",
+                           "Condition number"))
+```

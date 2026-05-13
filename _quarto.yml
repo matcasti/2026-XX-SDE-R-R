@@ -6,7 +6,9 @@ website:
   navbar:
     left:
       - href: index.qmd
-        text: Home
+        text: Manuscript
+      - href: supplementary.qmd
+        text: Supplementary
       - href: https://autonomic-navigator.netlify.app/
         text: "Web app"
     right:

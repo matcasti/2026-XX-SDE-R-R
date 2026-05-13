@@ -588,7 +588,7 @@ pp_mle_concentrated <- function(spikes,
 pp_mle_twostage <- function(spikes,
                             params_init,
                             input_fn = function(t) 0,
-                            refine   = TRUE,
+                            refine   = FALSE,
                             verbose  = FALSE) {
   rr <- diff(spikes)
 
