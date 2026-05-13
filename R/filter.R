@@ -103,8 +103,8 @@
   d_s <- (fp$c_s * u / a_s) * (-expm1(-a_s * tau))
   m1  <- c(m0[1L] * F_p + d_p, m0[2L] * F_s + d_s)
 
-  Q_p <- (fp$sigma_p^2 / (2 * a_p)) * (1 - F_p^2)   # exact: 1-e^{-2at} = (1-F)(1+F)
-  Q_s <- (fp$sigma_s^2 / (2 * a_s)) * (1 - F_s^2)
+  Q_p <- (fp$sigma_p^2 / (2 * a_p)) * (-expm1(-2 * a_p * tau))
+  Q_s <- (fp$sigma_s^2 / (2 * a_s)) * (-expm1(-2 * a_s * tau))
   P1  <- matrix(0, 2L, 2L)
   P1[1L, 1L] <- F_p^2 * P0[1L, 1L] + Q_p
   P1[2L, 2L] <- F_s^2 * P0[2L, 2L] + Q_s

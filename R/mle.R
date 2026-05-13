@@ -605,6 +605,12 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt, u_vec = NULL, c_fixed = 0) {
   tau_vec <- diff(spk)
   delta_v <- compute_effective_delta(spk, sim_res$time, sim_res$delta)
 
+  # Mirror the NA-filtering of full_conditional_fim (uncoupled path):
+  # IBIs shorter than dt produce NA from compute_effective_delta; discard them.
+  valid_mask <- is.finite(delta_v)
+  tau_vec    <- tau_vec[valid_mask]
+  delta_v    <- delta_v[valid_mask]
+
   # 8 free parameters: (log a_p, log a_s, a_ps, a_sp,
   #                      log σ_p, log σ_s, log μ₀, log ρ)
   # c_p = c_s = 0 throughout (not estimated from RR data).
@@ -639,7 +645,7 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt, u_vec = NULL, c_fixed = 0) {
   dimnames(FIM) <- list(pnames, pnames)
   eig_all <- tryCatch(
     eigen(FIM, symmetric = TRUE, only.values = TRUE)$values,
-    error = function(e) rep(NA_real_, np))
+    error = function(e) rep(NA_real_, nrow(FIM)))
   list(FIM         = FIM,
        eigenvalues = eig_all,
        cond_number = max(eig_all) / min(eig_all[eig_all > 0]),
