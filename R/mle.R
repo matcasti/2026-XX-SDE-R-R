@@ -51,7 +51,7 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
 # Closed-form solution from OLS (for c) + method-of-moments (for sigma).
 
 ou_mle <- function(x_vec, u_vec, a_init, dt,
-                   log_a_bounds = c(log(0.01), log(100)),
+                   log_a_bounds = c(log(0.01), log(20)),  # harmonised with pp_mle ceiling
                    c_fixed = NULL) {
   n <- length(x_vec) - 1L
   if (n < 2L)
@@ -85,15 +85,14 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
   }
 
   # 1-D profile optimisation over log(a)
-  last_pf <- NULL
   opt <- tryCatch(
     optimize(function(la) {
-      pf <- profile_at_a(exp(la))
-      if (is.finite(pf$ll)) { last_pf <<- pf; pf$ll } else -Inf
+      pf_tmp <- profile_at_a(exp(la))
+      if (is.finite(pf_tmp$ll)) pf_tmp$ll else -Inf
     }, interval = log_a_bounds, maximum = TRUE, tol = 1e-7),
     error = function(e) list(maximum = log(a_init), objective = -Inf))
   a_hat <- exp(opt$maximum)
-  pf    <- if (!is.null(last_pf)) last_pf else profile_at_a(a_hat)
+  pf    <- profile_at_a(a_hat)   # always re-evaluate at the exact MLE
 
   # Numerical Hessian for standard errors.
   # When u(t) ≡ 0, nll_3d does not depend on th[3] (c_gain is non-identifiable),
@@ -121,7 +120,12 @@ ou_mle <- function(x_vec, u_vec, a_init, dt,
     th0_2 <- th0[1:2]
     nll_2 <- function(th) nll_3d(c(th, if (!is.null(c_fixed)) c_fixed else 0))
     H2      <- numerical_hessian(nll_2, th0_2)
-    V2      <- tryCatch(solve(H2), error = function(e) matrix(NA_real_, 2L, 2L))
+    det_H2  <- H2[1L, 1L] * H2[2L, 2L] - H2[1L, 2L]^2
+    V2      <- if (is.finite(det_H2) && det_H2 > 0)
+      matrix(c(H2[2L, 2L], -H2[1L, 2L], -H2[1L, 2L], H2[1L, 1L]),
+             2L, 2L) / det_H2
+    else
+      matrix(NA_real_, 2L, 2L)
     safe2   <- function(k) sqrt(max(V2[k, k], 0, na.rm = TRUE))
     return(list(
       a        = a_hat,
@@ -280,7 +284,7 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   mu0_hat <- sum(tau_vec * w^2) / denom_w
 
   # Closed-form MLE for kappa (given mu_0_hat)
-  mu_k    <- pmax(mu0_hat * g, .Machine$double.eps^0.5)
+  mu_k    <- pmax(mu0_hat * g, 1e-4)   # floor at physiologically safe minimum (0.1 ms)
   psi     <- sum((tau_vec - mu_k)^2 / (mu_k^2 * tau_vec))
   n       <- length(tau_vec)
   kappa_hat <- n / max(psi, 1e-10)
@@ -580,7 +584,7 @@ ou_fim <- function(a_val, sigma_val, x_vec, dt, u_vec = NULL, c_fixed = 0) {
 
   list(
     fim  = H,
-    se   = sqrt(abs(diag(fim_inv))),   # SE(log a), SE(log sigma)
+    se   = sqrt(pmax(diag(fim_inv), 0, na.rm = TRUE)),   # SE(log a), SE(log sigma)
     cond = tryCatch(kappa(H), error = function(e) NA_real_),
     eig  = tryCatch(eigen(H, symmetric = TRUE, only.values = TRUE)$values,
                     error = function(e) rep(NA_real_, 2L))

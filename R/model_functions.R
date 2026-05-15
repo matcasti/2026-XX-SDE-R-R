@@ -388,7 +388,6 @@ sim_sde_ig <- function(duration, dt, params,
 
   for (i in seq_len(n - 1)) {
     u <- u_sim[i]
-    # REPLACE WITH (fire using start-of-step state, then advance):
     tau_start <- tg[i] - last_t
     tau_end   <- tg[i+1] - last_t
 

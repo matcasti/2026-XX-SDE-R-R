@@ -419,6 +419,13 @@ wavelet_spectral_fit <- function(rr_vec, fs = 4.0, min_levels = 4L) {
   x_rs  <- approx(cum_t[-length(cum_t)], rr_vec, xout = t_rs, rule = 2L)$y
   x_rs  <- x_rs - mean(x_rs)
 
+  # First-difference to remove slow non-stationary trend (stress protocol).
+  # Spectral effect: multiplies Haar level variances by (2 sin(pi*f*dt_rs))^2 ≈ (2pi*f*dt_rs)^2
+  # at low frequencies. This is corrected analytically in the Whittle model below.
+  # The differenced series has one fewer point; pad with a zero at the start.
+  x_diff <- diff(x_rs)
+  x_rs   <- c(0, x_diff)   # same length; first element carries no information
+
   # Haar level variances: level j spans octave [fs/2^{j+1}, fs/2^j] Hz
   J       <- min(floor(log2(length(x_rs) / 8L)), 8L)
   J       <- max(J, min_levels)
@@ -426,6 +433,14 @@ wavelet_spectral_fit <- function(rr_vec, fs = 4.0, min_levels = 4L) {
   f_hi_j  <- fs / 2^seq_len(J)
   f_bands <- cbind(f_lo = f_lo_j, f_hi = f_hi_j)
   w_obs   <- vapply(seq_len(J), function(j) haar_level_var(x_rs, j), numeric(1L))
+
+  # Correct Haar variances for first-difference filter attenuation.
+  # At Haar level j (centre frequency f_j ≈ sqrt(f_lo*f_hi)), gain = (2*sin(pi*f_j/fs))^2.
+  dt_rs    <- 1 / fs
+  f_centre <- sqrt(f_lo_j * f_hi_j)
+  diff_gain <- (2 * sin(pi * f_centre * dt_rs))^2
+  diff_gain <- pmax(diff_gain, 1e-6)          # avoid division by zero at DC
+  w_obs    <- w_obs / diff_gain               # deconvolve differencing filter
 
   ok <- is.finite(w_obs) & w_obs > 1e-14
   if (sum(ok) < min_levels) {

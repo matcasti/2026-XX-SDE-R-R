@@ -976,7 +976,7 @@ knitr::kable(
 #|   state tracking.
 #| echo: false
 
-rmse_v <- MARG_REC$rmse_delta
+rmse_v <- as.numeric(unlist(MARG_REC$rmse_delta))   # safe against stale list cache
 rmse_v <- rmse_v[is.finite(rmse_v)]
 
 # Oracle RMSE, reuse from the filter validation section

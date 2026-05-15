@@ -365,7 +365,7 @@ The modular architecture of the SDE-IG framework, OU state equation, log-link ob
 
 ## Model formulation
 
-The SDE-IG model is defined by the coupled OU system above together with the IG first-passage observation model. The system matrix is $ A = \mathrm{diag}(-a_p,-a_s) + \bigl[ \begin{smallmatrix} 0 & -a_{ps} \\ -a_{sp} & 0 \end{smallmatrix}\bigr]$; linear stability requires $\det(A) = a_pa_s - a_{ps} a_{sp} >0$, enforced throughout. Full derivations, including the log-link rationale, IG hazard computation in log-space, exact OU transition kernel, and survival-ratio event generation, are given in Supplementary Notes 1–4.
+The SDE-IG model is defined by the coupled OU system above together with the IG first-passage observation model. The system matrix is $A = \mathrm{diag}(-a_p,-a_s) + \bigl[ \begin{smallmatrix} 0 & -a_{ps} \\ -a_{sp} & 0 \end{smallmatrix}\bigr]$; linear stability requires $\det(A) = a_pa_s - a_{ps} a_{sp} >0$, enforced throughout. Full derivations, including the log-link rationale, IG hazard computation in log-space, exact OU transition kernel, and survival-ratio event generation, are given in Supplementary Notes 1–4.
 
 ## Parameter estimation
 

@@ -279,7 +279,20 @@ pp_mle <- function(spikes,
   # Summary statistics fixed from data — captured by the pack/unpack closures.
   # mu_bar: sample mean IBI (seconds).  cv_obs: observed coefficient of variation
   # of IBIs (floor at 0.01 prevents division by zero on pathologically regular data).
-  mu_bar <- mean(rr_for_init)
+
+  mu_bar_raw <- mean(rr_for_init)
+  # When the input is non-trivial (c_p or c_s != 0), the overall sample mean IBI
+  # includes an input-driven mean-delta shift that biases the mu_0 anchor by
+  # ≈ (c_s/a_s - c_p/a_p) * mean(u).  Use only near-baseline beats as anchor
+  # when sufficient baseline data exist; otherwise fall back to the raw mean.
+  mu_bar <- if (abs(fp0$c_p) + abs(fp0$c_s) > 1e-6) {
+    u_at_beat_starts <- vapply(spikes[-length(spikes)], input_fn, numeric(1L))
+    baseline_mask    <- abs(u_at_beat_starts) < 0.05
+    if (sum(baseline_mask) >= 20L) mean(rr_for_init[baseline_mask])
+    else mu_bar_raw
+  } else {
+    mu_bar_raw
+  }
   cv_obs <- max(sd(rr_for_init) / mu_bar, 0.01)
 
   params_spectral <- tryCatch(
@@ -401,20 +414,24 @@ pp_mle <- function(spikes,
 
   # Bounds in optimizer coordinates.
   # v[1] log(a_s):   a_s ∈ [0.01, 2.0] Hz
-  # v[2] log(gap):   gap ∈ [0.01, 9.99] → a_p ≤ 11.99 Hz
+  # v[2] log(gap):   gap ∈ [0.01, 7.99] → a_p ≤ 9.99 Hz
   # v[3] log(A_p):   A_p ∈ [1e-6, 0.45]  (vagal stationary variance)
   # v[4] log(A_s):   A_s ∈ [1e-6, 0.45]  (sympathetic stationary variance)
   # v[5] log(kappa):     kappa ∈ [0.5, 1000]
   # Individual caps at 0.45 keep total σ_Δ² = A_p + A_s well below 1,
   # matching the physiological constraint that OU variance ≪ μ₀².
   lower_v <- c(log(0.01), log(0.01), log(1e-6), log(1e-6), log(0.5))
-  upper_v <- c(log(2.0),  log(9.99), log(0.45), log(0.45), log(1000))
+  upper_v <- c(log(2.0),  log(7.99), log(0.45), log(0.45), log(1000))
 
   if (use_coupled) {
     lower_v <- c(lower_v, log(1e-8),  log(1e-3))   # log(c), log(r)
+    # No fixed upper bound on log(c): the stability constraint a_p*a_s - a_ps*a_sp > 0
+    # is enforced analytically inside neg_ll for every candidate parameter vector.
+    # A static bound derived from the initial (fp0$a_p, fp0$a_s) is incorrect once
+    # the optimizer moves away from those starting values.
     upper_v <- c(upper_v,
-                 log(0.99 * fp0$a_p * fp0$a_s),
-                 log(1e3))                           # allow up to 1000:1 ratio
+                 log(0.99 * max(fp0$a_p, 2.0) * max(fp0$a_s, 0.5)),  # generous ceiling
+                 log(1e3))
   }
 
   neg_ll <- function(v) {
@@ -429,17 +446,9 @@ pp_mle <- function(spikes,
     flt    <- tryCatch(pp_ukf(spikes, params, input_fn),
                        error = function(e) list(innov = NULL))
     if (is.null(flt$innov)) return(1e10)
-    # Gaussian innovation log-likelihood  log N(innov; 0, S_k).
-    # Provides continuous, well-defined gradients for L-BFGS-B throughout
-    # the parameter space.  The sigma-point IG average stored in flt$ll is
-    # reserved for state-estimation diagnostics; it can exhibit near-
-    # discontinuous Jacobians when sigma-points straddle the IG hazard peak,
-    # degrading gradient-based optimization.
-    fin <- is.finite(flt$innov) & is.finite(flt$S_innov) & flt$S_innov > 0
-    if (!any(fin)) return(1e10)
-    ll_g <- sum(dnorm(flt$innov[fin], 0, sqrt(flt$S_innov[fin]), log = TRUE))
-    if (!is.finite(ll_g)) return(1e10)
-    -ll_g
+    ll_vec_fin <- flt$ll_vec[is.finite(flt$ll_vec)]
+    if (length(ll_vec_fin) < 2L) return(1e10)
+    -sum(ll_vec_fin)
   }
 
   res <- optim(
@@ -494,7 +503,14 @@ pp_mle_concentrated <- function(spikes,
                                 verbose  = FALSE) {
   rr <- diff(spikes)
   if (length(rr) < 10L) stop("pp_mle_concentrated: need at least 10 spikes.")
-  mu_bar_c <- mean(rr)
+  mu_bar_c_raw <- mean(rr)
+  mu_bar_c <- if (abs(params_init$free$c_p) + abs(params_init$free$c_s) > 1e-6) {
+    u_at_beat_starts <- vapply(spikes[-length(spikes)], input_fn, numeric(1L))
+    baseline_mask    <- abs(u_at_beat_starts) < 0.05
+    if (sum(baseline_mask) >= 20L) mean(rr[baseline_mask]) else mu_bar_c_raw
+  } else {
+    mu_bar_c_raw
+  }
 
   # Starting values: spectral_init re-evaluated at the fixed poles
   sp_init <- tryCatch(spectral_init(rr, verbose = FALSE),
@@ -526,11 +542,9 @@ pp_mle_concentrated <- function(spikes,
     flt <- tryCatch(pp_ukf(spikes, params_v, input_fn),
                     error = function(e) list(innov = NULL))
     if (is.null(flt$innov)) return(1e10)
-    fin <- is.finite(flt$innov) & is.finite(flt$S_innov) & flt$S_innov > 0
-    if (!any(fin)) return(1e10)
-    ll_g <- sum(dnorm(flt$innov[fin], 0, sqrt(flt$S_innov[fin]), log = TRUE))
-    if (!is.finite(ll_g)) return(1e10)
-    -ll_g
+    ll_vec_fin <- flt$ll_vec[is.finite(flt$ll_vec)]
+    if (length(ll_vec_fin) < 2L) return(1e10)
+    -sum(ll_vec_fin)
   }
 
   res <- optim(v0, neg_ll_c,

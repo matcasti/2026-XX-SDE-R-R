@@ -298,7 +298,11 @@ plot_marginal_vs_conditional <- function(cond_summary, marg_summary,
     marg_df$rel_bias_pct - marg_df$rmse_rel_pct,
     marg_df$rel_bias_pct + marg_df$rmse_rel_pct
   )
-  xlim <- range(all_vals, na.rm = TRUE) * 1.2
+  finite_vals <- all_vals[is.finite(all_vals)]
+  xlim <- if (length(finite_vals) >= 2L)
+    range(finite_vals) * 1.2
+  else
+    c(-20, 20)   # fallback when all replications failed or produced NA
   ylim <- c(0.5, np + 0.5)
 
   op <- par(mfrow = c(1, 2),
@@ -331,16 +335,18 @@ plot_marginal_vs_conditional <- function(cond_summary, marg_summary,
          las = 2, cex.axis = 1.05)
 
     # Right-margin annotation: coverage (cond) or n_valid (marg)
-    if (panel == 1L && "coverage_95" %in% names(df)) {
-      mtext(sprintf("%.0f%%", df$coverage_95), side = 4,
-            at = seq_len(np), las = 2, cex = 0.72, col = "gray30", line = 0.4)
-      mtext("95% CI\ncoverage", side = 4, at = np + 0.85,
-            las = 2, cex = 0.65, col = "gray30", line = 0.4)
-    } else {
-      mtext(sprintf("n=%d", df$n_valid), side = 4,
-            at = seq_len(np), las = 2, cex = 0.72, col = "gray30", line = 0.4)
-      mtext("valid\nreps", side = 4, at = np + 0.85,
-            las = 2, cex = 0.65, col = "gray30", line = 0.4)
+    if (np > 0L) {
+      if (panel == 1L && "coverage_95" %in% names(df)) {
+        mtext(sprintf("%.0f%%", df$coverage_95), side = 4,
+              at = seq_len(np), las = 2, cex = 0.72, col = "gray30", line = 0.4)
+        mtext("95% CI\ncoverage", side = 4, at = np + 0.85,
+              las = 2, cex = 0.65, col = "gray30", line = 0.4)
+      } else {
+        mtext(sprintf("n=%d", df$n_valid), side = 4,
+              at = seq_len(np), las = 2, cex = 0.72, col = "gray30", line = 0.4)
+        mtext("valid\nreps", side = 4, at = np + 0.85,
+              las = 2, cex = 0.65, col = "gray30", line = 0.4)
+      }
     }
     grid(ny = NA, col = "lightgray", lty = 1)
   }
@@ -405,7 +411,7 @@ plot_profiles <- function(profiles,
 
 marginal_recovery_one <- function(true_params, duration = CANONICAL_DURATION, dt = 0.005,
                                   input_fn  = CANONICAL_INPUT_FN,
-                                  estimator = pp_mle_twostage,
+                                  estimator = pp_mle,
                                   seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
 
@@ -419,7 +425,10 @@ marginal_recovery_one <- function(true_params, duration = CANONICAL_DURATION, dt
     error = function(e) NULL
   )
 
-  if (is.null(mle_result) || mle_result$convergence != 0L) return(NULL)
+  # Accept code 0 (success) and code 1 (iteration limit, still improved).
+  # Codes 51 and 52 indicate gradient/input errors and are discarded.
+  if (is.null(mle_result) ||
+      !mle_result$convergence %in% c(0L, 1L)) return(NULL)
 
   flt      <- mle_result$filter
   flt_grid <- filter_to_grid(flt, sim_res$time)
@@ -451,7 +460,7 @@ marginal_recovery_study <- function(N = 100L, true_params,
                                     duration = CANONICAL_DURATION,
                                     dt = 0.005,
                                     input_fn  = CANONICAL_INPUT_FN,
-                                    estimator = pp_mle_twostage,
+                                    estimator = pp_mle,
                                     use_parallel = TRUE) {
   set.seed(RECOVERY_MASTER_SEED + 1L)   # distinct from conditional study
   seeds <- sample.int(1e6L, N)
@@ -473,8 +482,8 @@ marginal_recovery_study <- function(N = 100L, true_params,
 
   param_names <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
   summary_df <- as.data.frame(data.table::rbindlist(lapply(param_names, function(p) {
-    hat_v  <- sapply(results, function(r) r$hat[p])
-    true_v <- sapply(results, function(r) r$true[p])
+    hat_v  <- vapply(results, function(r) r$hat[[p]], numeric(1L))
+    true_v <- vapply(results, function(r) r$true[[p]], numeric(1L))
     ok     <- is.finite(hat_v) & is.finite(true_v)
     if (!any(ok)) return(NULL)
     t_bar  <- mean(true_v[ok])
@@ -494,7 +503,7 @@ marginal_recovery_study <- function(N = 100L, true_params,
 
   summary_df <- as.data.frame(summary_df)
 
-  rmse_delta_vec <- sapply(results, `[[`, "rmse_delta")
+  rmse_delta_vec <- vapply(results, `[[`, numeric(1L), "rmse_delta")
   list(results    = results,
        summary    = summary_df,
        rmse_delta = rmse_delta_vec,
