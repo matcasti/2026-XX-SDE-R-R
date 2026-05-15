@@ -310,7 +310,8 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
 
   ll <- sum(log_ig_pdf(tau_vec, mu_k, kappa_hat))
 
-  rho_hat <- sqrt(mu0_hat / kappa_hat)
+  kappa_hat <- max(kappa_hat, 1e-4)
+  rho_hat   <- sqrt(mu0_hat / kappa_hat)
   # SE(rho): exact analytical formula via the (log mu_0, log rho) FIM.
   # At the MLE, d²L/d(log mu_0)d(log kappa) = 0 exactly (the score
   # d(log mu_0)L = -kappa*mu_0*dQ/dmu_0/2 vanishes, and differentiating
@@ -327,7 +328,7 @@ ig_obs_mle <- function(tau_vec, delta_vec) {
   rho_se      <- if (!is.na(var_log_rho)) rho_hat * sqrt(max(var_log_rho, 0)) else NA_real_
 
 
-  list(mu0 = mu0_hat, kappa = max(kappa_hat, 1e-4),
+  list(mu0 = mu0_hat, kappa = kappa_hat,
        rho = rho_hat,
        mu0_se = mu0_se, kappa_se = kappa_se, rho_se = rho_se,
        log_lik = ll, n_beats = n)
@@ -391,8 +392,11 @@ full_conditional_mle <- function(sim_res, input_fn = NULL) {
   }
   mle_obs <- ig_obs_mle(tau_vec[valid_idx], delta_v[valid_idx])
 
-  ll_ou <- if (!is.null(mle_ou)) mle_ou$log_lik
-  else mle_p$log_lik + mle_s$log_lik
+  ll_ou <- if (!is.null(mle_ou)) {
+    mle_ou$log_lik
+  } else {
+    mle_p$log_lik + mle_s$log_lik
+  }
 
   list(
     a_p      = mle_p$a,      a_p_se      = mle_p$a_se,

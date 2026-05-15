@@ -91,8 +91,11 @@ sensitivity_one <- function(a_p_val, a_s_val,
     # c_p and c_s are fixed known constants carried from base_params.
     # The stored input_fn removes their contribution from the prediction step,
     # isolating decay-rate misspecification as the sole source of filter error.
-    input_ref <- if (!is.null(sim_res_ref$input_fn)) sim_res_ref$input_fn
-    else CANONICAL_INPUT_FN
+    iinput_ref <- if (!is.null(sim_res_ref$input_fn)) {
+      sim_res_ref$input_fn
+    } else {
+      CANONICAL_INPUT_FN
+    }
     pp_ukf(sim_res_ref$spikes, params_for_filter,
            input_fn = input_ref)
   }, error = function(e) NULL)

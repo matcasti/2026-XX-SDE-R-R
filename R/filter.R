@@ -285,7 +285,7 @@ pp_mle <- function(spikes,
   # includes an input-driven mean-delta shift that biases the mu_0 anchor by
   # ≈ (c_s/a_s - c_p/a_p) * mean(u).  Use only near-baseline beats as anchor
   # when sufficient baseline data exist; otherwise fall back to the raw mean.
-  mu_bar <- if (abs(fp0$c_p) + abs(fp0$c_s) > 1e-6) {
+  mu_bar <- if (abs(params_init$free$c_p) + abs(params_init$free$c_s) > 1e-6) {
     u_at_beat_starts <- vapply(spikes[-length(spikes)], input_fn, numeric(1L))
     baseline_mask    <- abs(u_at_beat_starts) < 0.05
     if (sum(baseline_mask) >= 20L) mean(rr_for_init[baseline_mask])
@@ -293,7 +293,6 @@ pp_mle <- function(spikes,
   } else {
     mu_bar_raw
   }
-  cv_obs <- max(sd(rr_for_init) / mu_bar, 0.01)
 
   params_spectral <- tryCatch(
     spectral_init(rr_for_init, verbose = verbose),
