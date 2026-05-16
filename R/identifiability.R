@@ -175,7 +175,7 @@ recovery_study <- function(N = 200L,
 
 # ---- Recovery dot-plot ----
 #
-# Displays relative bias (centre) ± relative RMSE (whiskers) per parameter.
+# Displays relative bias (center) ± relative RMSE (whiskers) per parameter.
 # Inputs: the summary data.frame from recovery_study().
 
 plot_recovery <- function(rec_summary,
@@ -411,7 +411,7 @@ plot_profiles <- function(profiles,
 
 marginal_recovery_one <- function(true_params, duration = CANONICAL_DURATION, dt = 0.005,
                                   input_fn  = CANONICAL_INPUT_FN,
-                                  estimator = pp_mle,
+                                  estimator    = pp_mle_twostage,
                                   seed = NULL) {
   sim_res <- sim_sde_ig(duration, dt, true_params, input_fn, seed = seed)
 
@@ -460,7 +460,7 @@ marginal_recovery_study <- function(N = 100L, true_params,
                                     duration = CANONICAL_DURATION,
                                     dt = 0.005,
                                     input_fn  = CANONICAL_INPUT_FN,
-                                    estimator = pp_mle,
+                                    estimator    = pp_mle_twostage,
                                     use_parallel = TRUE) {
   set.seed(RECOVERY_MASTER_SEED + 1L)   # distinct from conditional study
   seeds <- sample.int(1e6L, N)

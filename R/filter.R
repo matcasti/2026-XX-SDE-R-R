@@ -295,7 +295,7 @@ pp_mle <- function(spikes,
   }
 
   params_spectral <- tryCatch(
-    spectral_init(rr_for_init, verbose = verbose),
+    spectral_init(rr_for_init, verbose = verbose, mu_anchor = mu_bar),
     error = function(e) {
       if (verbose)
         message("pp_mle: spectral_init failed (", conditionMessage(e),
@@ -662,21 +662,42 @@ pp_mle_twostage <- function(spikes,
 # ---- Interpolate filtered state to a regular time grid ----
 # Useful for overlaying filter output on continuous simulation plots.
 
+# OU-propagated inter-beat interpolation helper
+.ou_propagate_grid <- function(beat_times, m_beat, a_val, time_grid) {
+  out <- rep(NA_real_, length(time_grid))
+  n_bt <- length(beat_times)
+  for (k in seq_len(n_bt)) {
+    t0   <- beat_times[k]
+    t1   <- if (k < n_bt) beat_times[k + 1L] else Inf
+    mask <- time_grid >= t0 & time_grid < t1
+    if (!any(mask)) next
+    out[mask] <- m_beat[k] * exp(-a_val * (time_grid[mask] - t0))
+  }
+  out
+}
+
 filter_to_grid <- function(ukf_result, time_grid) {
-  bt <- ukf_result$beat_times
+  bt   <- ukf_result$beat_times
+  fp   <- ukf_result$params$free
 
+  p_prop <- .ou_propagate_grid(bt, ukf_result$m_filt[, "p"],
+                               fp$a_p, time_grid)
+  s_prop <- .ou_propagate_grid(bt, ukf_result$m_filt[, "s"],
+                               fp$a_s, time_grid)
   first_bt <- bt[1L]
+  p_prop[time_grid < first_bt] <- NA_real_
+  s_prop[time_grid < first_bt] <- NA_real_
 
-  interp <- function(y) {
+  interp <- function(y) {              # keep linear for scalar quantities
     out <- approx(bt, y, xout = time_grid, rule = 2)$y
     out[time_grid < first_bt] <- NA_real_
     out
   }
 
   list(
-    delta    = interp(ukf_result$delta_filt),
-    p        = interp(ukf_result$m_filt[, "p"]),
-    s        = interp(ukf_result$m_filt[, "s"]),
+    delta    = s_prop - p_prop,
+    p        = p_prop,
+    s        = s_prop,
     mu       = interp(ukf_result$mu_filt),
     sd_delta = interp(sqrt(pmax(vapply(ukf_result$P_filt,
                                        function(P) P[1L,1L] + P[2L,2L] - 2*P[1L,2L],

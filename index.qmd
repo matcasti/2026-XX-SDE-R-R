@@ -241,7 +241,7 @@ mtext("Time (s)", side = 1, outer = TRUE, line = 1.5)
 ```{r}
 #| label: tbl-recovery
 #| tbl-cap: >
-#|   **Table 1 | Conditional MLE recovery summary.** True values, mean
+#|   **Conditional MLE recovery summary.** True values, mean
 #|   estimates, relative bias, RMSE, and 95% Wald CI coverage for each
 #|   free parameter ($N=250$ replications, 720 s each). Coupling terms
 #|   are zero in this analysis (uncoupled sub-model); their recovery is

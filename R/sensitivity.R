@@ -85,13 +85,18 @@ sensitivity_one <- function(a_p_val, a_s_val,
   # filter accuracy degrades when the decay rates are *misspecified*, independently
   # of estimation variance.
   flt <- tryCatch({
+    A_p_ref <- base_params$free$sigma_p^2 / (2 * base_params$free$a_p)
+    A_s_ref <- base_params$free$sigma_s^2 / (2 * base_params$free$a_s)
+
     params_for_filter          <- base_params
     params_for_filter$free$a_p <- a_p_val
     params_for_filter$free$a_s <- a_s_val
+    params_for_filter$free$sigma_p <- sqrt(2 * a_p_val * A_p_ref)
+    params_for_filter$free$sigma_s <- sqrt(2 * a_s_val * A_s_ref)
     # c_p and c_s are fixed known constants carried from base_params.
     # The stored input_fn removes their contribution from the prediction step,
     # isolating decay-rate misspecification as the sole source of filter error.
-    iinput_ref <- if (!is.null(sim_res_ref$input_fn)) {
+    input_ref <- if (!is.null(sim_res_ref$input_fn)) {
       sim_res_ref$input_fn
     } else {
       CANONICAL_INPUT_FN
@@ -112,12 +117,12 @@ sensitivity_one <- function(a_p_val, a_s_val,
   data.frame(
     a_p               = a_p_val,
     a_s               = a_s_val,
-    rel_rmse_a_p      = agg$a_p["rel_rmse_pct"],
-    rel_rmse_a_s      = agg$a_s["rel_rmse_pct"],
-    rel_rmse_sigma_p  = agg$sigma_p["rel_rmse_pct"],
-    rel_rmse_sigma_s  = agg$sigma_s["rel_rmse_pct"],
-    rel_rmse_mu0      = agg$mu0["rel_rmse_pct"],
-    rel_rmse_rho      = agg$rho["rel_rmse_pct"],
+    rel_rmse_a_p      = agg$a_p[["rel_rmse_pct"]],
+    rel_rmse_a_s      = agg$a_s[["rel_rmse_pct"]],
+    rel_rmse_sigma_p  = agg$sigma_p[["rel_rmse_pct"]],
+    rel_rmse_sigma_s  = agg$sigma_s[["rel_rmse_pct"]],
+    rel_rmse_mu0      = agg$mu0[["rel_rmse_pct"]],
+    rel_rmse_rho      = agg$rho[["rel_rmse_pct"]],
     filter_rmse_delta = flt_rmse,
     filter_ll         = flt_ll,
     n_valid           = length(results),

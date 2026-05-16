@@ -10,9 +10,10 @@
 # Smooth, differentiable approximation to a boxcar transient:
 #   u(t) ≈ 0  (rest)  →  1  (exercise)  →  0  (recovery)
 # with onset at t_on, offset at t_off, and steepness k (Hz).
-# At k = 10: 10–90% rise ≈ 0.44 s  ≪  τ_p = 0.5 s, τ_s = 5 s.
-# The boxcar is the k → ∞ limit; k = 10 preserves differentiability
-# without materially widening the transition relative to autonomic time scales.
+# At k = 0.1: 10–90% rise ≈ ln(81)/0.1 ≈ 44 s  ≫  τ_p = 0.5 s, τ_s = 5 s.
+# From the inference side this looks like naturally slow sympathetic
+# accumulation, providing a realistic non-stationarity test without
+# an externally visible step. The boxcar is the k → ∞ limit.
 #
 # Usage:  INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420)
 

@@ -225,7 +225,8 @@ band_filtered_coupling_init <- function(rr_vec, a_p, a_s, fs = 4.0) {
 
 # ---- Main spectral initialisation function ----
 
-spectral_init <- function(rr_vec, max_lag = 20L, verbose = FALSE) {
+spectral_init <- function(rr_vec, max_lag = 20L, verbose = FALSE,
+                          mu_anchor = NULL) {
   stopifnot(
     is.numeric(rr_vec), length(rr_vec) >= max_lag + 5L,
     all(rr_vec > 0)
@@ -233,6 +234,11 @@ spectral_init <- function(rr_vec, max_lag = 20L, verbose = FALSE) {
 
   mu_obs <- mean(rr_vec)
   sdnn2  <- var(rr_vec)
+
+  # Use caller-supplied anchor (baseline mean) if available; fall back to
+  # full-sequence mean for standalone calls.
+  mu_ref <- if (!is.null(mu_anchor) && is.finite(mu_anchor) && mu_anchor > 0)
+    mu_anchor else mu_obs
 
   # ----------------------------------------------------------------
   # Step 1 — biexponential ACF fit
@@ -300,7 +306,7 @@ spectral_init <- function(rr_vec, max_lag = 20L, verbose = FALSE) {
   # E[tau] = mu_0 * exp(sigma_d2 / 2), so
   # mu_0 = mu_obs * exp(-sigma_d2 / 2)
   # ----------------------------------------------------------------
-  mu_0_hat <- mu_obs * exp(-sigma_d2 / 2)
+  mu_0_hat <- mu_ref * exp(-sigma_d2 / 2)
   mu_0_hat <- max(mu_0_hat, 0.30)
 
   # ----------------------------------------------------------------
@@ -310,7 +316,7 @@ spectral_init <- function(rr_vec, max_lag = 20L, verbose = FALSE) {
   # This estimator is biased upward when sigma_d2 > 0, but the bias
   # is absorbed by the subsequent pp_mle optimisation.
   # ----------------------------------------------------------------
-  harm_excess <- mean(1 / rr_vec) - 1 / mu_obs   # >= 0 by Jensen
+  harm_excess <- mean(1 / rr_vec) - 1 / mu_ref
   kappa_hat   <- if (harm_excess > 1e-8) 1 / harm_excess else 10.0
   kappa_hat   <- max(min(kappa_hat, 1e4), 0.5)
   rho_hat     <- sqrt(mu_0_hat / kappa_hat)
