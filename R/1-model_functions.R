@@ -6,6 +6,12 @@
 # No side-effects: does NOT define PARAMS, INPUT_FN, or RES.
 # ============================================================
 
+# Minimum physiological a_p / a_s ratio.  Enforced in spectral initialisation,
+# Whittle Stage 1, and the full marginal MLE to prevent pole-merging degeneracy.
+# Physiological basis: resting HF vagal time-constant (τ_p ≤ 2 s, a_p ≥ 0.5 Hz)
+# is at least 3× faster than the sympathetic branch across all known protocols.
+SDE_IG_MIN_AP_AS_RATIO <- 3.0
+
 # ---- Double-logistic input function ----
 # Smooth, differentiable approximation to a boxcar transient:
 #   u(t) ≈ 0  (rest)  →  1  (exercise)  →  0  (recovery)
@@ -256,9 +262,9 @@ log_ig_survival <- function(tau, mu, kappa) {
   n   <- max(length(tau), length(mu))
   tau <- rep_len(tau, n)
   mu  <- rep_len(mu,  n)
-  out <- rep.int(0.0, n)      # log S(tau) = 0 for tau <= 0  [S(0) = 1]
+  out <- rep.int(0.0, n)      # log S = 0 (S = 1) for tau <= 0 or non-finite mu
 
-  pos <- tau > 0
+  pos <- is.finite(tau) & tau > 0 & is.finite(mu)
   if (!any(pos)) return(out)
 
   tp  <- tau[pos];  mp <- mu[pos]

@@ -81,7 +81,8 @@ band_centroid_init <- function(rr_vec, fs = 4.0) {
   # Decay rates from band centroids: a = 2π·f_centroid
   a_p_hat <- max(min(2 * pi * .band_centroid(freqs, sp_full, 0.15, 0.40), 5.0), 0.5)
   a_s_hat <- max(min(2 * pi * .band_centroid(freqs, sp_full, 0.04, 0.15), 1.5), 0.1)
-  if (a_p_hat <= a_s_hat) a_p_hat <- a_s_hat * 5
+  if (a_p_hat < a_s_hat * SDE_IG_MIN_AP_AS_RATIO)
+    a_p_hat <- a_s_hat * SDE_IG_MIN_AP_AS_RATIO
 
   # LF/HF band powers → spectral fractions
   hf_pow  <- sum(sp_full[freqs >= 0.15 & freqs <= 0.40]) * df
@@ -282,10 +283,11 @@ spectral_init <- function(rr_vec, max_lag = 20L, verbose = FALSE,
       a_p_hat, a_s_hat))
   }
 
-  # Clamp to physiologically plausible range
+  # Clamp to physiologically plausible range and enforce minimum pole separation.
   a_p_hat <- max(min(a_p_hat, 15.0), 0.5)
   a_s_hat <- max(min(a_s_hat, 1.0),  0.02)
-  if (a_p_hat <= a_s_hat) a_p_hat <- a_s_hat * 5
+  if (a_p_hat < a_s_hat * SDE_IG_MIN_AP_AS_RATIO)
+    a_p_hat <- a_s_hat * SDE_IG_MIN_AP_AS_RATIO
 
   # ----------------------------------------------------------------
   # Step 2 — spectral variances from SDNN and ACF weights
@@ -382,20 +384,24 @@ predicted_hrv_moments <- function(a_p, a_s, sigma_p, sigma_s, mu_0, rho) {
 haar_level_var <- function(x, j) {
   s      <- 2L^j
   n_blk  <- floor(length(x) / (2L * s))
+  n_blk  <- n_blk - (n_blk %% 2L)          # round to even: Haar pairs require 2 blocks each
   if (n_blk < 4L) return(NA_real_)
   mat    <- matrix(x[seq_len(2L * s * n_blk)], nrow = 2L * s)
   blocks <- colMeans(mat)
-  d      <- (blocks[c(TRUE, FALSE)] - blocks[c(FALSE, TRUE)]) / sqrt(2)
+  odds   <- seq(1L, n_blk - 1L, by = 2L)   # explicit paired indices: 1,3,5,...
+  d      <- (blocks[odds] - blocks[odds + 1L]) / sqrt(2)
   var(d)
 }
 
 lorentz_band <- function(a, f_lo, f_hi)
   (atan(2*pi*f_hi/a) - atan(2*pi*f_lo/a)) / pi
 
+# th = (log a_s,  log ratio,  log A_p,  log A_s)
+# ratio = a_p/a_s >= SDE_IG_MIN_AP_AS_RATIO, enforced by L-BFGS-B lower bound.
+# a_p > a_s is guaranteed by construction; no explicit guard needed.
 whittle_ll <- function(th, w_obs, f_bands) {
-  a_p_v <- exp(th[1L]);  a_s_v <- exp(th[2L])
+  a_s_v <- exp(th[1L]);  a_p_v <- a_s_v * exp(th[2L])
   A_p_v <- exp(th[3L]);  A_s_v <- exp(th[4L])
-  if (a_p_v <= a_s_v) return(1e10)
   model <- vapply(seq_len(nrow(f_bands)), function(j) {
     A_p_v * lorentz_band(a_p_v, f_bands[j,1], f_bands[j,2]) +
       A_s_v * lorentz_band(a_s_v, f_bands[j,1], f_bands[j,2])
@@ -471,23 +477,27 @@ wavelet_spectral_fit <- function(rr_vec, fs = 4.0, min_levels = 4L) {
   fp   <- bc$free
   A_p0 <- max(fp$sigma_p^2 / (2 * fp$a_p), 1e-8)
   A_s0 <- max(fp$sigma_s^2 / (2 * fp$a_s), 1e-8)
-  th0  <- c(log(fp$a_p), log(fp$a_s), log(A_p0), log(A_s0))
+  # th = (log a_s, log ratio, log A_p, log A_s) — prevents pole-merging from Stage 1.
+  ratio0 <- max(fp$a_p / max(fp$a_s, 1e-8), SDE_IG_MIN_AP_AS_RATIO)
+  th0  <- c(log(fp$a_s), log(ratio0), log(A_p0), log(A_s0))
 
   res <- tryCatch(
     optim(th0, whittle_ll,
           w_obs = w_use, f_bands = fb_use,
           method  = "L-BFGS-B",
-          lower   = c(log(0.3),  log(0.01), log(1e-8), log(1e-8)),
-          upper   = c(log(15.0), log(2.0),  log(2.0),  log(2.0)),
+          lower   = c(log(0.01), log(SDE_IG_MIN_AP_AS_RATIO), log(1e-8), log(1e-8)),
+          upper   = c(log(2.0),  log(1500.0),                 log(2.0),  log(2.0)),
           control = list(maxit = 500L, factr = 1e7)),
     error = function(e) list(par = th0, value = Inf, convergence = 99L)
   )
 
   th_hat <- res$par
-  a_p_v  <- exp(th_hat[1L]);  a_s_v <- exp(th_hat[2L])
-  if (a_p_v <= a_s_v) { a_p_v <- a_s_v * 5; th_hat[1L] <- log(a_p_v) }
+  # th_hat[1] = log(a_s),  th_hat[2] = log(ratio); ratio >= SDE_IG_MIN_AP_AS_RATIO
+  a_s_v  <- exp(th_hat[1L]);  a_p_v <- a_s_v * exp(th_hat[2L])
 
-  # Standard errors via numerical Hessian (delta method: SE(a) = a * SE(log a))
+  # Standard errors via numerical Hessian.
+  # th[1]=log(a_s): SE(a_s) = a_s * sel[1].
+  # th[2]=log(ratio): SE(a_p) ≈ a_p * sel[2]  (d(a_p)/d(log ratio) = a_p).
   H   <- tryCatch(
     numerical_hessian(function(th) whittle_ll(th, w_use, fb_use), th_hat),
     error = function(e) matrix(NA_real_, 4L, 4L))
@@ -498,8 +508,8 @@ wavelet_spectral_fit <- function(rr_vec, fs = 4.0, min_levels = 4L) {
        a_s        = a_s_v,
        A_p        = exp(th_hat[3L]),
        A_s        = exp(th_hat[4L]),
-       se_ap      = a_p_v           * sel[1L],
-       se_as      = a_s_v           * sel[2L],
+       se_ap      = a_p_v  * sel[2L],   # d(a_p)/d(log ratio) = a_p
+       se_as      = a_s_v  * sel[1L],   # d(a_s)/d(log a_s)   = a_s
        se_Ap      = exp(th_hat[3L]) * sel[3L],
        se_As      = exp(th_hat[4L]) * sel[4L],
        level_vars = w_obs,

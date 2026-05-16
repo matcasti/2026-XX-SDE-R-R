@@ -263,8 +263,10 @@ pp_ukf <- function(spikes,
 
 pp_mle <- function(spikes,
                    params_init,
-                   input_fn = function(t) 0,
-                   verbose  = FALSE) {
+                   input_fn     = function(t) 0,
+                   verbose      = FALSE,
+                   warmstart_fp = NULL,
+                   pole_anchor  = NULL) {
 
   # ---- Data-driven initialisation ----
   # spectral_init() estimates starting values from the tachogram's
@@ -332,16 +334,32 @@ pp_mle <- function(spikes,
     params_spectral$free$a_ps <- 0
     params_spectral$free$a_sp <- 0
   }
+
   params_spectral$free$c_p <- params_init$free$c_p
   params_spectral$free$c_s <- params_init$free$c_s
   fp0 <- params_spectral$free
 
-  # Optimizer coordinates: (log a_s, log(a_p − a_s), log A_p, log A_s, log κ [, log c])
+  # Warm-start override: replace spectral_init pole / amplitude estimates with
+  # the supplied warmstart (e.g. Stage 2 concentrated-MLE free_hat).
+  # mu_0, rho, and input gains are kept from spectral_init / params_init.
+  if (!is.null(warmstart_fp)) {
+    fp0$a_p     <- warmstart_fp$a_p
+    fp0$a_s     <- warmstart_fp$a_s
+    fp0$sigma_p <- warmstart_fp$sigma_p
+    fp0$sigma_s <- warmstart_fp$sigma_s
+    if (is.finite(warmstart_fp$rho) && warmstart_fp$rho > 0)
+      fp0$rho <- warmstart_fp$rho
+  }
+
+  # Optimizer coordinates: (log a_s, log(a_p/a_s), log A_p, log A_s, log κ [, log c])
+  # Reparameterising v[2] as log(ratio) = log(a_p/a_s) instead of log(a_p − a_s)
+  # enforces a_p >= SDE_IG_MIN_AP_AS_RATIO * a_s via an L-BFGS-B lower bound, preventing
+  # the pole-merging degeneracy where both OU processes collapse to the same frequency.
   #
-  # Coordinate | Expression         | Identified by
-  # -----------|--------------------|----------------------------------------
-  # log a_s    | log(a_s)           | LF ACF decay / spectral pole position
-  # log gap    | log(a_p − a_s)     | HF pole position relative to LF pole
+  # Coordinate  | Expression          | Identified by
+  # ------------|---------------------|----------------------------------------
+  # log a_s     | log(a_s)            | LF ACF decay / spectral pole position
+  # log ratio   | log(a_p / a_s)      | HF/LF pole separation (min ratio enforced)
   # log A_p   | log(σ_p²/2a_p)    | Vagal spectral amplitude (OU stationary var of p)
   # log A_s   | log(σ_s²/2a_s)    | Sympathetic spectral amplitude (OU stationary var of s)
   # log κ     | log(μ₀/ρ²)        | IG shape; FIM diagonal in (log μ₀, log κ) — exact
@@ -367,13 +385,13 @@ pp_mle <- function(spikes,
   # pack ∘ unpack is exact.  κ is the free coordinate; ρ is derived as sqrt(μ₀/κ).
 
   pack <- function(fp) {
-    A_p  <- max(fp$sigma_p^2 / (2 * fp$a_p), 1e-12)
-    A_s  <- max(fp$sigma_s^2 / (2 * fp$a_s), 1e-12)
-    gap  <- max(fp$a_p - fp$a_s, 1e-4)
+    A_p   <- max(fp$sigma_p^2 / (2 * fp$a_p), 1e-12)
+    A_s   <- max(fp$sigma_s^2 / (2 * fp$a_s), 1e-12)
+    ratio <- max(fp$a_p / max(fp$a_s, 1e-8), SDE_IG_MIN_AP_AS_RATIO)
     mu_0_anchor <- max(mu_bar * exp(-(A_p + A_s) / 2), 0.10)
     kap_v <- kappa_from_rho(mu_0_anchor, fp$rho)   # = mu_0 / rho^2
     v <- c(log(fp$a_s),
-           log(gap),
+           log(ratio),
            log(A_p),
            log(A_s),
            log(max(kap_v, 0.5)))
@@ -387,7 +405,7 @@ pp_mle <- function(spikes,
 
   unpack <- function(v) {
     a_s_v  <- exp(v[1L])
-    a_p_v  <- a_s_v + exp(v[2L])        # a_p > a_s guaranteed
+    a_p_v  <- a_s_v * exp(v[2L])        # a_p = a_s * ratio, ratio >= SDE_IG_MIN_AP_AS_RATIO
     A_p_v  <- max(exp(v[3L]), 1e-10)    # OU stationary variance of p
     A_s_v  <- max(exp(v[4L]), 1e-10)    # OU stationary variance of s
     kap_v  <- max(exp(v[5L]), 0.5)
@@ -412,15 +430,40 @@ pp_mle <- function(spikes,
   }
 
   # Bounds in optimizer coordinates.
-  # v[1] log(a_s):   a_s ∈ [0.01, 2.0] Hz
-  # v[2] log(gap):   gap ∈ [0.01, 7.99] → a_p ≤ 9.99 Hz
-  # v[3] log(A_p):   A_p ∈ [1e-6, 0.45]  (vagal stationary variance)
-  # v[4] log(A_s):   A_s ∈ [1e-6, 0.45]  (sympathetic stationary variance)
-  # v[5] log(kappa):     kappa ∈ [0.5, 1000]
+  # v[1] log(a_s):    a_s ∈ [0.01, 2.0] Hz
+  # v[2] log(ratio):  ratio = a_p/a_s ∈ [SDE_IG_MIN_AP_AS_RATIO, 1500]
+  #                   upper 1500 → a_p ≤ 15 Hz when a_s ≥ 0.01 Hz
+  # v[3] log(A_p):    A_p ∈ [1e-6, 0.45]  (vagal stationary variance)
+  # v[4] log(A_s):    A_s ∈ [1e-6, 0.45]  (sympathetic stationary variance)
+  # v[5] log(kappa):  kappa ∈ [0.5, 1000]
   # Individual caps at 0.45 keep total σ_Δ² = A_p + A_s well below 1,
   # matching the physiological constraint that OU variance ≪ μ₀².
-  lower_v <- c(log(0.01), log(0.01), log(1e-6), log(1e-6), log(0.5))
-  upper_v <- c(log(2.0),  log(7.99), log(0.45), log(0.45), log(1000))
+  lower_v <- c(log(0.01), log(SDE_IG_MIN_AP_AS_RATIO), log(1e-6), log(1e-6), log(0.5))
+  upper_v <- c(log(2.0),  log(1500),                   log(0.45), log(0.45), log(1000))
+
+  # Pole anchor: when supplied, restrict log(a_s) and log(ratio) to within
+  # log_hw of the Stage-1 Whittle values.  log_hw = log(2) means each pole
+  # can move by a factor of 2 in either direction — wide enough to absorb
+  # Stage-1 estimation error but tight enough to prevent amplitude collapse
+  # and pole merging.  Bounds are intersected with the global physiological
+  # limits set above, so no infeasibility can arise.
+  if (!is.null(pole_anchor)) {
+    hw      <- pole_anchor$log_hw
+    ratio_a <- pole_anchor$a_p / max(pole_anchor$a_s, 1e-8)
+    lower_v[1L] <- max(lower_v[1L], log(pole_anchor$a_s) - hw)
+    upper_v[1L] <- min(upper_v[1L], log(pole_anchor$a_s) + hw)
+    lower_v[2L] <- max(lower_v[2L], log(ratio_a) - hw)
+    upper_v[2L] <- min(upper_v[2L], log(ratio_a) + hw)
+    # Safety: ensure lower < upper after intersection (can fail if Stage-1
+    # is near a global bound; collapse to a single point in that case).
+    for (k in 1:2) {
+      if (lower_v[k] >= upper_v[k]) {
+        mid         <- (lower_v[k] + upper_v[k]) / 2
+        lower_v[k] <- mid - 1e-4
+        upper_v[k] <- mid + 1e-4
+      }
+    }
+  }
 
   if (use_coupled) {
     lower_v <- c(lower_v, log(1e-8),  log(1e-3))   # log(c), log(r)
@@ -450,8 +493,13 @@ pp_mle <- function(spikes,
     -sum(ll_vec_fin)
   }
 
+  par_init <- pack(fp0)
+  # Snap to interior: exact boundary starts prevent L-BFGS-B from computing a
+  # valid projected gradient on the first iteration.
+  par_init <- pmax(pmin(par_init, upper_v - 0.05), lower_v + 0.05)
+
   res <- optim(
-    par     = pack(fp0),
+    par     = par_init,
     fn      = neg_ll,
     method  = "L-BFGS-B",
     lower   = lower_v,
@@ -644,18 +692,59 @@ pp_mle_twostage <- function(spikes,
   # Stage 3 (optional)
   if (!refine) return(conc)
 
+  # Stage 3: local refinement anchored to Stage-1 Whittle poles.
+  #
+  # warmstart_fp:  Stage 2 free_hat → bypasses spectral_init starting values
+  #                that would otherwise ignore the Whittle pole estimates.
+  # pole_anchor:   restricts v[1] = log(a_s) and v[2] = log(ratio) to within
+  #                exp(±log(2)) = ×2 / ÷2 of the Stage-1 values, preventing the
+  #                vagal-amplitude-collapse local optimum (sigma_p → 0, a_p → any).
   full <- tryCatch(
-    pp_mle(spikes, conc$params_hat, input_fn, verbose = verbose),
+    pp_mle(spikes, conc$params_hat, input_fn, verbose = verbose,
+           warmstart_fp = conc$free_hat,
+           pole_anchor  = list(a_p    = wave$a_p,
+                               a_s    = wave$a_s,
+                               log_hw = log(2.0))),
     error = function(e) NULL
   )
 
   if (is.null(full) || is.na(full$ll) ||
       (!is.na(conc$ll) && conc$ll >= full$ll)) {
     if (verbose && !is.null(full) && is.finite(full$ll))
-      message(sprintf("pp_mle_twostage: concentrated retained (%.2f >= %.2f)",
+      message(sprintf("pp_mle_twostage: concentrated retained (ll %.2f >= %.2f)",
                       conc$ll, full$ll))
     return(conc)
   }
+
+  fp_full <- full$free_hat
+
+  # Guard 1 — pole-separation: ratio must remain above minimum threshold.
+  if (!is.null(fp_full) && is.finite(fp_full$a_p) && is.finite(fp_full$a_s) &&
+      fp_full$a_p / fp_full$a_s < SDE_IG_MIN_AP_AS_RATIO) {
+    if (verbose)
+      message(sprintf(
+        "pp_mle_twostage: Stage 3 pole ratio %.2f < %.1f; reverting to Stage 2.",
+        fp_full$a_p / fp_full$a_s, SDE_IG_MIN_AP_AS_RATIO))
+    return(conc)
+  }
+
+  # Guard 2 — amplitude degeneracy: vagal stationary variance A_p must not
+  # collapse to near zero relative to sympathetic variance A_s.
+  # A_p < 0.05 * A_s means the fast OU branch has become invisible to the
+  # filter — a degenerate single-branch solution in the marginal likelihood.
+  if (!is.null(fp_full)) {
+    A_p_full <- fp_full$sigma_p^2 / (2 * fp_full$a_p)
+    A_s_full <- fp_full$sigma_s^2 / (2 * max(fp_full$a_s, 1e-8))
+    if (is.finite(A_p_full) && is.finite(A_s_full) &&
+        A_p_full < 0.05 * A_s_full) {
+      if (verbose)
+        message(sprintf(
+          "pp_mle_twostage: Stage 3 vagal variance A_p=%.2e collapsed (A_s=%.2e); reverting to Stage 2.",
+          A_p_full, A_s_full))
+      return(conc)
+    }
+  }
+
   full
 }
 

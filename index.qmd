@@ -130,13 +130,6 @@ knitr::include_graphics("fig/schematic-model.png")
 For the uncoupled sub-model ($a_{ps}=a_{sp}=0$), the conditional log-likelihood separates into three independent blocks, parasympathetic OU, sympathetic OU, and IG observations, making the $6\times6$ Fisher information matrix (FIM) block-diagonal by construction. Each $2\times2$ block is positive definite analytically (Supplementary Note 1), confirming local identifiability of all six parameters from the state trajectory alone. Adding non-zero coupling ($a_{ps}, a_{sp}>0$) breaks block-diagonality; the $8\times8$ FIM is computed numerically and remains positive definite at the reference parameter set (Supplementary Fig. S2).
 
 ```{r}
-#| label: ident-setup
-#| include: false
-source("R/mle.R")
-source("R/identifiability.R")
-```
-
-```{r}
 #| label: recovery-run
 #| cache: true
 #| include: false
@@ -169,11 +162,10 @@ We validated parameter recovery in a Monte Carlo study of $N=250$ independent 72
 #| fig-height: 9
 #| fig-width: 7
 
-source("R/filter.R")
 FLT      <- pp_ukf(RES_UNCOUPLED$spikes, PARAMS_UNCOUPLED, CANONICAL_INPUT_FN)
 flt_grid <- filter_to_grid(FLT, RES_UNCOUPLED$time)
 
-layout(matrix(c(1,1,2,3,4), ncol = 1), heights = c(2.2, 1.2, 0.9, 0.9))
+layout(matrix(c(1,1,2,3,4), ncol = 1), heights = c(1.5, 1, 1, 1))
 par(oma = c(3, 0, 0, 0))
 
 # Panel (a): recovery dot-plot
@@ -371,7 +363,7 @@ The SDE-IG model is defined by the coupled OU system above together with the IG 
 
 Given the latent trajectory, the log-likelihood separates into three independent blocks (Supplementary Note 1). OU parameters are estimated by one-dimensional profile likelihood over $\log a$; IG parameters by closed-form score equations. Standard errors come from the analytical FIM.
 
-Integrating over unobserved states, the total marginal log-likelihood $\sum_k\log p(\tau_k\mid\Theta)$ is maximized by L-BFGS-B in reparameterized coordinates $(\log a_s,\; \log(a_p-a_s),\; \log A_p,\; \log A_s,\; \log\kappa)$, where $A_\nu = \sigma_\nu^2/(2a_\nu)$ is the OU stationary variance of branch $\nu$ and $\mu_0=\bar\tau\exp(-(A_p+A_s)/2)$ is anchored to the sample mean IBI. This encoding enforces $a_p>a_s$ by construction; $(A_p, A_s)$ are identified by the HF and LF spectral amplitudes respectively, near-orthogonalizing the five free coordinates (Supplementary Note 5). Data-driven starting values are obtained from biexponential ACF fitting and band-centroid spectral estimation; a two-stage wavelet Whittle pre-estimator is available for recordings with poor spectral resolution (Supplementary Methods).
+Integrating over unobserved states, the total marginal log-likelihood $\sum_k\log p(\tau_k\mid\Theta)$ is maximized by L-BFGS-B in reparameterized coordinates $(\log a_s,\; \log(a_p/a_s),\; \log A_p,\; \log A_s,\; \log\kappa)$, where the ratio $a_p/a_s \geq 3$ is enforced as an L-BFGS-B lower bound, preventing the pole-merging degeneracy in which both OU processes collapse to the same frequency, where $A_\nu = \sigma_\nu^2/(2a_\nu)$ is the OU stationary variance of branch $\nu$ and $\mu_0=\bar\tau\exp(-(A_p+A_s)/2)$ is anchored to the sample mean IBI. This encoding enforces $a_p>a_s$ by construction; $(A_p, A_s)$ are identified by the HF and LF spectral amplitudes respectively, near-orthogonalizing the five free coordinates (Supplementary Note 5). Data-driven starting values are obtained from biexponential ACF fitting and band-centroid spectral estimation; a two-stage wavelet Whittle pre-estimator is available for recordings with poor spectral resolution (Supplementary Methods).
 
 ## UKF implementation
 

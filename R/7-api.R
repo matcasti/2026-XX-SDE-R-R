@@ -207,6 +207,13 @@ sde_ig <- function(rr,
 
 #' @export
 print.sde_ig_fit <- function(x, digits = 4L, ...) {
+  if (!is.numeric(digits)) {
+    stop(sprintf(
+      paste0("print.sde_ig_fit: `digits` must be numeric, not \"%s\".\n",
+             "  For visualization use: plot(fit, type = \"%s\") ",
+             "or autoplot(fit, \"%s\")"),
+      digits, digits, digits), call. = FALSE)
+  }
   conv_msg <- if (x$convergence == 0L) "ok (code 0)"
   else sprintf("WARNING (code %d) — re-run or check starting values",
                x$convergence)
@@ -388,9 +395,10 @@ sde_ig_add_se <- function(fit, eps = 1e-4) {
   # Mirror pp_mle pack() at the MLE to obtain the optimizer-coordinate vector.
   A_p   <- max(fp$sigma_p^2 / (2 * fp$a_p), 1e-12)
   A_s   <- max(fp$sigma_s^2 / (2 * fp$a_s), 1e-12)
-  gap   <- max(fp$a_p - fp$a_s, 1e-4)
+  ratio <- max(fp$a_p / max(fp$a_s, 1e-8), SDE_IG_MIN_AP_AS_RATIO)
+  mu_0_anchor <- max(mu_bar * exp(-(A_p + A_s) / 2), 0.10)
   kap   <- kappa_from_rho(fp$mu_0, fp$rho)
-  th    <- c(log(fp$a_s), log(gap), log(A_p), log(A_s), log(max(kap, 0.5)))
+  th    <- c(log(fp$a_s), log(ratio), log(A_p), log(A_s), log(max(kap, 0.5)))
   if (coupled) {
     c_v <- max(fp$a_ps * fp$a_sp, 1e-8)
     r_v <- max(fp$a_ps / max(fp$a_sp, 1e-8), 1e-3)
@@ -436,8 +444,8 @@ sde_ig_add_se <- function(fit, eps = 1e-4) {
 
   # Delta-method back-transform to natural-scale SEs (first-order).
   fit$se_hat <- list(
-    a_s_se     = fp$a_s             * se_v[1L],
-    a_p_se     = (fp$a_p - fp$a_s) * se_v[2L],   # via log-gap coordinate
+    a_s_se     = fp$a_s  * se_v[1L],   # d(a_s)/d(log a_s) = a_s
+    a_p_se     = fp$a_p  * se_v[2L],   # d(a_p)/d(log ratio) = a_p  [first-order]
     sigma_p_se = fp$sigma_p / 2     * se_v[3L],   # sigma_p ~ A_p^0.5
     sigma_s_se = fp$sigma_s / 2     * se_v[4L],
     rho_se     = fp$rho     / 2     * se_v[5L],   # rho ~ kappa^-0.5
