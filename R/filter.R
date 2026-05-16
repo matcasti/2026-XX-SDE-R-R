@@ -456,8 +456,8 @@ pp_mle <- function(spikes,
     method  = "L-BFGS-B",
     lower   = lower_v,
     upper   = upper_v,
-    control = list(maxit = 3000L,
-                   factr = 1e7,
+    control = list(maxit = 10000L,
+                   factr = 1e6,
                    trace = if (verbose) 1L else 0L)
   )
 
@@ -550,7 +550,7 @@ pp_mle_concentrated <- function(spikes,
                method  = "L-BFGS-B",
                lower   = c(log(1e-6), log(1e-6), log(0.5)),
                upper   = c(log(0.45), log(0.45), log(1000)),
-               control = list(maxit = 3000, factr = 1e7,
+               control = list(maxit = 10000, factr = 1e6,
                               trace = if (verbose) 1L else 0L))
 
   if (res$convergence != 0L && verbose)
@@ -602,7 +602,7 @@ pp_mle_concentrated <- function(spikes,
 pp_mle_twostage <- function(spikes,
                             params_init,
                             input_fn = function(t) 0,
-                            refine   = FALSE,
+                            refine   = TRUE,
                             verbose  = FALSE) {
   rr <- diff(spikes)
 
@@ -675,6 +675,33 @@ pp_mle_twostage <- function(spikes,
   out
 }
 
+.prop_sd_delta <- function(ukf_result, time_grid, fp) {
+  bt  <- ukf_result$beat_times
+  out <- rep(NA_real_, length(time_grid))
+  n_bt <- length(bt)
+
+  for (k in seq_len(n_bt)) {
+    mask <- if (k < n_bt) time_grid >= bt[k] & time_grid < bt[k + 1L]
+    else           time_grid >= bt[k]
+    if (!any(mask)) next
+
+    dt_v <- time_grid[mask] - bt[k]
+    P_k  <- ukf_result$P_filt[[k]]
+
+    F_p <- exp(-fp$a_p * dt_v)
+    F_s <- exp(-fp$a_s * dt_v)
+    Q_p <- (fp$sigma_p^2 / (2 * fp$a_p)) * (-expm1(-2 * fp$a_p * dt_v))
+    Q_s <- (fp$sigma_s^2 / (2 * fp$a_s)) * (-expm1(-2 * fp$a_s * dt_v))
+
+    var_p  <- F_p^2 * P_k[1L, 1L] + Q_p
+    var_s  <- F_s^2 * P_k[2L, 2L] + Q_s
+    cov_ps <- F_p * F_s * P_k[1L, 2L]
+
+    out[mask] <- sqrt(pmax(var_p + var_s - 2 * cov_ps, 0))
+  }
+  out
+}
+
 filter_to_grid <- function(ukf_result, time_grid) {
   bt   <- ukf_result$beat_times
   fp   <- ukf_result$params$free
@@ -698,12 +725,25 @@ filter_to_grid <- function(ukf_result, time_grid) {
     p        = p_prop,
     s        = s_prop,
     mu       = interp(ukf_result$mu_filt),
-    sd_delta = interp(sqrt(pmax(
-      # Extract the three scalars directly: Var(s-p) = P[1,1] + P[2,2] - 2*P[1,2]
-      vapply(ukf_result$P_filt,
-             function(P) P[1L, 1L] + P[2L, 2L] - 2.0 * P[1L, 2L],
-             numeric(1L),
-             USE.NAMES = FALSE),   # skip name-matching overhead
-      0.0)))
+    sd_delta = .prop_sd_delta(ukf_result, time_grid, fp)
   )
+}
+
+# Helper — Propagate per-branch posterior variance with OU dynamics
+.prop_sd_branch <- function(ukf_result, time_grid, fp, branch) {
+  # branch = 1 (p) or 2 (s)
+  bt   <- ukf_result$beat_times
+  a_v  <- if (branch == 1L) fp$a_p else fp$a_s
+  s2_v <- if (branch == 1L) fp$sigma_p^2 else fp$sigma_s^2
+  out  <- rep(NA_real_, length(time_grid))
+  for (k in seq_len(length(bt))) {
+    mask <- if (k < length(bt)) time_grid >= bt[k] & time_grid < bt[k + 1L]
+    else                time_grid >= bt[k]
+    if (!any(mask)) next
+    dt_v  <- time_grid[mask] - bt[k]
+    P_kbb <- ukf_result$P_filt[[k]][branch, branch]
+    Q_v   <- (s2_v / (2 * a_v)) * (-expm1(-2 * a_v * dt_v))
+    out[mask] <- sqrt(pmax(exp(-2 * a_v * dt_v) * P_kbb + Q_v, 0))
+  }
+  out
 }

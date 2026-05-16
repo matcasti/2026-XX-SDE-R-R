@@ -198,12 +198,9 @@ legend("topleft",
 mtext("(b)", adj = 0, font = 2, cex = 0.9)
 
 # Panel (c): branch reconstruction
-sd_p <- approx(FLT$beat_times,
-               sqrt(sapply(FLT$P_filt, function(P) P[1L,1L])),
-               xout = RES_UNCOUPLED$time, rule = 2)$y
-sd_s <- approx(FLT$beat_times,
-               sqrt(sapply(FLT$P_filt, function(P) P[2L,2L])),
-               xout = RES_UNCOUPLED$time, rule = 2)$y
+sd_p <- .prop_sd_branch(FLT, RES_UNCOUPLED$time, PARAMS_UNCOUPLED$free, 1L)
+sd_s <- .prop_sd_branch(FLT, RES_UNCOUPLED$time, PARAMS_UNCOUPLED$free, 2L)
+
 ylim_b <- range(c(RES_UNCOUPLED$p, RES_UNCOUPLED$s,
                   flt_grid$p + 2*sd_p, flt_grid$p - 2*sd_p,
                   flt_grid$s + 2*sd_s, flt_grid$s - 2*sd_s), na.rm = TRUE)

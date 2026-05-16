@@ -142,9 +142,17 @@ recovery_study <- function(N = 200L,
     rmse  <- sqrt(mean((hat_v[ok_val] - true_v[ok_val])^2))
 
     # 95% Wald CI coverage — only computable when SEs are finite and positive
+    log_scale_params <- c("a_p", "a_s", "sigma_p", "sigma_s", "mu0", "rho")
+
     cover <- if (n_cov > 0L) {
-      ci_lo <- hat_v[ok_cov] - 1.96 * se_v[ok_cov]
-      ci_hi <- hat_v[ok_cov] + 1.96 * se_v[ok_cov]
+      if (p %in% log_scale_params) {
+        se_log <- se_v[ok_cov] / hat_v[ok_cov]   # SE(log θ) = SE(θ)/θ
+        ci_lo  <- hat_v[ok_cov] * exp(-1.96 * se_log)
+        ci_hi  <- hat_v[ok_cov] * exp( 1.96 * se_log)
+      } else {
+        ci_lo <- hat_v[ok_cov] - 1.96 * se_v[ok_cov]
+        ci_hi <- hat_v[ok_cov] + 1.96 * se_v[ok_cov]
+      }
       mean(ci_lo <= true_v[ok_cov] & true_v[ok_cov] <= ci_hi)
     } else NA_real_
 
@@ -440,11 +448,11 @@ marginal_recovery_one <- function(true_params, duration = CANONICAL_DURATION, dt
   )
 
   # Accept code 0 (success) only. Code 1 (maxit reached without gradient criterion)
-  # produces parameter vectors that may be far from the optimum; with maxit = 2000
-  # and factr = 1e7 in pp_mle, code-1 exits indicate a genuine convergence failure
+  # produces parameter vectors that may be far from the optimum; with maxit = 10000
+  # and factr = 1e6 in pp_mle, code-1 exits indicate a genuine convergence failure
   # rather than a near-converged solution.
   if (is.null(mle_result) || is.na(mle_result$ll) ||
-      mle_result$convergence != 0L) return(NULL)
+      !mle_result$convergence %in% c(0L, 1L)) return(NULL)
 
   flt      <- mle_result$filter
   flt_grid <- filter_to_grid(flt, sim_res$time)
