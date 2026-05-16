@@ -63,7 +63,7 @@ compute_effective_delta <- function(spk, time_vec, delta_vec) {
 # Closed-form solution from OLS (for c) + method-of-moments (for sigma).
 
 ou_mle <- function(x_vec, u_vec, a_init, dt,
-                   log_a_bounds = c(log(0.01), log(20)),  # harmonised with pp_mle ceiling
+                   log_a_bounds = c(log(0.01), log(10)),  # harmonised with pp_mle ceiling
                    c_fixed = NULL) {
   n <- length(x_vec) - 1L
   if (n < 2L)

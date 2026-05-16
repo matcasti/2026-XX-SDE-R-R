@@ -9,7 +9,7 @@
 <meta name="author" content="Matías Castillo-Aguilar">
 <meta name="author" content="Noah Beelders">
 <meta name="author" content="Cristian Núñez-Espinosa">
-<meta name="dcterms.date" content="2026-05-15">
+<meta name="dcterms.date" content="2026-05-16">
 
 <title>A Continuous-Time Stochastic State-Space Framework for Heart Rate Variability – The SDE-Inverse Gaussian Model</title>
 <style>
@@ -416,7 +416,7 @@ window.Quarto = {
                 <div>
             <div class="quarto-title-meta-heading">Published</div>
             <div class="quarto-title-meta-contents">
-              <p class="date">May 15, 2026</p>
+              <p class="date">May 16, 2026</p>
             </div>
           </div>
           
@@ -615,7 +615,7 @@ Figure&nbsp;2: <strong>Parameter recovery and filter validation.</strong> <stron
 <div id="tbl-recovery" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;1: <strong>Table 1 | Conditional MLE recovery summary.</strong> True values, mean estimates, relative bias, RMSE, and 95% Wald CI coverage for each free parameter (<span class="math inline">\(N=250\)</span> replications, 720 s each). Coupling terms are zero in this analysis (uncoupled sub-model); their recovery is reported in Supplementary Table S2.
+Table&nbsp;1: <strong>Conditional MLE recovery summary.</strong> True values, mean estimates, relative bias, RMSE, and 95% Wald CI coverage for each free parameter (<span class="math inline">\(N=250\)</span> replications, 720 s each). Coupling terms are zero in this analysis (uncoupled sub-model); their recovery is reported in Supplementary Table S2.
 </figcaption>
 <div aria-describedby="tbl-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
@@ -698,8 +698,8 @@ Table&nbsp;1: <strong>Table 1 | Conditional MLE recovery summary.</strong> True 
 <section id="sec-inference" class="level2" data-number="3.3">
 <h2 data-number="3.3" class="anchored" data-anchor-id="sec-inference"><span class="header-section-number">3.3</span> Real-time autonomic state reconstruction</h2>
 <p>The spike-to-spike Unscented Kalman Filter (UKF) processes one IBI at a time. The prediction step uses the exact Gaussian OU transition (no approximation); the update step applies sigma-point quadrature to the nonlinear observation function <span class="math inline">\(h(\mathbf{x})=\mu_0\exp(p-s)\)</span> with IG measurement noise <span class="math inline">\(R_k=\hat\mu_k^3/\kappa\)</span> (Methods). The marginal log-likelihood contribution is computed as <span class="math inline">\(\log\sum_i W_i^m f_\mathrm{IG}(\tau_k;\,h(\boldsymbol\sigma_i),\,\kappa)\)</span> via log-sum-exp, avoiding both the linearization error of the Gaussian innovation approximation and the Jensen gap of the naïve lower bound.</p>
-<p>The oracle filter (true parameters) achieves an RMSE of 0.1114 on <span class="math inline">\(\hat\Delta(t)\)</span> (<a href="#fig-recovery" class="quarto-xref">Figure&nbsp;2</a>; Supplementary Table S1). The posterior contracts tightest along the differential direction <span class="math inline">\(\mathbf{e}_-=[-1,1]^\top/\sqrt{2}\)</span>; per-branch variance along the common-mode direction is bounded by the OU stationary prior and remains finite, enabling recovery of individual branch trajectories <span class="math inline">\([\hat p(t),\hat s(t)]\)</span> with per-branch posterior SDs reported in Fig. 2c.</p>
-<p>The marginal MLE, estimating all parameters from spike times alone, uses data-driven spectral starting values and a reparameterized 5D optimizer that enforces <span class="math inline">\(a_p&gt;a_s\)</span> by construction and anchors <span class="math inline">\(\mu_0\)</span> to the sample mean IBI (Methods). Across <span class="math inline">\(N=250\)</span> replications the end-to-end pipeline achieves a marginal-to-oracle RMSE inflation ratio of 1.19× with a convergence rate of 100.0% (Supplementary Table S3), placing the pipeline in the well-identified regime where state estimation, not parameter uncertainty, is the dominant error source.</p>
+<p>The oracle filter (true parameters) achieves an RMSE of 0.1385 on <span class="math inline">\(\hat\Delta(t)\)</span> (<a href="#fig-recovery" class="quarto-xref">Figure&nbsp;2</a>; Supplementary Table S1). The posterior contracts tightest along the differential direction <span class="math inline">\(\mathbf{e}_-=[-1,1]^\top/\sqrt{2}\)</span>; per-branch variance along the common-mode direction is bounded by the OU stationary prior and remains finite, enabling recovery of individual branch trajectories <span class="math inline">\([\hat p(t),\hat s(t)]\)</span> with per-branch posterior SDs reported in Fig. 2c.</p>
+<p>The marginal MLE, estimating all parameters from spike times alone, uses data-driven spectral starting values and a reparameterized 5D optimizer that enforces <span class="math inline">\(a_p&gt;a_s\)</span> by construction and anchors <span class="math inline">\(\mu_0\)</span> to the sample mean IBI (Methods). Across <span class="math inline">\(N=250\)</span> replications the end-to-end pipeline achieves a marginal-to-oracle RMSE inflation ratio of 1.60× with a convergence rate of 100.0% (Supplementary Table S3), placing the pipeline in the well-identified regime where state estimation, not parameter uncertainty, is the dominant error source.</p>
 </section>
 <section id="sec-results-stress" class="level2" data-number="3.4">
 <h2 data-number="3.4" class="anchored" data-anchor-id="sec-results-stress"><span class="header-section-number">3.4</span> Autonomic dynamics under a sustained stress protocol</h2>

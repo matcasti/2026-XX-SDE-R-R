@@ -137,8 +137,14 @@ mat2x2_exp <- function(A, t) {
   if (abs(disc) <= tol) {
     eht * (diag(2L) + B * t)
   } else if (disc > 0) {
-    sq <- sqrt(disc) / 2
-    eht * (cosh(sq * t) * diag(2L) + sinh(sq * t) / sq * B)
+    sq   <- sqrt(disc) / 2
+    # Eigenvalue form: avoids cosh/sinh overflow × eht underflow → NaN.
+    # e^{At} = e^{λ₁t}/2 (I + B/sq) + e^{λ₂t}/2 (I - B/sq)
+    # λ₁ = tr_A/2 + sq < 0,  λ₂ = tr_A/2 − sq < 0  (both negative by stability).
+    e1  <- exp((ht + sq * t) - log(2))   # exp(λ₁ t) / 2
+    e2  <- exp((ht - sq * t) - log(2))   # exp(λ₂ t) / 2
+    Bsq <- B / sq
+    e1 * (diag(2L) + Bsq) + e2 * (diag(2L) - Bsq)
   } else {
     om <- sqrt(-disc) / 2
     eht * (cos(om * t) * diag(2L) + sin(om * t) / om * B)

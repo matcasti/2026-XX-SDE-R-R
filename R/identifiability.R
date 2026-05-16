@@ -394,11 +394,24 @@ plot_profiles <- function(profiles,
     }
 
     # Approximate 95% CI from profile
-    ci_idx <- which(ll_norm >= thresh)
+    ci_idx  <- which(ll_norm >= thresh)
+    n_grid  <- length(pf$grid)
     if (length(ci_idx) > 1) {
-      ci_lo <- pf$grid[min(ci_idx)]
-      ci_hi <- pf$grid[max(ci_idx)]
-      rug(c(ci_lo, ci_hi), col = "#D55E00", lwd = 2, ticksize = 0.05)
+      ci_lo       <- pf$grid[min(ci_idx)]
+      ci_hi       <- pf$grid[max(ci_idx)]
+      lo_at_edge  <- min(ci_idx) == 1L
+      hi_at_edge  <- max(ci_idx) == n_grid
+      if (!lo_at_edge && !hi_at_edge) {
+        rug(c(ci_lo, ci_hi), col = "#D55E00", lwd = 2, ticksize = 0.05)
+      } else {
+        # CI extends beyond the profiling grid: mark with open arrows instead
+        if (!lo_at_edge) rug(ci_lo, col = "#D55E00", lwd = 2, ticksize = 0.05)
+        if (!hi_at_edge) rug(ci_hi, col = "#D55E00", lwd = 2, ticksize = 0.05)
+        mtext(sprintf("%s CI extends beyond grid",
+                      if (lo_at_edge && hi_at_edge) "Both"
+                      else if (lo_at_edge) "Left" else "Right"),
+              side = 3, line = -1.2, cex = 0.65, col = "#D55E00", adj = 0.02)
+      }
     }
     grid(col = "lightgray", lty = 1)
   }
@@ -426,7 +439,10 @@ marginal_recovery_one <- function(true_params, duration = CANONICAL_DURATION, dt
     error = function(e) NULL
   )
 
-  # Accept code 0 (success) and code 1 (iteration limit, still improved).
+  # Accept code 0 (success) only. Code 1 (maxit reached without gradient criterion)
+  # produces parameter vectors that may be far from the optimum; with maxit = 2000
+  # and factr = 1e7 in pp_mle, code-1 exits indicate a genuine convergence failure
+  # rather than a near-converged solution.
   if (is.null(mle_result) || is.na(mle_result$ll) ||
       mle_result$convergence != 0L) return(NULL)
 

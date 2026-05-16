@@ -448,7 +448,7 @@ wavelet_spectral_fit <- function(rr_vec, fs = 4.0, min_levels = 4L) {
   diff_gain <- pmax(diff_gain, 1e-6)          # avoid division by zero at DC
   w_obs    <- w_obs / diff_gain               # deconvolve differencing filter
 
-  ok <- is.finite(w_obs) & w_obs > 1e-14
+  ok <- is.finite(w_obs) & w_obs > 1e-14 & w_obs < 0.1
   if (sum(ok) < min_levels) {
     warning(sprintf(
       "wavelet_spectral_fit: only %d usable Haar levels (need %d); using band_centroid_init.",

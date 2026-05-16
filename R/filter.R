@@ -698,8 +698,12 @@ filter_to_grid <- function(ukf_result, time_grid) {
     p        = p_prop,
     s        = s_prop,
     mu       = interp(ukf_result$mu_filt),
-    sd_delta = interp(sqrt(pmax(vapply(ukf_result$P_filt,
-                                       function(P) P[1L,1L] + P[2L,2L] - 2*P[1L,2L],
-                                       numeric(1L)), 0)))
+    sd_delta = interp(sqrt(pmax(
+      # Extract the three scalars directly: Var(s-p) = P[1,1] + P[2,2] - 2*P[1,2]
+      vapply(ukf_result$P_filt,
+             function(P) P[1L, 1L] + P[2L, 2L] - 2.0 * P[1L, 2L],
+             numeric(1L),
+             USE.NAMES = FALSE),   # skip name-matching overhead
+      0.0)))
   )
 }
