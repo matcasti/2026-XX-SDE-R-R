@@ -18,29 +18,41 @@
 
 # Helper to compute the effective integrate-and-fire drift
 compute_effective_delta <- function(spk, time_vec, delta_vec) {
-  # findInterval gives O(log n_time) per IBI vs O(n_time) from which().
-  # time_vec is strictly sorted and uniform; semantics match the original:
-  #   i_start = last index with time_vec[i] <= t_start
-  #   i_end   = last index with time_vec[i] <= t_end
-  #   qualifying indices: (i_start+1):i_end  ↔  time_vec > t_start & <= t_end
   n_ibi    <- length(spk) - 1L
   i_starts <- findInterval(spk[-length(spk)], time_vec)
   i_ends   <- findInterval(spk[-1L],          time_vec)
   dt_val   <- if (length(time_vec) > 1L) time_vec[2L] - time_vec[1L] else NA_real_
 
-  vapply(seq_len(n_ibi), function(k) {
-    i0 <- i_starts[k];  i1 <- i_ends[k]
-    if (i1 <= i0) {
-      warning(sprintf(
-        "compute_effective_delta: IBI [%.4f, %.4f] (%.4f s) < dt (%.4f s); returning NA.",
-        spk[k], spk[k + 1L], spk[k + 1L] - spk[k], dt_val))
-      return(NA_real_)
-    }
-    idx   <- (i0 + 1L):i1
-    neg_d <- -delta_vec[idx]
-    d_max <- max(neg_d)
-    log(length(idx)) - (d_max + log(sum(exp(neg_d - d_max))))
-  }, numeric(1L))
+  lens <- i_ends - i_starts          # grid points per IBI
+  bad  <- lens <= 0L
+  if (any(bad))
+    warning(sprintf(
+      "compute_effective_delta: %d IBI(s) shorter than dt (%.4f s); returning NA.",
+      sum(bad), dt_val))
+
+  out   <- rep(NA_real_, n_ibi)
+  valid <- which(!bad)
+  if (length(valid) == 0L) return(out)
+
+  all_i0   <- i_starts[valid]
+  all_lens <- lens[valid]
+
+  # Build flat index vector: (i0+1):i1 for every valid IBI, concatenated.
+  # sequence(lengths, from) avoids any R-level loop.
+  flat_idx  <- sequence(all_lens, from = all_i0 + 1L)
+  ibi_label <- rep(seq_along(valid), times = all_lens)  # group ID for each element
+
+  # Group-wise numerically stable LSE of (-delta):
+  #   bar_Delta_k = log(n_k) - LSE_{j in IBI_k}(-delta[j])
+  #               = log(n_k) - (max_k + log( sum(exp(-delta[j] - max_k)) ))
+  neg_d_flat   <- -delta_vec[flat_idx]
+  grp_max      <- as.numeric(tapply(neg_d_flat, ibi_label, max))  # length(valid) maxima
+  max_flat     <- grp_max[ibi_label]                               # expand to flat
+  exp_centered <- exp(neg_d_flat - max_flat)
+  sum_centered <- as.numeric(rowsum(exp_centered, ibi_label, reorder = FALSE))
+
+  out[valid] <- log(all_lens) - (grp_max + log(sum_centered))
+  out
 }
 
 # ---- Block 1 / 2: Analytic OU MLE ----
@@ -346,7 +358,10 @@ full_conditional_mle <- function(sim_res, input_fn = NULL) {
   # sharpening identification of (a, σ) and eliminating the θ_true ≠ θ* mismatch.
   if (is.null(input_fn))
     input_fn <- if (!is.null(sim_res$input_fn)) sim_res$input_fn else function(t) 0
-  u_vec <- vapply(sim_res$time, input_fn, numeric(1L))
+  u_vec <- tryCatch(
+    as.numeric(input_fn(sim_res$time)),
+    error = function(e) vapply(sim_res$time, input_fn, numeric(1L))
+  )
 
   use_coupled <- (abs(fp$a_ps) + abs(fp$a_sp)) > 1e-12
 
@@ -739,9 +754,15 @@ profile_lik_one <- function(param, grid, sim_res, mle, input_fn = NULL) {
   dt    <- sim_res$time[2L] - sim_res$time[1L]
   # c_p and c_s are fixed known constants.  u(t) is supplied so their
   # contribution is removed from OU residuals before profiling (a, σ).
-  if (is.null(input_fn))
+  if (is.null(input_fn)) {
     input_fn <- if (!is.null(sim_res$input_fn)) sim_res$input_fn else function(t) 0
-  u_vec <- vapply(sim_res$time, input_fn, numeric(1L))
+  }
+
+  u_vec <- tryCatch(
+    as.numeric(input_fn(sim_res$time)),
+    error = function(e) vapply(sim_res$time, input_fn, numeric(1L))
+  )
+
   fp    <- sim_res$params$free
 
   a_p_mle <- mle$a_p

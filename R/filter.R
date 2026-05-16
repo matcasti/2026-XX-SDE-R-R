@@ -456,8 +456,8 @@ pp_mle <- function(spikes,
     method  = "L-BFGS-B",
     lower   = lower_v,
     upper   = upper_v,
-    control = list(maxit = 1000L,
-                   factr = 1e6,     # tighter convergence tolerance
+    control = list(maxit = 3000L,
+                   factr = 1e7,
                    trace = if (verbose) 1L else 0L)
   )
 
@@ -550,7 +550,7 @@ pp_mle_concentrated <- function(spikes,
                method  = "L-BFGS-B",
                lower   = c(log(1e-6), log(1e-6), log(0.5)),
                upper   = c(log(0.45), log(0.45), log(1000)),
-               control = list(maxit = 500L, factr = 1e6,
+               control = list(maxit = 3000, factr = 1e7,
                               trace = if (verbose) 1L else 0L))
 
   if (res$convergence != 0L && verbose)
@@ -664,15 +664,14 @@ pp_mle_twostage <- function(spikes,
 
 # OU-propagated inter-beat interpolation helper
 .ou_propagate_grid <- function(beat_times, m_beat, a_val, time_grid) {
-  out <- rep(NA_real_, length(time_grid))
-  n_bt <- length(beat_times)
-  for (k in seq_len(n_bt)) {
-    t0   <- beat_times[k]
-    t1   <- if (k < n_bt) beat_times[k + 1L] else Inf
-    mask <- time_grid >= t0 & time_grid < t1
-    if (!any(mask)) next
-    out[mask] <- m_beat[k] * exp(-a_val * (time_grid[mask] - t0))
-  }
+  # findInterval(x, v) returns k s.t. v[k] <= x < v[k+1], 0 before first.
+  grp   <- findInterval(time_grid, beat_times)
+  n_bt  <- length(beat_times)
+  valid <- grp >= 1L & grp <= n_bt
+  out   <- rep(NA_real_, length(time_grid))
+  if (!any(valid)) return(out)
+  gv         <- grp[valid]
+  out[valid] <- m_beat[gv] * exp(-a_val * (time_grid[valid] - beat_times[gv]))
   out
 }
 

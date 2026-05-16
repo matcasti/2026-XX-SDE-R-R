@@ -157,7 +157,8 @@ recovery_study <- function(N = 200L,
       rmse          = rmse,
       rmse_rel_pct  = 100 * rmse / abs(t_bar),
       coverage_95   = round(100 * cover, 1),
-      n_valid       = n_ok,
+      n_valid       = n_ok,       # replications contributing to bias/RMSE
+      n_cov_valid   = n_cov,      # replications contributing to coverage (SE finite & > 0)
       stringsAsFactors = FALSE
     )
   }))
@@ -426,9 +427,8 @@ marginal_recovery_one <- function(true_params, duration = CANONICAL_DURATION, dt
   )
 
   # Accept code 0 (success) and code 1 (iteration limit, still improved).
-  # Codes 51 and 52 indicate gradient/input errors and are discarded.
-  if (is.null(mle_result) ||
-      !mle_result$convergence %in% c(0L, 1L)) return(NULL)
+  if (is.null(mle_result) || is.na(mle_result$ll) ||
+      mle_result$convergence != 0L) return(NULL)
 
   flt      <- mle_result$filter
   flt_grid <- filter_to_grid(flt, sim_res$time)
