@@ -1,0 +1,6 @@
+12821 3 250/24000 930000 13:53:56
+12821.dat 16 64(4)/mmHg 16 0 4732 1472 0 ABP
+12821.dat 16 6554/mV 16 0 -9508 -25420 0 ECG
+12821.dat 16 174.08(11060)/degrees 16 0 11056 -21932 0 Angle
+# <age>: 32  <sex>: F  <Height>: 173  <Weight>: 77
+#Produced by xform from record 12821_orig, beginning at 0:0

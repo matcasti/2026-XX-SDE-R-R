@@ -1,0 +1,6 @@
+12755 3 250/24000 900000 13:35:07
+12755.dat 16 64.02(3)/mmHg 16 0 3900 -13576 0 ABP
+12755.dat 16 6554/mV 16 0 -3724 -15832 0 ECG
+12755.dat 16 173.65(10952)/degrees 16 0 11056 -14292 0 Angle
+# <age>: 32  <sex>: M  <Height>: 192  <Weight>: 83
+#Produced by xform from record 12755_orig, beginning at 0:0

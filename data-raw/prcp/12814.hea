@@ -1,0 +1,6 @@
+12814 3 250/24000 900000 14:47:37
+12814.dat 16 64.02(2)/mmHg 16 0 3280 -11768 0 ABP
+12814.dat 16 6554/mV 16 0 -9760 25652 0 ECG
+12814.dat 16 174.08(11096)/degrees 16 0 11052 -5424 0 Angle
+# <age>: 27  <sex>: F  <Height>: 165  <Weight>: 56
+#Produced by xform from record 12814_orig, beginning at 0:0

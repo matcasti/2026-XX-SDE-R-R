@@ -73,8 +73,11 @@ grounded in the first-passage-time interpretation of SA-node membrane dynamics [
 #| label: setup
 #| include: false
 
-source("R/model_functions.R")
-source("R/spectral_init.R")
+## Load R files
+files <- list.files("R", full.names = TRUE)
+for (file in files) {
+  source(file = file)
+}
 
 CANONICAL_INPUT_FN <- make_double_logistic(t_on = 300, t_off = 420, k = 0.1)
 CANONICAL_DURATION <- 720L

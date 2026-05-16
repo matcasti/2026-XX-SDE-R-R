@@ -1,0 +1,6 @@
+12734 3 250/24000 825000 14:28:32
+12734.dat 16 64.05/mmHg 16 0 3860 -3736 0 ABP
+12734.dat 16 6554/mV 16 0 -8948 4936 0 ECG
+12734.dat 16 175.25(11216)/degrees 16 0 11168 30020 0 Angle
+# <age>: 30  <sex>: M  <Height>: 165  <Weight>: 64
+#Produced by xform from record 12734_orig, beginning at 0:0

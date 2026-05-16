@@ -1,0 +1,6 @@
+12819 3 250/24000 1110000 10:48:59
+12819.dat 16 64.01(2)/mmHg 16 0 4860 31852 0 ABP
+12819.dat 16 6554/mV 16 0 -7500 -6628 0 ECG
+12819.dat 16 174.67(11144)/degrees 16 0 11144 1904 0 Angle
+# <age>: 28  <sex>: F  <Height>: 155  <Weight>: 55
+#Produced by xform from record 12819_orig, beginning at 0:0

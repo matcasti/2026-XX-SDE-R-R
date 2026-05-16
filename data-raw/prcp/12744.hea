@@ -1,0 +1,6 @@
+12744 3 250/24000 930000 14:17:29
+12744.dat 16 64.03(4)/mmHg 16 0 4836 1452 0 ABP
+12744.dat 16 6554/mV 16 0 -9528 -24272 0 ECG
+12744.dat 16 175.63(11056)/degrees 16 0 11052 24400 0 Angle
+# <age>: 28  <sex>: M  <Height>: 180  <Weight>: 100
+#Produced by xform from record 12744_orig, beginning at 0:0

@@ -1,0 +1,6 @@
+13960 3 250/24000 927500 13:53:55
+13960.dat 16 64(2)/mmHg 16 0 3484 -30628 0 ABP
+13960.dat 16 6554/mV 16 0 -9824 -2524 0 ECG
+13960.dat 16 173.12(11048)/degrees 16 0 11044 28684 0 Angle
+# <age>: 34  <sex>: M  <Height>: 183  <Weight>: 83
+#Produced by xform from record 13960_orig, beginning at 0:0
